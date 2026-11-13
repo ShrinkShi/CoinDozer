@@ -5,7 +5,7 @@ Source development remains modular; dist/index.html works as file:// and GitHub 
 from pathlib import Path
 import re, html
 root=Path(__file__).resolve().parent
-paths=['math.js','geometry.js','renderer.js','world.js','physics.js','vehicle.js','main.js']
+paths=['math.js','geometry.js','renderer.js','world.js','granular.js','physics.js','vehicle.js','main.js']
 js=[]
 for name in paths:
     raw=(root/'src'/name).read_text()

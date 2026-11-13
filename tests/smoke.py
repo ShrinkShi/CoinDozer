@@ -25,19 +25,23 @@ with sync_playwright() as p:
   const startZ=p.z;
   sim.update(.03,0,-1,world);
   const moved=p.z<startZ;
-  const initialTotal=sim.resources.filter(r=>!r.dead).length;
+  // Isolate the specific gate test particle from unrelated pile contacts.
   let r=sim.resources.find(r=>r.kind==='blue');
-  r.x=1;r.z=3.13;r.vx=0;r.vz=-6;r.passed=false;r.dead=false;
+  sim.resources=[r];
+  r.x=1;r.z=3.42;r.y=0;r.vx=0;r.vy=0;r.vz=-9;r.passed=false;r.dead=false;
+  const initialTotal=1;
   sim.update(.044,0,0,world);
   const multiplyTotal=sim.resources.filter(r=>!r.dead).length;
   const multiplied=r.passed && multiplyTotal>initialTotal;
-  let coin=sim.resources.find(q=>q.kind==='gold'&&!q.dead);
+  let coin={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
+  sim.resources.push(coin);
   coin.x=19;coin.z=-12;coin.vx=0;coin.vz=0;
   const before=sim.remaining;
   sim.update(.022,0,0,world);
   const deducted=before===2500&&sim.remaining===2499;
   sim.deposit=2499;sim.remaining=1;
-  const another=sim.resources.find(q=>q.kind==='gold'&&!q.dead);
+  const another={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
+  sim.resources.push(another);
   another.x=19;another.z=-12;another.vx=0;another.vz=0;
   sim.update(.022,0,0,world);
   return {moved,initialTotal,multiplyTotal,multiplied,deducted,remaining:sim.remaining,upgrade:sim.won,events:sim.events.map(e=>e.type)};

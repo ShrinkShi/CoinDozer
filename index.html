@@ -10,7 +10,7 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.2</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.3</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="worldLabels" aria-hidden="true">
       <div id="label-gate" class="world-label gate">×10</div>
       <div id="label-gate2" class="world-label gate">×10000</div>
@@ -23,13 +23,13 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · MODEL & CAMERA PASS · v0.2</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · GRANULAR PHYSICS PASS · v0.3</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p>推开蓝色球体，让它们通过紫色 <b>×10</b> 倍数门。用宽大的黄色铲斗推动金币，把金币推上升级台，让 <b>2500</b> 逐渐变成 <b>0</b>。</p>
         <div class="modeGrid"><div><b>手机</b><span>触摸画面任意空白处，拖动控制行驶方向</span></div><div><b>电脑</b><span>WASD / 方向键移动 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">v0.2 重做铲斗、履带与镜头；物理堆积仍将在 v0.3 重构。所有模型和地图均由几何体实时构建，不使用广告原游戏素材。纯前端、无需服务器，进度存于本机浏览器。</p>
+        <p class="footnote">v0.3 加入三维颗粒碰撞、重力堆叠与铲斗接触推动；仍为浏览器性能优化的近似物理，尚未完全复刻广告中的粒子规模与动画。所有模型和地图均由几何体实时构建，不使用广告原游戏素材。纯前端、无需服务器，进度存于本机浏览器。</p>
       </div>
     </section>
   </div>
