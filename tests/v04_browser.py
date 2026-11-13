@@ -37,9 +37,10 @@ with sync_playwright() as pw:
     const mesh=GEOMETRY.coin;
     const oneCoinGeometry=mesh.vertices.length>200 && mesh.indices.length>300;
     const gate=sim.resources.find(r=>r.kind==='blue');
-    sim.resources=[gate];gate.x=1;gate.z=3.42;gate.vz=-9;gate.vy=0;gate.dead=false;gate.passed=false;
+    sim.resources=[gate];gate.x=2.8;gate.z=3.42;gate.vz=-9;gate.vy=0;gate.dead=false;gate.passedGates=0;
     sim.update(.044,0,0,world);
-    const gateWorks=sim.resources.length>1&&gate.passed;
+    const gateWorks=sim.resources.length===5&&!!(gate.passedGates&(1<<2));
+    sim.player.x=19;sim.player.z=-12;
     const first={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,dead:false,cooldown:0};
     sim.resources.push(first);const before=sim.remaining;sim.update(.022,0,0,world);
     return {scoopForward,scoopLifted,outsideUnmoved,noMagnet,coinTilts,tiltIncreasesHeight,oneCoinGeometry,gateWorks,depositWorks:sim.remaining===before-1,curveNormal:[n.nAhead,n.nUp],coinExtent:particleHalfHeight(rolling)};

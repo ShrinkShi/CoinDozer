@@ -1,71 +1,188 @@
 import {Renderer} from './renderer.js';
 import {World} from './world.js';
-import {Simulation} from './physics.js';
+import {Simulation,MAX_RESOURCES} from './physics.js';
 import {renderVehicle,renderTreads,renderResources} from './vehicle.js';
 import {clamp,formatNum} from './math.js';
 import {screenStickToWorld} from './heading.js';
-const canvas=document.getElementById('scene');
-// v0.2 uses a fixed azimuth like the ad; mouse wheel only changes photographic distance.
-canvas.addEventListener('wheel',e=>{if(renderer){renderer.camera.zoom=clamp(renderer.camera.zoom+e.deltaY*.00042,.74,1.4);e.preventDefault()}},{passive:false});
-const menu=document.getElementById('menu');
+import {MAX_VEHICLE_LEVEL,remainingCost} from './economy.js';
+import {wheelZoom,pinchZoom,pointerDistance} from './cameraZoom.js';
+
+const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
 const toastElement=document.getElementById('toast');
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
-const labels={gate:document.getElementById('label-gate'),gate2:document.getElementById('label-gate2'),cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
+const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-gate-'+id));
+const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
 const pauseButton=document.getElementById('pauseButton');
 const playButton=document.getElementById('playButton');
 const sceneButton=document.getElementById('sceneButton');
-let renderer,world,sim,stage=0,paused=true,keys=new Set(),drag={id:null,x:0,y:0,originX:0,originY:0},last=0,clocks=0,sound=null,notifUntil=0,upgradeUnlocked=false;
-function loadProgress(){try{let p=JSON.parse(localStorage.getItem('video-dozer-v01')||'null');if(p&&Number.isInteger(p.deposit)){return {deposit:clamp(p.deposit,0,2500),done:!!p.done}}}catch(e){}return {deposit:0,done:false}}
-function saveProgress(){try{localStorage.setItem('video-dozer-v01',JSON.stringify({deposit:sim.deposit,done:sim.won}))}catch(e){}}
-function loadScene(s,preserve=false){stage=s;world=new World(stage);sim=new Simulation(stage);if(stage===0&&preserve){let p=loadProgress();sim.deposit=p.deposit;sim.remaining=2500-p.deposit;sim.won=p.done;sim.player.level=p.done?1:0}if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z};sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI()}
-function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds}
-function beep(freq=530,length=.1,vol=.045){try{sound=sound||new(window.AudioContext||window.webkitAudioContext)();if(sound.state==='suspended')sound.resume();let oscillator=sound.createOscillator(),gain=sound.createGain();oscillator.type='triangle';oscillator.frequency.setValueAtTime(freq,sound.currentTime);oscillator.frequency.exponentialRampToValueAtTime(freq*.72,sound.currentTime+length);gain.gain.setValueAtTime(vol,sound.currentTime);gain.gain.exponentialRampToValueAtTime(.0002,sound.currentTime+length);oscillator.connect(gain);gain.connect(sound.destination);oscillator.start();oscillator.stop(sound.currentTime+length)}catch(e){}}
-function handleEvents(){let deposited=0,processed=0;
- for(const event of sim.events){switch(event.type){
-  case 'multiply':toast('×'+event.factor+'！资源按倍数增殖（超大数量使用聚合显示）',1.65);beep(850,.13,.065);break;
-  case 'deposit':deposited++;if(sim.deposit%10===0||sim.remaining===2499){beep(380+sim.deposit%100*4,.045,.015)}break;
-  case 'process':processed++;break;
-  case 'upgrade':sim.player.level=1;upgradeUnlocked=true;toast('UPGRADE！升级已完成，重型红罐履带机已解锁',5);beep(660,.65,.12);saveProgress();break;
-  case 'restock':toast('新的矿石和金币已刷新',2.2);break;
- }}sim.events.length=0;
- if(deposited&&sim.deposit%7===0)saveProgress();
+let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=null,notifUntil=0;
+const drag={id:null,x:0,y:0,originX:0,originY:0};
+const pointers=new Map();let pinch=null,pinchLocked=false;
+const effects=[];
+
+function loadProgress(){
+ try{
+  const saved=JSON.parse(localStorage.getItem('coindozer-progress-v05')||'null');
+  if(saved&&Number.isInteger(saved.level))return {
+   level:clamp(saved.level,0,MAX_VEHICLE_LEVEL),deposited:Math.max(0,saved.deposited||0),totalDeposited:saved.totalDeposited||0};
+  const legacy=JSON.parse(localStorage.getItem('video-dozer-v01')||'null');
+  if(legacy&&Number.isInteger(legacy.deposit)){
+   // A completed old 2500-coin upgrade is preserved as level 1.
+   if(legacy.done)return {level:1,deposited:0,totalDeposited:2500};
+   return {level:0,deposited:Math.min(149,legacy.deposit),totalDeposited:legacy.deposit};
+  }
+ }catch(e){}
+ return {level:0,deposited:0,totalDeposited:0};
 }
-function updateUI(){document.getElementById('score').textContent=formatNum(sim?(stage?sim.multipliedValue:sim.processed):0);document.getElementById('left').textContent=stage===0?(sim.won?'完成':formatNum(sim.remaining)):'预览';labels.cost.textContent=stage===0?formatNum(sim.remaining):'10000';labels.lane.textContent=formatNum(sim.processed);document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'倍增值 ':'已入库 ';document.getElementById('hint').textContent=paused?'触摸屏幕任意处驾驶 / WASD':'触摸拖动驾驶 · P 暂停 · 铲球过门，推金币升级';}
-function positionLabels(){for(const e of Object.values(labels))e.style.display='none';const sites=world.sites;
- function place(el,site,yOffset=0){if(!site)return;let p=renderer.screen(site.x,site.y+yOffset,site.z);if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px'}}
- if(stage===0){place(labels.gate,sites.gate);place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter)}
- else place(labels.gate2,sites.gate2);
+function saveProgress(){
+ if(stage!==0)return;
+ try{localStorage.setItem('coindozer-progress-v05',JSON.stringify({level:sim.level,deposited:sim.deposit,totalDeposited:sim.totalDeposited}));}catch(e){}
 }
-function inputVector(){let x=0,y=0;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
- if(drag.id!==null){x+=drag.x;y+=drag.y}
- let len=Math.hypot(x,y);if(len>1){x/=len;y/=len}
- // Project joystick motion using the exact fixed-camera azimuth.
- return screenStickToWorld(x,y);}
-function drawFrame(t){let dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
+function loadScene(s,preserve=false){
+ stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
+ effects.length=0;if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
+ sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
+}
+function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
+function beep(freq=530,length=.1,vol=.045){try{
+ sound=sound||new(window.AudioContext||window.webkitAudioContext)();if(sound.state==='suspended')sound.resume();
+ let oscillator=sound.createOscillator(),gain=sound.createGain();oscillator.type='triangle';
+ oscillator.frequency.setValueAtTime(freq,sound.currentTime);
+ oscillator.frequency.exponentialRampToValueAtTime(freq*.72,sound.currentTime+length);
+ gain.gain.setValueAtTime(vol,sound.currentTime);
+ gain.gain.exponentialRampToValueAtTime(.0002,sound.currentTime+length);
+ oscillator.connect(gain);gain.connect(sound.destination);oscillator.start();oscillator.stop(sound.currentTime+length);
+ }catch(e){}
+}
+function handleEvents(){
+ let paid=0,converted=0,upgrades=[],gate=null,full=false;
+ for(const event of sim.events){
+  switch(event.type){
+   case 'multiply':gate=event;break;
+   case 'gateFull':full=true;break;
+   case 'crushBatch':converted+=event.count;break;
+   case 'deposit':paid++;if(effects.length<40)effects.push({x:event.x,z:event.z,start:clocks});break;
+   case 'upgrade':upgrades.push(event.level);break;
+  }
+ }
+ sim.events.length=0;
+ if(paid){saveProgress();if(!upgrades.length)beep(360+sim.deposit%100*3,.06,.026);}
+ if(upgrades.length){toast('载具升级至 Lv.'+upgrades[upgrades.length-1]+'！下一辆升级车已就位',3);beep(690,.48,.10);}
+ else if(full)toast('现场已有 '+MAX_RESOURCES+' 个实体资源，请先粉碎或投入金币',2.8);
+ else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
+ else if(converted){toast('粉碎成功：'+converted+' 颗矿石转成金币',1.6);beep(460,.095,.038);}
+}
+function updateUI(){
+ if(!sim)return;
+ document.getElementById('score').textContent=formatNum(stage?sim.multipliedValue:sim.crushed);
+ document.getElementById('left').textContent=stage?'预览':(sim.won?'已满级':formatNum(sim.remaining));
+ labels.cost.textContent=sim.won?'MAX':formatNum(sim.remaining);
+ labels.upgrade.textContent=sim.won?'满级载具':`UPGRADE · Lv.${Math.min(MAX_VEHICLE_LEVEL,sim.level+1)}`;
+ labels.lane.textContent=formatNum(sim.processed);
+ document.getElementById('resourceCount').textContent=`实体 ${formatNum(sim.activeCount)} / ${formatNum(MAX_RESOURCES)}`;
+ document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
+ document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'倍增值 ':'已粉碎 ';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 滚轮及双指缩放':'推动矿石过门，粉碎成金币，再靠近升级站投入';
+}
+function positionLabels(){
+ for(const el of [...Object.values(labels),...gateLabels])el.style.display='none';
+ const sites=world.sites;
+ function place(el,site){if(!el||!site)return;let p=renderer.screen(site.x,site.y,site.z);
+  if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px';}}
+ for(const site of sites.gates||[]){const el=gateLabels[site.id];if(el){el.textContent='×'+site.multiplier;place(el,site);}}
+ if(stage===0){place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter);}
+}
+function inputVector(){
+ let x=0,y=0;
+ if(keys.has('KeyW')||keys.has('ArrowUp'))y--;
+ if(keys.has('KeyS')||keys.has('ArrowDown'))y++;
+ if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;
+ if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
+ if(drag.id!==null&&!pinchLocked){x+=drag.x;y+=drag.y;}
+ const len=Math.hypot(x,y);if(len>1){x/=len;y/=len;}
+ return screenStickToWorld(x,y);
+}
+function drawEffects(){
+ for(let i=effects.length-1;i>=0;i--){
+  const e=effects[i],age=clocks-e.start;
+  if(age>.68){effects.splice(i,1);continue;}
+  const t=age/.68;
+  const x=e.x+(19-e.x)*t,z=e.z+(-12.05-e.z)*t;
+  renderer.add('sphere',x,.5+Math.sin(t*Math.PI)*2,z,.19,.19,.19,[1,.79,.1,3]);
+ }
+}
+function drawFrame(t){
+ const dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
  if(renderer){
- if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents()}
- renderer.begin(clocks,sim.player,dt);
- world.render(renderer,clocks);
- renderTreads(renderer,sim.treads,stage);
- renderResources(renderer,sim.resources,clocks,renderer.camera);
- renderVehicle(renderer,sim.player,clocks);
- renderer.end();positionLabels();
- if(Math.floor(clocks*8)!==Math.floor((clocks-dt)*8))updateUI();
- document.getElementById('hint').classList.toggle('dismissed',!paused&&clocks>12);
+  if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
+  renderer.begin(clocks,sim.player,dt);
+  world.render(renderer,clocks,sim.player);
+  renderTreads(renderer,sim.treads,stage);
+  renderResources(renderer,sim.resources,clocks,renderer.camera);
+  renderVehicle(renderer,sim.player,clocks);
+  drawEffects();renderer.end();positionLabels();
+  if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
+  document.getElementById('hint').classList.toggle('dismissed',!paused&&clocks>12);
  }
  if(clocks>notifUntil)toastElement.classList.remove('active');
- requestAnimationFrame(drawFrame)
+ requestAnimationFrame(drawFrame);
 }
-function showMenu(){paused=true;menu.classList.add('visible');playButton.textContent='继续驾驶';drag.id=null;joystick.style.display='none';updateUI()}
-function hideMenu(){paused=false;menu.classList.remove('visible');toast(stage===0?'先推蓝色球体穿过 ×10，再铲起金币推往右上方 UPGRADE': '后期场景预览：青色铲斗、紫色岩层、金条与 ×10000 门',4);updateUI()}
-function moveTouch(e){const dx=e.clientX-drag.originX,dy=e.clientY-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);drag.x=dx/max/mag;drag.y=dy/max/mag;knob.style.transform=`translate(${drag.x*42}px,${drag.y*42}px)`}
-function releasePointer(e){if(drag.id!==e.pointerId)return;drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)'}
-canvas.addEventListener('pointerdown',e=>{if(paused||drag.id!==null||e.button>0)return;drag.id=e.pointerId;drag.originX=e.clientX;drag.originY=e.clientY;drag.x=drag.y=0;joystick.style.left=e.clientX+'px';joystick.style.top=e.clientY+'px';joystick.style.display='block';canvas.setPointerCapture(e.pointerId);moveTouch(e);e.preventDefault()});
-canvas.addEventListener('pointermove',e=>{if(e.pointerId===drag.id){moveTouch(e);e.preventDefault()}});
-canvas.addEventListener('pointerup',releasePointer);canvas.addEventListener('pointercancel',releasePointer);
-window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.code==='KeyP'||e.code==='Escape'){e.preventDefault();if(paused)hideMenu();else showMenu()}});
-window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();drag.id=null;joystick.style.display='none'});
+function resetInput(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';pointers.clear();pinch=null;pinchLocked=false;}
+function showMenu(){paused=true;menu.classList.add('visible');playButton.textContent='继续驾驶';resetInput();updateUI();}
+function hideMenu(){paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
+function moveTouch(point){
+ const dx=point.x-drag.originX,dy=point.y-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);
+ drag.x=dx/max/mag;drag.y=dy/max/mag;
+ knob.style.transform=`translate(${drag.x*42}px,${drag.y*42}px)`;
+}
+function endJoystick(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';}
+function setZoom(zoom){if(!renderer)return;renderer.camera.zoom=zoom;updateUI();}
+canvas.addEventListener('wheel',e=>{if(renderer){setZoom(wheelZoom(renderer.camera.zoom,e.deltaY));e.preventDefault();}},{passive:false});
+canvas.addEventListener('pointerdown',e=>{
+ if(paused||e.button>0)return;
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ try{canvas.setPointerCapture(e.pointerId);}catch(_){}
+ if(pointers.size>=2){
+  endJoystick();pinchLocked=true;
+  const [a,b]=[...pointers.values()];
+  pinch={distance:pointerDistance(a,b),zoom:renderer.camera.zoom};
+ }else if(!pinchLocked){
+  drag.id=e.pointerId;drag.originX=e.clientX;drag.originY=e.clientY;
+  drag.x=drag.y=0;joystick.style.left=e.clientX+'px';joystick.style.top=e.clientY+'px';
+  joystick.style.display='block';moveTouch({x:e.clientX,y:e.clientY});
+ }
+ e.preventDefault();
+});
+canvas.addEventListener('pointermove',e=>{
+ if(!pointers.has(e.pointerId))return;
+ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(pinch&&pointers.size>=2){
+  const [a,b]=[...pointers.values()];
+  setZoom(pinchZoom(pinch.zoom,pinch.distance,pointerDistance(a,b)));
+ }else if(drag.id===e.pointerId&&!pinchLocked){moveTouch({x:e.clientX,y:e.clientY});}
+ e.preventDefault();
+});
+function releasePointer(e){
+ pointers.delete(e.pointerId);
+ if(e.pointerId===drag.id)endJoystick();
+ if(pointers.size<2)pinch=null;
+ if(pointers.size===0){pinchLocked=false;endJoystick();}
+}
+canvas.addEventListener('pointerup',releasePointer);
+canvas.addEventListener('pointercancel',releasePointer);
+window.addEventListener('keydown',e=>{
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+ keys.add(e.code);
+ if(e.code==='KeyP'||e.code==='Escape'){e.preventDefault();if(paused)hideMenu();else showMenu();}
+});
+window.addEventListener('keyup',e=>keys.delete(e.code));
+window.addEventListener('blur',()=>{keys.clear();resetInput();});
 playButton.addEventListener('click',hideMenu);pauseButton.addEventListener('click',showMenu);
-sceneButton.addEventListener('click',()=>{loadScene(stage===0?1:0,true);toast('场景已切换',2)});
-document.getElementById('resetButton').addEventListener('click',()=>{if(!confirm('清除升级进度并重置当前场景？'))return;try{localStorage.removeItem('video-dozer-v01')}catch(e){}loadScene(stage,false);toast('当前场景已重置')});
-try{renderer=new Renderer(canvas);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame)}catch(error){console.error(error);let panel=document.querySelector('.panel');let p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}
+sceneButton.addEventListener('click',()=>{saveProgress();loadScene(stage===0?1:0,true);toast('场景已切换',2);});
+document.getElementById('resetButton').addEventListener('click',()=>{
+ if(!confirm('清除升级进度并重置当前场景？'))return;
+ try{localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
+ loadScene(stage,false);toast('游戏进度已重置');
+});
+try{renderer=new Renderer(canvas);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
+catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}

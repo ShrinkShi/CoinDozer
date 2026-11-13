@@ -28,23 +28,24 @@ with sync_playwright() as p:
   // Isolate the specific gate test particle from unrelated pile contacts.
   let r=sim.resources.find(r=>r.kind==='blue');
   sim.resources=[r];
-  r.x=1;r.z=3.42;r.y=0;r.vx=0;r.vy=0;r.vz=-9;r.passed=false;r.dead=false;
+  r.x=2.8;r.z=3.42;r.y=0;r.vx=0;r.vy=0;r.vz=-9;r.passedGates=0;r.dead=false;
   const initialTotal=1;
   sim.update(.044,0,0,world);
   const multiplyTotal=sim.resources.filter(r=>!r.dead).length;
-  const multiplied=r.passed && multiplyTotal>initialTotal;
+  const multiplied=!!(r.passedGates&(1<<2)) && multiplyTotal===5;
+  sim.player.x=19;sim.player.z=-12;
   let coin={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
   sim.resources.push(coin);
   coin.x=19;coin.z=-12;coin.vx=0;coin.vz=0;
   const before=sim.remaining;
   sim.update(.022,0,0,world);
-  const deducted=before===2500&&sim.remaining===2499;
-  sim.deposit=2499;sim.remaining=1;
+  const deducted=before===150&&sim.remaining===149;
+  sim.deposit=149;sim.remaining=1;
   const another={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
   sim.resources.push(another);
   another.x=19;another.z=-12;another.vx=0;another.vz=0;
   sim.update(.022,0,0,world);
-  return {moved,initialTotal,multiplyTotal,multiplied,deducted,remaining:sim.remaining,upgrade:sim.won,events:sim.events.map(e=>e.type)};
+  return {moved,initialTotal,multiplyTotal,multiplied,deducted,remaining:sim.remaining,upgrade:sim.level===1,events:sim.events.map(e=>e.type)};
  }''')
  print('Physics checks:',result)
  assert result['moved']
@@ -58,7 +59,7 @@ with sync_playwright() as p:
  assert page.locator('#sceneButton').inner_text().endswith('粉晶岩洞')
  page.locator('#playButton').click()
  page.wait_for_timeout(350)
- assert '×10000' in page.locator('.world-label:visible').all_text_contents()
+ assert '×5' in page.locator('.world-label:visible').all_text_contents()
  assert not errors,errors
  print('All UI + physics smoke tests passed.')
  browser.close()

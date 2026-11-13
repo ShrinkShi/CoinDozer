@@ -6,17 +6,18 @@ import {headingBasis,modelYaw} from './heading.js';
 const RUBBER=[.105,.121,.121,5],RUBBER_EDGE=[.18,.21,.21,5];
 const STEEL=[.37,.42,.41,4],STEEL_LIGHT=[.66,.69,.65,4];
 const YELLOW=[1.0,.69,.065,4],YELLOW_LIT=[1,.81,.17,4],YELLOW_DARK=[.75,.44,.037,4];
-export function renderVehicle(renderer,player,t){
+export function renderVehicle(renderer,player,t,baseY=0){
  const {x,z,yaw,level}=player;
  const advanced=level>=2,upgraded=level>=1;
- const blade=advanced?[.24,.69,.82,4]:YELLOW;
- const bladeEdge=advanced?[.11,.42,.54,4]:YELLOW_DARK;
- const hood=advanced?[.92,.44,.25,4]:YELLOW;
+ const size=1+Math.min(4,level)*.055;
+ const blade=level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
+ const bladeEdge=level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
+ const hood=level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
  const {fx,fz,rx,rz}=headingBasis(yaw);
  function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
   // Match the movement/physical blade convention: local -Z is FORWARD.
-  const xx=x+lx*rx-lz*fx,zz=z+lx*rz-lz*fz;
-  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,modelYaw(yaw)+a,p,roll,opacity);
+  const xx=x+(lx*rx-lz*fx)*size,zz=z+(lx*rz-lz*fz)*size;
+  renderer.add(mesh,xx,ly*size+baseY,zz,sx*size,sy*size,sz*size,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
  // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
@@ -73,7 +74,7 @@ export function renderVehicle(renderer,player,t){
  }
  // v0.2: actual concave bucket shell, with dedicated sideplates, bolted upper rim
  // and a sharp scraper lip. Its silhouette is modelled in 3D and is visible at any yaw.
- part('scoop',0,0,0,advanced?1.11:1,1,1,blade);
+ part('scoop',0,0,0,1,1,1,blade);
  for(const side of [-1,1]){
   part('cheek',side*1.97,0,0,.23,1,1,bladeEdge);
   part('box',side*1.96,.22,-2.56,.28,.17,.72,blade);
@@ -83,7 +84,20 @@ export function renderVehicle(renderer,player,t){
  part('box',0,.17,-2.79,4.02,.075,.30,STEEL_LIGHT);
  part('box',0,.14,-2.94,3.94,.040,.11,bladeEdge);
  for(const side of [-1,1])part('box',side*1.45,1.43,-1.72,.12,.10,.27,STEEL);
+ if(level>=3){
+  part('box',0,2.03,1.36,2.08,.13,1.00,bladeEdge);
+  part('box',0,2.15,1.19,1.55,.16,.2,STEEL_LIGHT);
+  for(const side of [-1,1]){
+   part('cylinder',side*.62,2.04,1.55,.25,.9,.25,STEEL);
+   part('sphere',side*.67,2.52,1.60,.26,.26,.26,blade);
+  }
+ }
+ if(level>=4){
+  part('box',0,1.48,-.8,1.9,.22,1.1,[.92,.68,.15,4]);
+  for(const side of [-1,1])part('box',side*2.02,1.03,-1.62,.24,1.45,.21,bladeEdge);
+ }
 }
+
 export function renderTreads(renderer,treads,stage){
  const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
  for(const q of treads){

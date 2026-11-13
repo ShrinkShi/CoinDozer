@@ -27,7 +27,7 @@ with sync_playwright() as p:
    // Stationary, vertical pile: fall, settle, no NaNs.
    const a={kind:'gold',x:23,z:17,y:0,vx:0,vz:0,vy:0,spin:0,dead:false};
    const b={kind:'gold',x:23,z:17,y:.33,vx:0,vz:0,vy:0,spin:0,dead:false};
-   const stack=new GranularSolver();const still={x:0,z:0,yaw:0,speed:0,level:0};
+   const stack=new GranularSolver();const still={x:23,z:17,yaw:0,speed:0,level:0};
    for(let t=0;t<130;t++)stack.step([a,b],1/60,still,still);
    const stacked=b.y>.13 && Math.hypot(a.x-b.x,a.z-b.z)<.20 && b.y<.6;
    // Repeated scoop movement should displace, elevate and overflow loose coins.

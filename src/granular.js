@@ -92,8 +92,29 @@ export class GranularSolver {
     const driving=player.speed>.18 && travel>0;
     const displacement=driving?Math.min(.38,travel*1.5):0;
     const nowMoving=[];
+    // The scene can contain 6,500 distinct coins. On low-end phones we
+    // schedule granular contacts for the nearest 850 at a time; all other
+    // coins remain individual and visible, and wake as the shovel approaches.
+    // This is a contact-solver budget, NOT a visual or logical aggregation.
+    let active=null;
+    if(resources.length>1250){
+      const nearby=[];
+      for(let i=0;i<resources.length;i++){
+        const r=resources[i];if(r.dead)continue;
+        const d=(r.x-player.x)**2+(r.z-player.z)**2;
+        const motion=Math.abs(r.vx||0)+Math.abs(r.vz||0)+Math.abs(r.vy||0);
+        if(d<19*19||motion>.45)nearby.push({i,priority:d-motion*4});
+      }
+      nearby.sort((a,b)=>a.priority-b.priority);
+      active=new Set(nearby.slice(0,850).map(r=>r.i));
+    }
     for(let i=0;i<resources.length;i++){
+      if(active&&!active.has(i))continue;
       const p=resources[i];if(p.dead)continue;
+      // Far, settled resources remain individually rendered, but sleep until
+      // the machine approaches. No particles are merged or omitted visually.
+      const distant=(p.x-player.x)**2+(p.z-player.z)**2>12.7**2;
+      if(distant && Math.abs(p.vx||0)+Math.abs(p.vy||0)+Math.abs(p.vz||0)<.28)continue;
       const shape=S(p.kind),onGround=p.y<.012;
       p.vy=Number.isFinite(p.vy)?p.vy:0;
       p.vx=Number.isFinite(p.vx)?p.vx:0;
@@ -112,7 +133,7 @@ export class GranularSolver {
       if(driving){
         const dx=p.x-player.x,dz=p.z-player.z;
         const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
-        const bucketWidth=SCOOP_HALF_WIDTH*(player.level>=2?1.11:1);
+        const bucketWidth=SCOOP_HALF_WIDTH*(1+Math.min(4,player.level)*.055);
         const centre=p.y+p._halfHeight;
         if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
           const contact=nearestScoopContact(ahead,centre);
@@ -166,8 +187,10 @@ export class GranularSolver {
 
     // 2 relaxation passes. Rehash once per pass because successive contacts can
     // displace a particle across a bucket border. Each neighbour pair is unique.
-    const iterations=resources.length>900?2:3;
+    const iterations=nowMoving.length>730?1:nowMoving.length>350?2:3;
+    const contactCounts=new Uint8Array(resources.length);
     for(let iteration=0;iteration<iterations;iteration++){
+      contactCounts.fill(0);
       const grid=this.grid;grid.clear();
       for(const i of nowMoving){
         const p=resources[i],key=(Math.floor(p.x/HORIZONTAL_BUCKET))+','+Math.floor(p.z/HORIZONTAL_BUCKET);
@@ -175,10 +198,11 @@ export class GranularSolver {
       }
       for(const i of nowMoving){
         const a=resources[i],cx=Math.floor(a.x/HORIZONTAL_BUCKET),cz=Math.floor(a.z/HORIZONTAL_BUCKET);
-        for(let gx=-1;gx<=1;gx++)for(let gz=-1;gz<=1;gz++){
+        search: for(let gx=-1;gx<=1;gx++)for(let gz=-1;gz<=1;gz++){
           const other=grid.get((cx+gx)+','+(cz+gz));if(!other)continue;
           for(let n=0;n<other.length;n++){
-            const j=other[n];if(j<=i)continue;
+            if(contactCounts[i]>=7)break search;
+            const j=other[n];if(j<=i||contactCounts[j]>=7)continue;
             const b=resources[j];if(b.dead)continue;
             let dx=a.x-b.x,dz=a.z-b.z;
             const sa=S(a.kind),sb=S(b.kind);
@@ -217,6 +241,7 @@ export class GranularSolver {
             // Rotational impulse makes colliding coins topple and wobble.
             if(a.kind==='gold'&&rv<0){a.omegaX=(a.omegaX||0)+nz*.05;a.omegaZ=(a.omegaZ||0)-nx*.05;}
             if(b.kind==='gold'&&rv<0){b.omegaX=(b.omegaX||0)-nz*.05;b.omegaZ=(b.omegaZ||0)+nx*.05;}
+            contactCounts[i]++;contactCounts[j]++;
             this.contacts++;
           }
         }
