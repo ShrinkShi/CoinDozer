@@ -118,7 +118,7 @@ function drawFrame(t){
   renderer.begin(clocks,sim.player,dt);
   world.render(renderer,clocks,sim.player);
   renderTreads(renderer,sim.treads,stage);
-  renderResources(renderer,sim.resources,clocks,renderer.camera);
+  renderResources(renderer,sim.resources,sim.elapsed,renderer.camera);
   renderVehicle(renderer,sim.player,clocks);
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
