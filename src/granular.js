@@ -9,9 +9,10 @@
  * No dependencies, no allocations proportional to particle count squared.
  */
 import {clamp} from './math.js';
+import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
 export const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
-  gold: {radius: .285, halfHeight: .140, drag: 4.7, restitution: .10},
+  gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
   pearl: {radius: .455, halfHeight: .445, drag: 3.0, restitution: .18},
   ingot: {radius: .32, halfHeight: .245, drag: 4.0, restitution: .13},
   green: {radius: .51, halfHeight: .50, drag: 3.2, restitution: .20},
@@ -21,6 +22,48 @@ const S = kind => PARTICLE_SHAPES[kind] || PARTICLE_SHAPES.blue;
 const HORIZONTAL_BUCKET = 1.05;
 const GRAVITY = 20.5;
 const MAX_SPEED = 16;
+const COIN_MAX_TILT = 1.43; // ~82°, allows edge-on relief without 180° flipped normals
+
+/** A coin's vertical support extends as the cylinder tilts. This feeds the
+ * contact solver AND rendering; the displayed coin never rests under the floor.
+ * Not a full rigid-body inertia tensor; lightweight browser granular dynamics.
+ */
+export function particleHalfHeight(p){
+  const s=S(p.kind);
+  if(p.kind!=='gold')return s.halfHeight;
+  const tilt=Math.min(COIN_MAX_TILT,Math.hypot(p.tiltX||0,p.tiltZ||0));
+  return s.halfHeight*Math.cos(tilt)+s.radius*Math.sin(tilt);
+}
+
+export function updateCoinOrientation(p,dt,onGround){
+  if(p.kind!=='gold')return;
+  p.tiltX=Number.isFinite(p.tiltX)?p.tiltX:0;
+  p.tiltZ=Number.isFinite(p.tiltZ)?p.tiltZ:0;
+  p.omegaX=Number.isFinite(p.omegaX)?p.omegaX:0;
+  p.omegaZ=Number.isFinite(p.omegaZ)?p.omegaZ:0;
+  p.angle=Number.isFinite(p.angle)?p.angle:(p.spin||0);
+  const rolling=onGround?4.8:.9;
+  // A coin translates along +x while spinning around its local -z axis.
+  p.omegaX+=(clamp(p.vz/Math.max(.21,S(p.kind).radius),-7,7)*.44-p.omegaX)*Math.min(1,dt*rolling);
+  p.omegaZ+=(clamp(-p.vx/Math.max(.21,S(p.kind).radius),-7,7)*.44-p.omegaZ)*Math.min(1,dt*rolling);
+  p.tiltX=clamp(p.tiltX+p.omegaX*dt,-COIN_MAX_TILT,COIN_MAX_TILT);
+  p.tiltZ=clamp(p.tiltZ+p.omegaZ*dt,-COIN_MAX_TILT,COIN_MAX_TILT);
+  const speed=Math.hypot(p.vx,p.vz);
+  if(onGround&&speed<.5){
+    const settle=Math.exp(-dt*(speed<.12?2.0:.6));
+    p.tiltX*=settle;p.tiltZ*=settle;
+  }
+  p.angle+=clamp((p.vx-p.vz)*dt*.12,-.08,.08);
+}
+
+function scoopBoundary(height){
+  if(height<=SCOOP_PROFILE[0][1])return SCOOP_PROFILE[0][0];
+  for(let i=0;i<SCOOP_PROFILE.length-1;i++){
+    const [a,h]=SCOOP_PROFILE[i], [b,k]=SCOOP_PROFILE[i+1];
+    if(height<=k)return a+(b-a)*(height-h)/(k-h);
+  }
+  return SCOOP_PROFILE[SCOOP_PROFILE.length-1][0];
+}
 
 export class GranularSolver {
   constructor(){
@@ -55,6 +98,8 @@ export class GranularSolver {
       p.vy=Number.isFinite(p.vy)?p.vy:0;
       p.vx=Number.isFinite(p.vx)?p.vx:0;
       p.vz=Number.isFinite(p.vz)?p.vz:0;
+      updateCoinOrientation(p,dt,onGround);
+      p._halfHeight=particleHalfHeight(p);
       const drag=Math.exp(-shape.drag*dt*(onGround?1:.17));
       p.vx*=drag;p.vz*=drag;
       p.vy-=GRAVITY*dt;
@@ -62,35 +107,50 @@ export class GranularSolver {
       p.x+=p.vx*dt;p.z+=p.vz*dt;
       p.y+=p.vy*dt;
       if(p.y<0){p.y=0;if(p.vy<0)p.vy= -p.vy*shape.restitution;if(p.vy<.20)p.vy=0;}
-      // A standing vehicle must NOT pull resources into its scoop.
+      // Shared seven-segment scoop profile drives both mesh and collision.
+      // Projection is applied only on forward driving/contact, never magnetic.
       if(driving){
-        let dx=p.x-player.x,dz=p.z-player.z;
-        let ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
-        const halfWidth=(player.level>=2?2.16:1.94);
-        const lip=2.78-.18*Math.min(2.2,p.y);
-        const inFront=ahead>1.50 && ahead<lip+shape.radius+.25;
-        const inside=Math.abs(side)<halfWidth+shape.radius;
-        if(inFront&&inside){
-          const depth=lip+shape.radius*.62-ahead;
-          if(depth>0){
-            const push=Math.min(.36,depth*.90 + displacement*.28);
-            p.x+=vx*push;p.z+=vz*push;
-            // Kinetic energy propagates through neighbours via the PBD solver.
+        const dx=p.x-player.x,dz=p.z-player.z;
+        const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
+        const bucketWidth=SCOOP_HALF_WIDTH*(player.level>=2?1.11:1);
+        const centre=p.y+p._halfHeight;
+        if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
+          const contact=nearestScoopContact(ahead,centre);
+          const front=scoopBoundary(clamp(centre,.15,1.38));
+          // The wall constraint catches high-speed particles that crossed the
+          // front lip between ticks; the nearest segment supplies the slope.
+          const overlap=front+shape.radius*.35-ahead;
+          if(Math.abs(side)<bucketWidth-.09 && overlap>0){
+            const correction=Math.min(.32,overlap*.85+displacement*.10);
+            p.x+=vx*correction;p.z+=vz*correction;
+            const rise=Math.min(.115,correction*contact.nUp*.36);
+            p.y+=rise;
             const along=p.vx*vx+p.vz*vz;
-            const transfer=clamp((player.speed*.94-along)*.56,0,3.0);
+            const transfer=clamp((player.speed*.90-along)*.58,0,3.25);
             p.vx+=vx*transfer;
             p.vz+=vz*transfer;
-            // Curved scoop wall feeds coins upward only after a real collision.
-            const rise=clamp((depth+.09)*.47,0,.34);
-            p.vy+=rise*player.speed*.58;
-            // Past the side plates, pushed material spills outward naturally.
-            const edge=clamp((Math.abs(side)-halfWidth*.68)/(halfWidth*.35),0,1);
-            if(edge>0){const out=(side<0?-1:1)*edge*player.speed*.19;
-              p.vx+=rx*out;p.vz+=rz*out;
+            p.vy+=rise*5.0;
+            if(p.kind==='gold'){
+              // The scoop induces visible turning, but only after contact.
+              p.omegaX+=(side<0?-1:1)*contact.nUp*.26;
+              p.omegaZ-=transfer*.27;
+            }
+          }
+          // Scoop side plates occupy the lower metre. A particle too high
+          // escapes over the plates; lower particles cannot pass straight
+          // through a solid side wall.
+          const sideDist=Math.abs(side),normal=side<0?-1:1;
+          if(sideDist>bucketWidth-shape.radius*.85 && centre<1.22){
+            const penetration=shape.radius*.85-Math.abs(sideDist-bucketWidth);
+            if(penetration>0){
+              const outside=sideDist>bucketWidth;
+              const correction=Math.min(.12,penetration*.45)*(outside?1:-1)*normal;
+              p.x+=rx*correction;p.z+=rz*correction;
+              p.vx+=rx*correction/dt*.07;p.vz+=rz*correction/dt*.07;
             }
           }
         }
-        // Protect wheels/chassis from a resource tunnelling through the bucket.
+        // Block particles from tunnelling through the front of the chassis.
         if(ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
           const back=1.63-ahead;
           p.x+=vx*back*.50;p.z+=vz*back*.50;
@@ -106,7 +166,7 @@ export class GranularSolver {
 
     // 2 relaxation passes. Rehash once per pass because successive contacts can
     // displace a particle across a bucket border. Each neighbour pair is unique.
-    const iterations=resources.length>1850?2:3;
+    const iterations=resources.length>900?2:3;
     for(let iteration=0;iteration<iterations;iteration++){
       const grid=this.grid;grid.clear();
       for(const i of nowMoving){
@@ -123,8 +183,8 @@ export class GranularSolver {
             let dx=a.x-b.x,dz=a.z-b.z;
             const sa=S(a.kind),sb=S(b.kind);
             const diameter=sa.radius+sb.radius;
-            const vertical=sa.halfHeight+sb.halfHeight;
-            const yA=a.y+sa.halfHeight,yB=b.y+sb.halfHeight;
+            const vertical=(a._halfHeight||sa.halfHeight)+(b._halfHeight||sb.halfHeight);
+            const yA=a.y+(a._halfHeight||sa.halfHeight),yB=b.y+(b._halfHeight||sb.halfHeight);
             let dy=yA-yB;
             // Coin stacks have a lower vertical collision distance than spheres.
             // 3D contact excludes particles at different heights on the same x/z.
@@ -154,6 +214,9 @@ export class GranularSolver {
               a.vx+=nx*impulse;a.vz+=nz*impulse;
               b.vx-=nx*impulse;b.vz-=nz*impulse;
             }
+            // Rotational impulse makes colliding coins topple and wobble.
+            if(a.kind==='gold'&&rv<0){a.omegaX=(a.omegaX||0)+nz*.05;a.omegaZ=(a.omegaZ||0)-nx*.05;}
+            if(b.kind==='gold'&&rv<0){b.omegaX=(b.omegaX||0)-nz*.05;b.omegaZ=(b.omegaZ||0)+nx*.05;}
             this.contacts++;
           }
         }

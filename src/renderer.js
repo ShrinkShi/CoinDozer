@@ -35,7 +35,7 @@ float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 x){vec2 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 void main(){
  float mat=vTint.a;
- if(mat>7.5){ // Vignetted contact shadow, drawn in the transparent pass.
+ if(mat>7.5&&mat<8.5){ // Vignetted contact shadow, drawn in the transparent pass.
   float radius=length(vLocal.xz)*2.;
   float alpha=.32*pow(max(0.,1.-radius*radius),2.3);
   gl_FragColor=vec4(.10,.065,.046,alpha);return;
@@ -65,7 +65,24 @@ void main(){
  }else if(mat>5.5&&mat<6.5){
   color*=.96+.035*noise(vWorld.xz*2.2);
  }else if(mat>6.5&&mat<7.5){
-  color=vTint.rgb*(.65+.46*diffuse)+specular*vec3(.35,.22,.045);
+  // Cold face/bright relief, warm grooves and deeper edge contrast.
+  float ring=length(vLocal.xz);
+  float relief=smoothstep(.31,.44,ring)*step(.125,abs(vLocal.y));
+  color=vTint.rgb*(.42+.65*diffuse)+specular*vec3(.46,.34,.07);
+  color*=.79+.18*smoothstep(.12,1.3,vWorld.y);
+  color*=1.-relief*.17;
+ }else if(mat>8.5&&mat<9.5){
+  // Per-ball ivory swirl pattern similar to the high contrast print in the ad.
+  // vLocal rotates with each sphere, so markings roll rather than floating.
+  float longitude=atan(vLocal.z,vLocal.x);
+  float latitude=vLocal.y*6.283;
+  float ribbon=sin(longitude*3.0+latitude*2.2+sin(latitude*2.0)*.85);
+  float swirl=smoothstep(.40,.87,ribbon)*(.52+.48*smoothstep(-.10,.35,vLocal.y));
+  float centerDot=1.-smoothstep(.065,.135,length(vLocal.xz-vec2(.02,.08)));
+  vec3 shell=vTint.rgb*(.62+.48*diffuse);
+  color=mix(shell,vec3(.63,.94,1.0),clamp(swirl*.88+centerDot*.48,0.,.90));
+  color+=pow(max(0.,diffuse),28.)*vec3(.35,.45,.62);
+  color+=specular*vec3(.32,.44,.62);
  }else{
   color+=specular*.07;
  }

@@ -13,7 +13,7 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.3</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.4</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="worldLabels" aria-hidden="true">
       <div id="label-gate" class="world-label gate">×10</div>
       <div id="label-gate2" class="world-label gate">×10000</div>
@@ -26,13 +26,13 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · GRANULAR PHYSICS PASS · v0.3</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · COIN ROLL / SCOOP CONTACT · v0.4</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p>推开蓝色球体，让它们通过紫色 <b>×10</b> 倍数门。用宽大的黄色铲斗推动金币，把金币推上升级台，让 <b>2500</b> 逐渐变成 <b>0</b>。</p>
         <div class="modeGrid"><div><b>手机</b><span>触摸画面任意空白处，拖动控制行驶方向</span></div><div><b>电脑</b><span>WASD / 方向键移动 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">v0.3 加入三维颗粒碰撞、重力堆叠与铲斗接触推动；仍为浏览器性能优化的近似物理，尚未完全复刻广告中的粒子规模与动画。所有模型和地图均由几何体实时构建，不使用广告原游戏素材。纯前端、无需服务器，进度存于本机浏览器。</p>
+        <p class="footnote">v0.4 引入实体浮雕金币、动态倾斜滚动、共享铲斗碰撞曲线和蓝球表面图案；仍为浏览器性能优化的近似物理，尚未完全复刻广告中的粒子规模与动画。所有模型和地图均由几何体实时构建，不使用广告原游戏素材。纯前端、无需服务器，进度存于本机浏览器。</p>
       </div>
     </section>
   </div>
@@ -55,7 +55,42 @@ function compose(x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){const a=Math.cos(yaw),b=Ma
 function project(vp,x,y,z,w,h){let p=[x,y,z,1],q=[0,0,0,0];for(let row=0;row<4;row++)q[row]=vp[row]*p[0]+vp[row+4]*p[1]+vp[row+8]*p[2]+vp[row+12]*p[3];if(q[3]<=0)return null;const nx=q[0]/q[3],ny=q[1]/q[3];return {x:(nx+1)*w/2,y:(1-ny)*h/2,visible:Math.abs(nx)<1.25&&Math.abs(ny)<1.25};}
 function formatNum(n){return Math.max(0,Math.floor(n)).toLocaleString('en-US')}
 
+// --- scoop.js ---
+/** One bucket profile shared by both the visible steel mesh and collision solver.
+ * a = forward distance from vehicle origin; h = height above ground.
+ * The segment profile is an approximation of the observed ad's curved scoop.
+ */
+const SCOOP_HALF_WIDTH = 1.94;
+const SCOOP_PROFILE = Object.freeze([
+  [2.77,.15], [2.57,.20], [2.30,.27], [2.03,.42],
+  [1.84,.68], [1.76,1.00], [1.74,1.38]
+].map(point=>Object.freeze(point)));
+
+/** Closest *surface* on the open blade shell. Returns a contact normal pointing
+ * toward the outer/front and upper side of the scoop, not toward its centre.
+ * Consumers must still check the lateral extent and approach velocity.
+ */
+function nearestScoopContact(ahead, height) {
+  let best=null, distanceSq=Infinity;
+  for(let i=0;i<SCOOP_PROFILE.length-1;i++){
+    const [ax,ay]=SCOOP_PROFILE[i], [bx,by]=SCOOP_PROFILE[i+1];
+    const dx=bx-ax,dy=by-ay;
+    const k=Math.max(0,Math.min(1,((ahead-ax)*dx+(height-ay)*dy)/(dx*dx+dy*dy)));
+    const px=ax+k*dx,py=ay+k*dy;
+    const d2=(ahead-px)**2+(height-py)**2;
+    if(d2<distanceSq){
+      distanceSq=d2;
+      const length=Math.hypot(dx,dy)||1;
+      // A decreasing ahead coordinate and increasing height create an
+      // outward/upward surface normal (dy,-dx).
+      best={ahead:px,height:py,nAhead:dy/length,nUp:-dx/length,segment:i};
+    }
+  }
+  return {...best,distance:Math.sqrt(distanceSq)};
+}
+
 // --- geometry.js ---
+
 /* CoinDozer procedural art kit. Units are meters in a deliberately stylized scene.
  * Every mesh is generated in code; no copyrighted game assets are bundled.
  */
@@ -73,11 +108,25 @@ const build=(faces)=>{const o=empty();for(const face of faces)addFace(o,face);re
 function box(){let p=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];return build([[p[0],p[3],p[2],p[1]],[p[4],p[5],p[6],p[7]],[p[0],p[4],p[7],p[3]],[p[1],p[2],p[6],p[5]],[p[3],p[7],p[6],p[2]],[p[0],p[1],p[5],p[4]]])}
 function prism(count=12,top=1,bottom=1){const f=[];for(let j=0;j<count;j++){let a=j*2*Math.PI/count,b=(j+1)*2*Math.PI/count;let p=[Math.cos(a)*bottom*.5,-.5,Math.sin(a)*bottom*.5],q=[Math.cos(b)*bottom*.5,-.5,Math.sin(b)*bottom*.5],r=[Math.cos(b)*top*.5,.5,Math.sin(b)*top*.5],s=[Math.cos(a)*top*.5,.5,Math.sin(a)*top*.5];if(top>0)f.push([p,s,r,q]);else f.push([p,[0,.5,0],q]);f.push([[0,-.5,0],p,q]);if(top>0)f.push([[0,.5,0],r,s]);}return build(f)}
 function ico(){let t=(1+Math.sqrt(5))/2,p=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(v=>v.map(q=>q/Math.hypot(...v)*.5));let ids=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];return build(ids.map(f=>f.map(i=>p[i])))}
-function rockChunk(){let v=ico(),p=[];const coords=v.vertices;for(let i=0;i<coords.length;i+=3){let x=coords[i],y=coords[i+1],z=coords[i+2];p.push([x*(1+.18*Math.sin(i*.31)),y*(1+.24*Math.sin(i*1.07))+Math.max(0,y)*.06,z*(1+.14*Math.cos(i*.69))])}return build(Array.from({length:p.length/3},(_,i)=>p.slice(i*3,i*3+3)))}
+function rockChunk(){ // Rounded 80-triangle boulder, closer to footage than jagged broken ico faces.
+ const phi=(1+Math.sqrt(5))/2;
+ const points=[[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],[0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]];
+ const indices=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+ const norm=(p)=>{const l=Math.hypot(...p)||1;return p.map(v=>v/l)};
+ const verts=points.map(norm),edges=new Map();
+ function mid(a,b){const k=Math.min(a,b)+','+Math.max(a,b);if(edges.has(k))return edges.get(k);let p=norm(verts[a].map((v,i)=>v+verts[b][i]));const j=verts.length;verts.push(p);edges.set(k,j);return j}
+ const triangles=[];
+ for(const [a,b,c] of indices){const ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);triangles.push([a,ab,ca],[b,bc,ab],[c,ca,bc],[ab,bc,ca])}
+ const irregular=verts.map(([x,y,z])=>{
+  const bump=1+.045*Math.sin(x*13+y*8)+.06*Math.cos(z*11+x*5);
+  return [x*bump*.50,(y*bump*.48)+.025,z*bump*.52];
+ });
+ return build(triangles.map(t=>t.map(i=>irregular[i])));
+}
 function smoothSphere(rows=12,cols=20){const vertices=[],normals=[],indices=[];for(let row=0;row<=rows;row++){let phi=Math.PI*row/rows;for(let col=0;col<=cols;col++){let theta=Math.PI*2*col/cols;let nx=Math.sin(phi)*Math.cos(theta),ny=Math.cos(phi),nz=Math.sin(phi)*Math.sin(theta);vertices.push(nx*.5,ny*.5,nz*.5);normals.push(nx,ny,nz)}}for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){let a=row*(cols+1)+col,b=a+cols+1;indices.push(a,b,a+1,b,b+1,a+1)}return {vertices,normals,indices}}
 function shell(){// A deeply cupped seven-segment steel shovel, open at the front, not a flat wall.
- const curve=[[-2.77,.15],[-2.57,.20],[-2.30,.27],[-2.03,.42],[-1.84,.68],[-1.76,1.00],[-1.74,1.38]];
- const o=empty();const W=1.94;
+ const curve=SCOOP_PROFILE.map(([ahead,height])=>[-ahead,height]);
+ const o=empty();const W=SCOOP_HALF_WIDTH;
  for(let j=0;j<curve.length-1;j++){
   const [z0,y0]=curve[j],[z1,y1]=curve[j+1];
   for(let k=0;k<6;k++){
@@ -117,8 +166,49 @@ function groundRibbon(){// Jagged river edge in local X/Z; shader animates molte
  }
  return o;
 }
+/** Single extruded, stamped coin. The raised rims and centre relief travel
+ * with the *same orientation* as the coin, unlike stacked horizontal decals.
+ * Local radius=.5; half-thickness=.22 to suit a .56 world-space scale.
+ */
+function stampedCoin(){
+ const o=empty(),segments=28;
+ // Strip rings in radius/height, including matching relief on both sides.
+ const bands=[
+   [.00,.50,-.15], [.50,.50,.15], // side of the solid coin
+ ];
+ function ring(r0,r1,y0,y1,invert=false){
+  for(let i=0;i<segments;i++){
+   const a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;
+   const point=(r,y,t)=>[Math.cos(t)*r,y,Math.sin(t)*r];
+   let face=[point(r0,y0,a),point(r1,y1,a),point(r1,y1,b),point(r0,y0,b)];
+   addFace(o,invert?face.reverse():face);
+  }
+ }
+ ring(.50,.50,-.16,.16); // thick cut edge
+ ring(.40,.50,.18,.16); ring(.33,.40,.171,.18);ring(0,.33,.164,.171);
+ ring(.40,.50,-.18,-.16,true);ring(.33,.40,-.171,-.18,true);ring(0,.33,-.164,-.171,true);
+ // Indented ridges around rim, visible when a coin tilts or stands on edge.
+ for(let j=0;j<segments;j++){
+  const a=j*Math.PI*2/segments,b=a+.10;
+  const pt=(r,y,t)=>[r*Math.cos(t),y,r*Math.sin(t)];
+  addFace(o,[pt(.508,-.095,a),pt(.508,.095,a),pt(.508,.095,b),pt(.508,-.095,b)]);
+ }
+ // Relief: a slender currency stem with two diagonal wings; drawn on both faces.
+ const stamp=(x,z,w,h,top)=>{
+  let y=top? .196:-.196;
+  addFace(o,[[x-w/2,y,z-h/2],[x+w/2,y,z-h/2],[x+w/2,y,z+h/2],[x-w/2,y,z+h/2]]);
+  // Side thickness gives the stamped mark real geometric depth.
+  for(const xx of [x-w/2,x+w/2])addFace(o,[[xx,y,z-h/2],[xx,top?.166:-.166,z-h/2],[xx,top?.166:-.166,z+h/2],[xx,y,z+h/2]]);
+ };
+ for(const top of [true,false]){
+  stamp(0,0,.075,.49,top);
+  stamp(-.10,.10,.23,.075,top);
+  stamp(.10,-.10,.23,.075,top);
+ }
+ return o;
+}
 function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
-const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:prism(22),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
 
 // --- renderer.js ---
 
@@ -158,7 +248,7 @@ float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 x){vec2 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 void main(){
  float mat=vTint.a;
- if(mat>7.5){ // Vignetted contact shadow, drawn in the transparent pass.
+ if(mat>7.5&&mat<8.5){ // Vignetted contact shadow, drawn in the transparent pass.
   float radius=length(vLocal.xz)*2.;
   float alpha=.32*pow(max(0.,1.-radius*radius),2.3);
   gl_FragColor=vec4(.10,.065,.046,alpha);return;
@@ -188,7 +278,24 @@ void main(){
  }else if(mat>5.5&&mat<6.5){
   color*=.96+.035*noise(vWorld.xz*2.2);
  }else if(mat>6.5&&mat<7.5){
-  color=vTint.rgb*(.65+.46*diffuse)+specular*vec3(.35,.22,.045);
+  // Cold face/bright relief, warm grooves and deeper edge contrast.
+  float ring=length(vLocal.xz);
+  float relief=smoothstep(.31,.44,ring)*step(.125,abs(vLocal.y));
+  color=vTint.rgb*(.42+.65*diffuse)+specular*vec3(.46,.34,.07);
+  color*=.79+.18*smoothstep(.12,1.3,vWorld.y);
+  color*=1.-relief*.17;
+ }else if(mat>8.5&&mat<9.5){
+  // Per-ball ivory swirl pattern similar to the high contrast print in the ad.
+  // vLocal rotates with each sphere, so markings roll rather than floating.
+  float longitude=atan(vLocal.z,vLocal.x);
+  float latitude=vLocal.y*6.283;
+  float ribbon=sin(longitude*3.0+latitude*2.2+sin(latitude*2.0)*.85);
+  float swirl=smoothstep(.40,.87,ribbon)*(.52+.48*smoothstep(-.10,.35,vLocal.y));
+  float centerDot=1.-smoothstep(.065,.135,length(vLocal.xz-vec2(.02,.08)));
+  vec3 shell=vTint.rgb*(.62+.48*diffuse);
+  color=mix(shell,vec3(.63,.94,1.0),clamp(swirl*.88+centerDot*.48,0.,.90));
+  color+=pow(max(0.,diffuse),28.)*vec3(.35,.45,.62);
+  color+=specular*vec3(.32,.44,.62);
  }else{
   color+=specular*.07;
  }
@@ -346,7 +453,7 @@ class World{
 function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=>a+(b-a)*rng(),items=[];
  function pile(kind,cx,cz,count,rad,height=0){for(let i=0;i<count;i++){let a=rng()*TAU,r=Math.sqrt(rng())*rad,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r,y=height*clamp(1-r/rad,0,1)*rand(.40,1.1);items.push({kind,x,z,y,settle:y,vx:0,vz:0,spin:rand(0,TAU),angle:rand(-.4,.4),passed:false,cooldown:0,dead:false})}}
  if(stage===0){pile('blue',0,-1.5,335,7.0,.55);pile('blue',5.7,7.1,75,4,.25);pile('blue',-17,-8.0,45,2.6,.1);
-  pile('gold',17.2,4.0,360,6.2,1.0);pile('gold',7.4,-7.6,75,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
+  pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-7.6,90,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
   pile('pearl',-20.2,-26.1,18,2.3,.5);
  }else{pile('ingot',-13,-5,52,4.5,.4);pile('ingot',0,1.7,45,3,.1);pile('pearl',14,-17,22,3,.5)}
  return items;
@@ -364,9 +471,10 @@ function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=
  * No dependencies, no allocations proportional to particle count squared.
  */
 
+
 const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
-  gold: {radius: .285, halfHeight: .140, drag: 4.7, restitution: .10},
+  gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
   pearl: {radius: .455, halfHeight: .445, drag: 3.0, restitution: .18},
   ingot: {radius: .32, halfHeight: .245, drag: 4.0, restitution: .13},
   green: {radius: .51, halfHeight: .50, drag: 3.2, restitution: .20},
@@ -376,6 +484,48 @@ const S = kind => PARTICLE_SHAPES[kind] || PARTICLE_SHAPES.blue;
 const HORIZONTAL_BUCKET = 1.05;
 const GRAVITY = 20.5;
 const MAX_SPEED = 16;
+const COIN_MAX_TILT = 1.43; // ~82°, allows edge-on relief without 180° flipped normals
+
+/** A coin's vertical support extends as the cylinder tilts. This feeds the
+ * contact solver AND rendering; the displayed coin never rests under the floor.
+ * Not a full rigid-body inertia tensor; lightweight browser granular dynamics.
+ */
+function particleHalfHeight(p){
+  const s=S(p.kind);
+  if(p.kind!=='gold')return s.halfHeight;
+  const tilt=Math.min(COIN_MAX_TILT,Math.hypot(p.tiltX||0,p.tiltZ||0));
+  return s.halfHeight*Math.cos(tilt)+s.radius*Math.sin(tilt);
+}
+
+function updateCoinOrientation(p,dt,onGround){
+  if(p.kind!=='gold')return;
+  p.tiltX=Number.isFinite(p.tiltX)?p.tiltX:0;
+  p.tiltZ=Number.isFinite(p.tiltZ)?p.tiltZ:0;
+  p.omegaX=Number.isFinite(p.omegaX)?p.omegaX:0;
+  p.omegaZ=Number.isFinite(p.omegaZ)?p.omegaZ:0;
+  p.angle=Number.isFinite(p.angle)?p.angle:(p.spin||0);
+  const rolling=onGround?4.8:.9;
+  // A coin translates along +x while spinning around its local -z axis.
+  p.omegaX+=(clamp(p.vz/Math.max(.21,S(p.kind).radius),-7,7)*.44-p.omegaX)*Math.min(1,dt*rolling);
+  p.omegaZ+=(clamp(-p.vx/Math.max(.21,S(p.kind).radius),-7,7)*.44-p.omegaZ)*Math.min(1,dt*rolling);
+  p.tiltX=clamp(p.tiltX+p.omegaX*dt,-COIN_MAX_TILT,COIN_MAX_TILT);
+  p.tiltZ=clamp(p.tiltZ+p.omegaZ*dt,-COIN_MAX_TILT,COIN_MAX_TILT);
+  const speed=Math.hypot(p.vx,p.vz);
+  if(onGround&&speed<.5){
+    const settle=Math.exp(-dt*(speed<.12?2.0:.6));
+    p.tiltX*=settle;p.tiltZ*=settle;
+  }
+  p.angle+=clamp((p.vx-p.vz)*dt*.12,-.08,.08);
+}
+
+function scoopBoundary(height){
+  if(height<=SCOOP_PROFILE[0][1])return SCOOP_PROFILE[0][0];
+  for(let i=0;i<SCOOP_PROFILE.length-1;i++){
+    const [a,h]=SCOOP_PROFILE[i], [b,k]=SCOOP_PROFILE[i+1];
+    if(height<=k)return a+(b-a)*(height-h)/(k-h);
+  }
+  return SCOOP_PROFILE[SCOOP_PROFILE.length-1][0];
+}
 
 class GranularSolver {
   constructor(){
@@ -410,6 +560,8 @@ class GranularSolver {
       p.vy=Number.isFinite(p.vy)?p.vy:0;
       p.vx=Number.isFinite(p.vx)?p.vx:0;
       p.vz=Number.isFinite(p.vz)?p.vz:0;
+      updateCoinOrientation(p,dt,onGround);
+      p._halfHeight=particleHalfHeight(p);
       const drag=Math.exp(-shape.drag*dt*(onGround?1:.17));
       p.vx*=drag;p.vz*=drag;
       p.vy-=GRAVITY*dt;
@@ -417,35 +569,50 @@ class GranularSolver {
       p.x+=p.vx*dt;p.z+=p.vz*dt;
       p.y+=p.vy*dt;
       if(p.y<0){p.y=0;if(p.vy<0)p.vy= -p.vy*shape.restitution;if(p.vy<.20)p.vy=0;}
-      // A standing vehicle must NOT pull resources into its scoop.
+      // Shared seven-segment scoop profile drives both mesh and collision.
+      // Projection is applied only on forward driving/contact, never magnetic.
       if(driving){
-        let dx=p.x-player.x,dz=p.z-player.z;
-        let ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
-        const halfWidth=(player.level>=2?2.16:1.94);
-        const lip=2.78-.18*Math.min(2.2,p.y);
-        const inFront=ahead>1.50 && ahead<lip+shape.radius+.25;
-        const inside=Math.abs(side)<halfWidth+shape.radius;
-        if(inFront&&inside){
-          const depth=lip+shape.radius*.62-ahead;
-          if(depth>0){
-            const push=Math.min(.36,depth*.90 + displacement*.28);
-            p.x+=vx*push;p.z+=vz*push;
-            // Kinetic energy propagates through neighbours via the PBD solver.
+        const dx=p.x-player.x,dz=p.z-player.z;
+        const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
+        const bucketWidth=SCOOP_HALF_WIDTH*(player.level>=2?1.11:1);
+        const centre=p.y+p._halfHeight;
+        if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
+          const contact=nearestScoopContact(ahead,centre);
+          const front=scoopBoundary(clamp(centre,.15,1.38));
+          // The wall constraint catches high-speed particles that crossed the
+          // front lip between ticks; the nearest segment supplies the slope.
+          const overlap=front+shape.radius*.35-ahead;
+          if(Math.abs(side)<bucketWidth-.09 && overlap>0){
+            const correction=Math.min(.32,overlap*.85+displacement*.10);
+            p.x+=vx*correction;p.z+=vz*correction;
+            const rise=Math.min(.115,correction*contact.nUp*.36);
+            p.y+=rise;
             const along=p.vx*vx+p.vz*vz;
-            const transfer=clamp((player.speed*.94-along)*.56,0,3.0);
+            const transfer=clamp((player.speed*.90-along)*.58,0,3.25);
             p.vx+=vx*transfer;
             p.vz+=vz*transfer;
-            // Curved scoop wall feeds coins upward only after a real collision.
-            const rise=clamp((depth+.09)*.47,0,.34);
-            p.vy+=rise*player.speed*.58;
-            // Past the side plates, pushed material spills outward naturally.
-            const edge=clamp((Math.abs(side)-halfWidth*.68)/(halfWidth*.35),0,1);
-            if(edge>0){const out=(side<0?-1:1)*edge*player.speed*.19;
-              p.vx+=rx*out;p.vz+=rz*out;
+            p.vy+=rise*5.0;
+            if(p.kind==='gold'){
+              // The scoop induces visible turning, but only after contact.
+              p.omegaX+=(side<0?-1:1)*contact.nUp*.26;
+              p.omegaZ-=transfer*.27;
+            }
+          }
+          // Scoop side plates occupy the lower metre. A particle too high
+          // escapes over the plates; lower particles cannot pass straight
+          // through a solid side wall.
+          const sideDist=Math.abs(side),normal=side<0?-1:1;
+          if(sideDist>bucketWidth-shape.radius*.85 && centre<1.22){
+            const penetration=shape.radius*.85-Math.abs(sideDist-bucketWidth);
+            if(penetration>0){
+              const outside=sideDist>bucketWidth;
+              const correction=Math.min(.12,penetration*.45)*(outside?1:-1)*normal;
+              p.x+=rx*correction;p.z+=rz*correction;
+              p.vx+=rx*correction/dt*.07;p.vz+=rz*correction/dt*.07;
             }
           }
         }
-        // Protect wheels/chassis from a resource tunnelling through the bucket.
+        // Block particles from tunnelling through the front of the chassis.
         if(ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
           const back=1.63-ahead;
           p.x+=vx*back*.50;p.z+=vz*back*.50;
@@ -461,7 +628,7 @@ class GranularSolver {
 
     // 2 relaxation passes. Rehash once per pass because successive contacts can
     // displace a particle across a bucket border. Each neighbour pair is unique.
-    const iterations=resources.length>1850?2:3;
+    const iterations=resources.length>900?2:3;
     for(let iteration=0;iteration<iterations;iteration++){
       const grid=this.grid;grid.clear();
       for(const i of nowMoving){
@@ -478,8 +645,8 @@ class GranularSolver {
             let dx=a.x-b.x,dz=a.z-b.z;
             const sa=S(a.kind),sb=S(b.kind);
             const diameter=sa.radius+sb.radius;
-            const vertical=sa.halfHeight+sb.halfHeight;
-            const yA=a.y+sa.halfHeight,yB=b.y+sb.halfHeight;
+            const vertical=(a._halfHeight||sa.halfHeight)+(b._halfHeight||sb.halfHeight);
+            const yA=a.y+(a._halfHeight||sa.halfHeight),yB=b.y+(b._halfHeight||sb.halfHeight);
             let dy=yA-yB;
             // Coin stacks have a lower vertical collision distance than spheres.
             // 3D contact excludes particles at different heights on the same x/z.
@@ -509,6 +676,9 @@ class GranularSolver {
               a.vx+=nx*impulse;a.vz+=nz*impulse;
               b.vx-=nx*impulse;b.vz-=nz*impulse;
             }
+            // Rotational impulse makes colliding coins topple and wobble.
+            if(a.kind==='gold'&&rv<0){a.omegaX=(a.omegaX||0)+nz*.05;a.omegaZ=(a.omegaZ||0)-nx*.05;}
+            if(b.kind==='gold'&&rv<0){b.omegaX=(b.omegaX||0)-nz*.05;b.omegaZ=(b.omegaZ||0)+nx*.05;}
             this.contacts++;
           }
         }
@@ -662,6 +832,7 @@ class Simulation {
 }
 
 // --- vehicle.js ---
+
 /* Procedural bulldozer and collectables derived from observations of the ad footage.
  * Geometry is authored here rather than importing the advertised game's assets.
  */
@@ -756,23 +927,20 @@ function renderResources(renderer,resources,time,cam){let count=0;
  for(const p of resources){
   if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
   const y=.12+p.y,spin=p.spin||0;
-  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.69:.83,1,p.kind==='gold'?.69:.83,[0,0,0,8]);
+  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
   switch(p.kind){
    case 'blue':{
-    renderer.add('sphere',p.x,y+.235,p.z,.58,.59,.58,[.045,.49,.92,4],spin);
-    // Three reflective blue/white arcs make each orb read as a collectible at a distance.
-    renderer.add('sphere',p.x-.11,y+.423,p.z+.03,.24,.13,.16,[.28,.87,1,4],spin);
-    renderer.add('sphere',p.x+.14,y+.286,p.z+.19,.18,.09,.09,[.74,.93,1,4]);
-    renderer.add('sphere',p.x-.17,y+.19,p.z+.17,.105,.15,.09,[.19,.80,1,4]);
+    // A single shaded ball with view-independent shell markings. Avoid four
+    // overlapping meshes per orb, which is expensive on mobile GPUs.
+    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9],spin*.22,spin*.32,spin*.19);
     break;
    }
    case 'gold':{
-    renderer.add('coin',p.x,y+.098,p.z,.64,.15,.64,[1,.71,.018,7],spin,0);
-    renderer.add('coin',p.x,y+.187,p.z,.53,.025,.53,[1,.85,.13,7],spin,0);
-    renderer.add('coin',p.x,y+.201,p.z,.34,.027,.34,[.95,.58,.018,7],spin,0);
-    // Raised square and cross are tiny non-text relief (visible in closer piles).
-    renderer.add('box',p.x,y+.221,p.z,.075,.027,.32,[1,.88,.23,7],spin);
-    renderer.add('box',p.x,y+.233,p.z,.25,.025,.064,[1,.88,.23,7],spin);
+    // One stamped coin mesh, including raised rim and face marks, rotating as
+    // a rigid-looking body. The centre follows the solver's tilt-aware support.
+    const half=particleHalfHeight(p);
+    renderer.add('coin',p.x,p.y+.052+half,p.z,.70,.70,.70,
+      [1,.73,.024,7],p.angle||0,p.tiltX||0,p.tiltZ||0);
     break;
    }
    case 'pearl':

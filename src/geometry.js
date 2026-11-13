@@ -1,3 +1,4 @@
+import {SCOOP_PROFILE,SCOOP_HALF_WIDTH} from './scoop.js';
 /* CoinDozer procedural art kit. Units are meters in a deliberately stylized scene.
  * Every mesh is generated in code; no copyrighted game assets are bundled.
  */
@@ -15,11 +16,25 @@ const build=(faces)=>{const o=empty();for(const face of faces)addFace(o,face);re
 function box(){let p=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];return build([[p[0],p[3],p[2],p[1]],[p[4],p[5],p[6],p[7]],[p[0],p[4],p[7],p[3]],[p[1],p[2],p[6],p[5]],[p[3],p[7],p[6],p[2]],[p[0],p[1],p[5],p[4]]])}
 function prism(count=12,top=1,bottom=1){const f=[];for(let j=0;j<count;j++){let a=j*2*Math.PI/count,b=(j+1)*2*Math.PI/count;let p=[Math.cos(a)*bottom*.5,-.5,Math.sin(a)*bottom*.5],q=[Math.cos(b)*bottom*.5,-.5,Math.sin(b)*bottom*.5],r=[Math.cos(b)*top*.5,.5,Math.sin(b)*top*.5],s=[Math.cos(a)*top*.5,.5,Math.sin(a)*top*.5];if(top>0)f.push([p,s,r,q]);else f.push([p,[0,.5,0],q]);f.push([[0,-.5,0],p,q]);if(top>0)f.push([[0,.5,0],r,s]);}return build(f)}
 function ico(){let t=(1+Math.sqrt(5))/2,p=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(v=>v.map(q=>q/Math.hypot(...v)*.5));let ids=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];return build(ids.map(f=>f.map(i=>p[i])))}
-function rockChunk(){let v=ico(),p=[];const coords=v.vertices;for(let i=0;i<coords.length;i+=3){let x=coords[i],y=coords[i+1],z=coords[i+2];p.push([x*(1+.18*Math.sin(i*.31)),y*(1+.24*Math.sin(i*1.07))+Math.max(0,y)*.06,z*(1+.14*Math.cos(i*.69))])}return build(Array.from({length:p.length/3},(_,i)=>p.slice(i*3,i*3+3)))}
+function rockChunk(){ // Rounded 80-triangle boulder, closer to footage than jagged broken ico faces.
+ const phi=(1+Math.sqrt(5))/2;
+ const points=[[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],[0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]];
+ const indices=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+ const norm=(p)=>{const l=Math.hypot(...p)||1;return p.map(v=>v/l)};
+ const verts=points.map(norm),edges=new Map();
+ function mid(a,b){const k=Math.min(a,b)+','+Math.max(a,b);if(edges.has(k))return edges.get(k);let p=norm(verts[a].map((v,i)=>v+verts[b][i]));const j=verts.length;verts.push(p);edges.set(k,j);return j}
+ const triangles=[];
+ for(const [a,b,c] of indices){const ab=mid(a,b),bc=mid(b,c),ca=mid(c,a);triangles.push([a,ab,ca],[b,bc,ab],[c,ca,bc],[ab,bc,ca])}
+ const irregular=verts.map(([x,y,z])=>{
+  const bump=1+.045*Math.sin(x*13+y*8)+.06*Math.cos(z*11+x*5);
+  return [x*bump*.50,(y*bump*.48)+.025,z*bump*.52];
+ });
+ return build(triangles.map(t=>t.map(i=>irregular[i])));
+}
 function smoothSphere(rows=12,cols=20){const vertices=[],normals=[],indices=[];for(let row=0;row<=rows;row++){let phi=Math.PI*row/rows;for(let col=0;col<=cols;col++){let theta=Math.PI*2*col/cols;let nx=Math.sin(phi)*Math.cos(theta),ny=Math.cos(phi),nz=Math.sin(phi)*Math.sin(theta);vertices.push(nx*.5,ny*.5,nz*.5);normals.push(nx,ny,nz)}}for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){let a=row*(cols+1)+col,b=a+cols+1;indices.push(a,b,a+1,b,b+1,a+1)}return {vertices,normals,indices}}
 function shell(){// A deeply cupped seven-segment steel shovel, open at the front, not a flat wall.
- const curve=[[-2.77,.15],[-2.57,.20],[-2.30,.27],[-2.03,.42],[-1.84,.68],[-1.76,1.00],[-1.74,1.38]];
- const o=empty();const W=1.94;
+ const curve=SCOOP_PROFILE.map(([ahead,height])=>[-ahead,height]);
+ const o=empty();const W=SCOOP_HALF_WIDTH;
  for(let j=0;j<curve.length-1;j++){
   const [z0,y0]=curve[j],[z1,y1]=curve[j+1];
   for(let k=0;k<6;k++){
@@ -59,5 +74,46 @@ function groundRibbon(){// Jagged river edge in local X/Z; shader animates molte
  }
  return o;
 }
+/** Single extruded, stamped coin. The raised rims and centre relief travel
+ * with the *same orientation* as the coin, unlike stacked horizontal decals.
+ * Local radius=.5; half-thickness=.22 to suit a .56 world-space scale.
+ */
+function stampedCoin(){
+ const o=empty(),segments=28;
+ // Strip rings in radius/height, including matching relief on both sides.
+ const bands=[
+   [.00,.50,-.15], [.50,.50,.15], // side of the solid coin
+ ];
+ function ring(r0,r1,y0,y1,invert=false){
+  for(let i=0;i<segments;i++){
+   const a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;
+   const point=(r,y,t)=>[Math.cos(t)*r,y,Math.sin(t)*r];
+   let face=[point(r0,y0,a),point(r1,y1,a),point(r1,y1,b),point(r0,y0,b)];
+   addFace(o,invert?face.reverse():face);
+  }
+ }
+ ring(.50,.50,-.16,.16); // thick cut edge
+ ring(.40,.50,.18,.16); ring(.33,.40,.171,.18);ring(0,.33,.164,.171);
+ ring(.40,.50,-.18,-.16,true);ring(.33,.40,-.171,-.18,true);ring(0,.33,-.164,-.171,true);
+ // Indented ridges around rim, visible when a coin tilts or stands on edge.
+ for(let j=0;j<segments;j++){
+  const a=j*Math.PI*2/segments,b=a+.10;
+  const pt=(r,y,t)=>[r*Math.cos(t),y,r*Math.sin(t)];
+  addFace(o,[pt(.508,-.095,a),pt(.508,.095,a),pt(.508,.095,b),pt(.508,-.095,b)]);
+ }
+ // Relief: a slender currency stem with two diagonal wings; drawn on both faces.
+ const stamp=(x,z,w,h,top)=>{
+  let y=top? .196:-.196;
+  addFace(o,[[x-w/2,y,z-h/2],[x+w/2,y,z-h/2],[x+w/2,y,z+h/2],[x-w/2,y,z+h/2]]);
+  // Side thickness gives the stamped mark real geometric depth.
+  for(const xx of [x-w/2,x+w/2])addFace(o,[[xx,y,z-h/2],[xx,top?.166:-.166,z-h/2],[xx,top?.166:-.166,z+h/2],[xx,y,z+h/2]]);
+ };
+ for(const top of [true,false]){
+  stamp(0,0,.075,.49,top);
+  stamp(-.10,.10,.23,.075,top);
+  stamp(.10,-.10,.23,.075,top);
+ }
+ return o;
+}
 function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
-export const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:prism(22),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+export const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};

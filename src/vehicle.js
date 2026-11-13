@@ -1,3 +1,4 @@
+import {particleHalfHeight} from './granular.js';
 /* Procedural bulldozer and collectables derived from observations of the ad footage.
  * Geometry is authored here rather than importing the advertised game's assets.
  */
@@ -92,23 +93,20 @@ export function renderResources(renderer,resources,time,cam){let count=0;
  for(const p of resources){
   if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
   const y=.12+p.y,spin=p.spin||0;
-  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.69:.83,1,p.kind==='gold'?.69:.83,[0,0,0,8]);
+  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
   switch(p.kind){
    case 'blue':{
-    renderer.add('sphere',p.x,y+.235,p.z,.58,.59,.58,[.045,.49,.92,4],spin);
-    // Three reflective blue/white arcs make each orb read as a collectible at a distance.
-    renderer.add('sphere',p.x-.11,y+.423,p.z+.03,.24,.13,.16,[.28,.87,1,4],spin);
-    renderer.add('sphere',p.x+.14,y+.286,p.z+.19,.18,.09,.09,[.74,.93,1,4]);
-    renderer.add('sphere',p.x-.17,y+.19,p.z+.17,.105,.15,.09,[.19,.80,1,4]);
+    // A single shaded ball with view-independent shell markings. Avoid four
+    // overlapping meshes per orb, which is expensive on mobile GPUs.
+    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9],spin*.22,spin*.32,spin*.19);
     break;
    }
    case 'gold':{
-    renderer.add('coin',p.x,y+.098,p.z,.64,.15,.64,[1,.71,.018,7],spin,0);
-    renderer.add('coin',p.x,y+.187,p.z,.53,.025,.53,[1,.85,.13,7],spin,0);
-    renderer.add('coin',p.x,y+.201,p.z,.34,.027,.34,[.95,.58,.018,7],spin,0);
-    // Raised square and cross are tiny non-text relief (visible in closer piles).
-    renderer.add('box',p.x,y+.221,p.z,.075,.027,.32,[1,.88,.23,7],spin);
-    renderer.add('box',p.x,y+.233,p.z,.25,.025,.064,[1,.88,.23,7],spin);
+    // One stamped coin mesh, including raised rim and face marks, rotating as
+    // a rigid-looking body. The centre follows the solver's tilt-aware support.
+    const half=particleHalfHeight(p);
+    renderer.add('coin',p.x,p.y+.052+half,p.z,.70,.70,.70,
+      [1,.73,.024,7],p.angle||0,p.tiltX||0,p.tiltZ||0);
     break;
    }
    case 'pearl':
