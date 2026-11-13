@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#6f4b34" />
+  <title>铲斗矿场 · 广告玩法还原 Demo</title>
+  <style>
+:root{font-family:Inter,"Noto Sans SC","Microsoft Yahei",system-ui,sans-serif;color:#fff;background:#674a36}*{box-sizing:border-box}html,body{margin:0;overflow:hidden;height:100%;width:100%;touch-action:none;user-select:none;-webkit-user-select:none}#scene{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none}#game-ui{position:fixed;inset:0;pointer-events:none}button{font:inherit;cursor:pointer}#topbar{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:max(12px,env(safe-area-inset-top)) 16px 12px;background:linear-gradient(#25170ebf,#36200a20);font-size:13px;letter-spacing:.03em}.brand{font-weight:900;white-space:nowrap;font-size:15px;text-shadow:1px 2px 5px #302012}.ver{font-size:9px;display:block;opacity:.65;letter-spacing:.14em;font-weight:650}.stats{display:flex;gap:14px;justify-content:center}.stats span{color:#f4d4a1;white-space:nowrap}.stats strong{display:block;color:white;font-size:16px;font-variant-numeric:tabular-nums;font-weight:900}#pauseButton{border:1px solid #ffffff56;border-radius:12px;width:38px;height:38px;background:#2919108a;color:#fff;pointer-events:auto;font-size:20px}#worldLabels{position:absolute;inset:0;overflow:hidden;pointer-events:none}.world-label{position:absolute;transform:translate(-50%,-50%);will-change:transform,left,top;display:none;white-space:nowrap;font-weight:1000;line-height:1;text-align:center}.world-label.gate{font-size:clamp(23px,6vw,52px);color:#fff;letter-spacing:-.08em;font-style:italic;-webkit-text-stroke:1px #2c2348;text-shadow:2px 3px 1px #281e54,3px 5px 2px #160d37;transform:translate(-50%,-50%) rotate(-6deg)}.world-label.cost{font-size:clamp(24px,5.7vw,51px);color:#fff;text-shadow:2px 3px 1px #000,0 0 3px #111}.world-label.upgrade{font-size:clamp(20px,5vw,39px);color:#cefff7;text-shadow:1px 4px 0 #3b9f9f,2px 6px 3px #193641;font-weight:1000;transform:translate(-50%,-50%) rotate(-4deg)}.world-label.lane{font-size:clamp(21px,5vw,39px);color:white;text-shadow:1px 3px #1e1918;letter-spacing:.06em}#toast{position:absolute;left:50%;bottom:19%;transform:translateX(-50%);background:#281b12d9;border:1px solid #ffe9a247;padding:11px 16px;max-width:85vw;border-radius:12px;color:#fff7e7;font-size:13px;font-weight:750;opacity:0;transition:opacity .25s;text-align:center;line-height:1.5}#toast.active{opacity:1}.joystick{position:absolute;width:124px;height:124px;border:2px solid #ffffff60;background:#2e211243;border-radius:50%;display:none;transform:translate(-50%,-50%);box-shadow:inset 0 0 22px #fffa;}.joystick-knob{position:absolute;width:57px;height:57px;left:calc(50% - 28.5px);top:calc(50% - 28.5px);border:2px solid #ffffffa0;border-radius:50%;background:#ffffff70;box-shadow:0 5px 16px #0006}.bottom-hint{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#2f2119aa;white-space:nowrap;border-radius:30px;padding:8px 14px;font-size:12px;color:#fff3dd;opacity:.83} .bottom-hint.dismissed{opacity:0;transition:opacity 1.1s;pointer-events:none}.modal{display:none;pointer-events:auto;position:absolute;inset:0;background:#1b100b88;backdrop-filter:blur(6px);z-index:15;align-items:center;justify-content:center;padding:15px}.modal.visible{display:flex}.panel{width:min(465px,100%);max-height:calc(100dvh - 30px);overflow:auto;background:linear-gradient(140deg,#3a2921,#1d1817);border:1px solid #ffe3a54f;box-shadow:0 14px 70px #180f0ccc;border-radius:23px;padding:26px 25px 24px}.eyebrow{font-size:10px;font-weight:850;letter-spacing:.18em;color:#f7c96c}.panel h1{margin:14px 0;font-size:clamp(29px,7vw,41px);line-height:1.18;letter-spacing:-.03em;color:#fffbf4}.panel h1 em{color:#ffce65;font-style:normal}.panel p{color:#dbd1c8;font-size:13px;line-height:1.75}.modeGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:18px 0}.modeGrid>div{padding:12px;border-radius:10px;background:#ffffff0c;border:1px solid #ffffff18;min-height:86px}.modeGrid b{font-size:14px;display:block;color:#f7cb81}.modeGrid span{font-size:11px;display:block;color:#c5b5a8;line-height:1.5;margin-top:5px}.primary{display:block;width:100%;border:0;background:#fbc251;color:#35240e;box-shadow:0 4px 0 #b57a2a;border-radius:11px;font-size:17px;font-weight:1000;padding:15px;margin:20px 0 17px}.primary:active{transform:translateY(3px);box-shadow:0 1px 0 #b57a2a}.menuActions{display:flex;gap:6px;justify-content:space-between}.menuActions button{border:1px solid #eee4cb44;border-radius:8px;background:transparent;color:#e6dacf;font-size:11px;padding:9px}.footnote{font-size:10px!important;opacity:.72;margin:15px 0 0}@media(max-width:390px){#topbar{padding-left:10px;padding-right:8px;gap:5px}.brand{font-size:12px}.stats{gap:6px}.stats span{font-size:10px}.stats strong{font-size:12px}#pauseButton{width:33px;height:34px}.panel{padding:20px}}
+
+</style>
+</head>
+<body>
+  <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
+  <div id="game-ui">
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.2</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <div id="worldLabels" aria-hidden="true">
+      <div id="label-gate" class="world-label gate">×10</div>
+      <div id="label-gate2" class="world-label gate">×10000</div>
+      <div id="label-cost" class="world-label cost">2500</div>
+      <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
+      <div id="label-score" class="world-label lane">0</div>
+    </div>
+    <div id="toast" role="status"></div>
+    <div class="joystick" id="joystick"><div class="joystick-knob" id="joyKnob"></div></div>
+    <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
+    <section id="menu" class="modal visible" aria-label="游戏说明">
+      <div class="panel">
+        <div class="eyebrow">基于广告视频的场景复刻 · MODEL & CAMERA PASS · v0.2</div>
+        <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
+        <p>推开蓝色球体，让它们通过紫色 <b>×10</b> 倍数门。用宽大的黄色铲斗推动金币，把金币推上升级台，让 <b>2500</b> 逐渐变成 <b>0</b>。</p>
+        <div class="modeGrid"><div><b>手机</b><span>触摸画面任意空白处，拖动控制行驶方向</span></div><div><b>电脑</b><span>WASD / 方向键移动 · P 暂停</span></div></div>
+        <button id="playButton" class="primary">进入矿场</button>
+        <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
+        <p class="footnote">v0.2 重做铲斗、履带与镜头；物理堆积仍将在 v0.3 重构。所有模型和地图均由几何体实时构建，不使用广告原游戏素材。纯前端、无需服务器，进度存于本机浏览器。</p>
+      </div>
+    </section>
+  </div>
+  <script>
+(()=>{'use strict';
+// --- math.js ---
+const TAU=Math.PI*2;
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const distance=(x,z,a,b)=>Math.hypot(x-a,z-b);
+const damp=(v,rate,dt)=>v*Math.exp(-rate*dt);
+function mat4Mul(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o}
+function ortho(l,r,b,t,n,f){return new Float32Array([2/(r-l),0,0,0,0,2/(t-b),0,0,0,0,-2/(f-n),0,-(r+l)/(r-l),-(t+b)/(t-b),-(f+n)/(f-n),1])}
+function lookAt(e,c){let z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]],l=Math.hypot(...z);z=z.map(t=>t/l);let x=[z[2],0,-z[0]],ll=Math.hypot(...x);x=x.map(v=>v/ll);let y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]),-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]),-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]),1])}
+// Column-major affine transform, local scale + yaw + pitch + roll.
+function compose(x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){const a=Math.cos(yaw),b=Math.sin(yaw),c=Math.cos(pitch),d=Math.sin(pitch),e=Math.cos(roll),f=Math.sin(roll);
+ // rotation Y * X * Z
+ return [ (a*e+b*d*f)*sx,(c*f)*sx,(-b*e+a*d*f)*sx,0,(-a*f+b*d*e)*sy,(c*e)*sy,(b*f+a*d*e)*sy,0,(b*c)*sz,(-d)*sz,(a*c)*sz,0,x,y,z,1 ];}
+function project(vp,x,y,z,w,h){let p=[x,y,z,1],q=[0,0,0,0];for(let row=0;row<4;row++)q[row]=vp[row]*p[0]+vp[row+4]*p[1]+vp[row+8]*p[2]+vp[row+12]*p[3];if(q[3]<=0)return null;const nx=q[0]/q[3],ny=q[1]/q[3];return {x:(nx+1)*w/2,y:(1-ny)*h/2,visible:Math.abs(nx)<1.25&&Math.abs(ny)<1.25};}
+function formatNum(n){return Math.max(0,Math.floor(n)).toLocaleString('en-US')}
+
+// --- geometry.js ---
+/* CoinDozer procedural art kit. Units are meters in a deliberately stylized scene.
+ * Every mesh is generated in code; no copyrighted game assets are bundled.
+ */
+const addFace=(out,points)=>{
+ const a=points[0],b=points[1],c=points[2];
+ const u=b.map((v,i)=>v-a[i]),w=c.map((v,i)=>v-a[i]);
+ let n=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];
+ const length=Math.hypot(...n)||1;n=n.map(v=>v/length);
+ const offset=out.vertices.length/3;
+ for(const p of points){out.vertices.push(...p);out.normals.push(...n)}
+ for(let j=1;j<points.length-1;j++)out.indices.push(offset,offset+j,offset+j+1);
+};
+const empty=()=>({vertices:[],normals:[],indices:[]});
+const build=(faces)=>{const o=empty();for(const face of faces)addFace(o,face);return o};
+function box(){let p=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];return build([[p[0],p[3],p[2],p[1]],[p[4],p[5],p[6],p[7]],[p[0],p[4],p[7],p[3]],[p[1],p[2],p[6],p[5]],[p[3],p[7],p[6],p[2]],[p[0],p[1],p[5],p[4]]])}
+function prism(count=12,top=1,bottom=1){const f=[];for(let j=0;j<count;j++){let a=j*2*Math.PI/count,b=(j+1)*2*Math.PI/count;let p=[Math.cos(a)*bottom*.5,-.5,Math.sin(a)*bottom*.5],q=[Math.cos(b)*bottom*.5,-.5,Math.sin(b)*bottom*.5],r=[Math.cos(b)*top*.5,.5,Math.sin(b)*top*.5],s=[Math.cos(a)*top*.5,.5,Math.sin(a)*top*.5];if(top>0)f.push([p,s,r,q]);else f.push([p,[0,.5,0],q]);f.push([[0,-.5,0],p,q]);if(top>0)f.push([[0,.5,0],r,s]);}return build(f)}
+function ico(){let t=(1+Math.sqrt(5))/2,p=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(v=>v.map(q=>q/Math.hypot(...v)*.5));let ids=[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];return build(ids.map(f=>f.map(i=>p[i])))}
+function rockChunk(){let v=ico(),p=[];const coords=v.vertices;for(let i=0;i<coords.length;i+=3){let x=coords[i],y=coords[i+1],z=coords[i+2];p.push([x*(1+.18*Math.sin(i*.31)),y*(1+.24*Math.sin(i*1.07))+Math.max(0,y)*.06,z*(1+.14*Math.cos(i*.69))])}return build(Array.from({length:p.length/3},(_,i)=>p.slice(i*3,i*3+3)))}
+function smoothSphere(rows=12,cols=20){const vertices=[],normals=[],indices=[];for(let row=0;row<=rows;row++){let phi=Math.PI*row/rows;for(let col=0;col<=cols;col++){let theta=Math.PI*2*col/cols;let nx=Math.sin(phi)*Math.cos(theta),ny=Math.cos(phi),nz=Math.sin(phi)*Math.sin(theta);vertices.push(nx*.5,ny*.5,nz*.5);normals.push(nx,ny,nz)}}for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){let a=row*(cols+1)+col,b=a+cols+1;indices.push(a,b,a+1,b,b+1,a+1)}return {vertices,normals,indices}}
+function shell(){// A deeply cupped seven-segment steel shovel, open at the front, not a flat wall.
+ const curve=[[-2.77,.15],[-2.57,.20],[-2.30,.27],[-2.03,.42],[-1.84,.68],[-1.76,1.00],[-1.74,1.38]];
+ const o=empty();const W=1.94;
+ for(let j=0;j<curve.length-1;j++){
+  const [z0,y0]=curve[j],[z1,y1]=curve[j+1];
+  for(let k=0;k<6;k++){
+   const x0=-W+k*W/3,x1=-W+(k+1)*W/3;
+   const billow=x=>Math.pow(Math.abs(x/W),1.8)*.18;
+   addFace(o,[[x0,y0,z0+billow(x0)],[x1,y0,z0+billow(x1)],[x1,y1,z1+billow(x1)],[x0,y1,z1+billow(x0)]]);
+   addFace(o,[[x0,y0,z0+billow(x0)+.135],[x0,y1,z1+billow(x0)+.135],[x1,y1,z1+billow(x1)+.135],[x1,y0,z0+billow(x1)+.135]]);
+  }
+ }
+ for(const x of [-W,W])for(let j=0;j<curve.length-1;j++){
+  const [z0,y0]=curve[j],[z1,y1]=curve[j+1];addFace(o,[[x,y0,z0],[x,y1,z1],[x,y1,z1+.135],[x,y0,z0+.135]])
+ }
+ addFace(o,[[-W,.15,-2.77],[W,.15,-2.77],[W,.15,-2.63],[-W,.15,-2.63]]);
+ addFace(o,[[-W,1.38,-1.74],[-W,1.38,-1.605],[W,1.38,-1.605],[W,1.38,-1.74]]);
+ return o;
+}
+function cheek(){// One of two thick, upturned side plates of the shovel.
+ const pts=[[-2.86,.15],[-2.63,.17],[-2.51,.56],[-2.15,1.14],[-1.73,1.50],[-1.46,1.40],[-1.43,1.08],[-1.68,.43],[-1.94,.18]];
+ const o=empty();const x0=-.5,x1=.5;
+ for(let k=0;k<pts.length;k++){let a=pts[k],b=pts[(k+1)%pts.length];addFace(o,[[x0,a[1],a[0]],[x1,a[1],a[0]],[x1,b[1],b[0]],[x0,b[1],b[0]]])}
+ addFace(o,pts.map(p=>[x0,p[1],p[0]]));addFace(o,pts.slice().reverse().map(p=>[x1,p[1],p[0]]));return o;
+}
+function track(){// Raised rubber caterpillar track with rounded drive-wheel ends, 3D solid extrusion.
+ const pts=[];const R=.43,Z=.94;
+ for(let i=0;i<=8;i++){let a=-Math.PI/2+Math.PI*i/8;pts.push([Z+R*Math.cos(a),R*Math.sin(a)])}
+ for(let i=0;i<=8;i++){let a=Math.PI/2+Math.PI*i/8;pts.push([-Z+R*Math.cos(a),R*Math.sin(a)])}
+ const o=empty(),x0=-.5,x1=.5;
+ for(let i=0;i<pts.length;i++){let a=pts[i],b=pts[(i+1)%pts.length];addFace(o,[[x0,a[1],a[0]],[x1,a[1],a[0]],[x1,b[1],b[0]],[x0,b[1],b[0]]])}
+ addFace(o,pts.map(p=>[x1,p[1],p[0]]));addFace(o,pts.slice().reverse().map(p=>[x0,p[1],p[0]]));return o;
+}
+function groundRibbon(){// Jagged river edge in local X/Z; shader animates molten texture in world space.
+ const o=empty(),segments=28;
+ for(let i=0;i<segments;i++){
+  let left=i/segments-.5,right=(i+1)/segments-.5;
+  const edge=(x,s)=>s*(.5+.05*Math.sin(37*x+3*s)+.032*Math.sin(81*x+2.3*s));
+  addFace(o,[[left,0,edge(left,-1)],[right,0,edge(right,-1)],[right,0,edge(right,1)],[left,0,edge(left,1)]])
+ }
+ return o;
+}
+function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
+const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:prism(22),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+
+// --- renderer.js ---
+
+
+const VERT=`
+precision highp float;
+attribute vec3 aPosition;
+attribute vec3 aNormal;
+attribute vec4 aM0;
+attribute vec4 aM1;
+attribute vec4 aM2;
+attribute vec4 aM3;
+attribute vec4 aTint;
+uniform mat4 uVP;
+varying vec3 vNormal;
+varying vec3 vWorld;
+varying vec3 vLocal;
+varying vec4 vTint;
+void main(){
+ mat4 model=mat4(aM0,aM1,aM2,aM3);
+ vec4 world=model*vec4(aPosition,1.);
+ vec3 scale=vec3(length(aM0.xyz),length(aM1.xyz),length(aM2.xyz));
+ vWorld=world.xyz;
+ vLocal=aPosition;
+ vNormal=normalize(mat3(model)*(aNormal/max(scale*scale,vec3(.00001))));
+ vTint=aTint;
+ gl_Position=uVP*world;
+}`;
+const FRAG=`
+precision highp float;
+uniform float uTime;
+varying vec3 vNormal;
+varying vec3 vWorld;
+varying vec3 vLocal;
+varying vec4 vTint;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 x){vec2 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+void main(){
+ float mat=vTint.a;
+ if(mat>7.5){ // Vignetted contact shadow, drawn in the transparent pass.
+  float radius=length(vLocal.xz)*2.;
+  float alpha=.32*pow(max(0.,1.-radius*radius),2.3);
+  gl_FragColor=vec4(.10,.065,.046,alpha);return;
+ }
+ vec3 normal=normalize(gl_FrontFacing ? vNormal : -vNormal);
+ vec3 sun=normalize(vec3(-.38,.90,.48));
+ float diffuse=max(0.,dot(normal,sun));
+ float light=.69+.39*diffuse;
+ vec3 color=vTint.rgb*light;
+ float specular=pow(max(0.,dot(reflect(-sun,normal),normalize(vec3(.23,.72,.63)))),17.);
+ if(mat>1.5&&mat<2.5){
+  vec2 q=vWorld.xz;
+  float a=noise(q*.63+vec2(uTime*.16,-uTime*.24));
+  float b=noise(q*1.75+vec2(-uTime*.46,uTime*.23));
+  float c=noise(q*3.86+vec2(uTime*.32,uTime*.35));
+  float cracks=sin(q.x*2.7+q.y*1.65+a*5.+uTime*1.25);
+  float heat=clamp(a*.52+b*.24+c*.13+cracks*.14+.03,0.,1.);
+  color=mix(vec3(.24,.014,.01),vec3(.90,.095,.018),smoothstep(.22,.58,heat));
+  color=mix(color,vec3(1.,.49,.09),smoothstep(.50,.73,heat));
+  color=mix(color,vec3(1.,.94,.56),smoothstep(.70,.85,heat));
+ }else if(mat>2.5&&mat<3.5){
+  color=mix(vTint.rgb,vec3(1.,.99,.77),.24+.12*sin(uTime*1.3+vWorld.x));
+ }else if(mat>3.5&&mat<4.5){
+  color=vTint.rgb*(.64+.43*diffuse)+specular*vec3(.27,.27,.20);
+ }else if(mat>4.5&&mat<5.5){
+  color=vTint.rgb*(.62+.29*diffuse);
+ }else if(mat>5.5&&mat<6.5){
+  color*=.96+.035*noise(vWorld.xz*2.2);
+ }else if(mat>6.5&&mat<7.5){
+  color=vTint.rgb*(.65+.46*diffuse)+specular*vec3(.35,.22,.045);
+ }else{
+  color+=specular*.07;
+ }
+ float alpha=mat<.99?mat:1.;
+ gl_FragColor=vec4(color,alpha);
+}`;
+const compile=(gl,kind,src)=>{const o=gl.createShader(kind);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
+class Renderer{
+ constructor(canvas){
+  this.canvas=canvas;
+  this.gl=canvas.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'})||canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});
+  if(!this.gl)throw new Error('当前浏览器不支持 WebGL。请改用 Chrome、Edge 或支持 WebGL 的浏览器。');
+  const gl=this.gl;
+  this.instanced=gl.vertexAttribDivisor?{divisor:(a,b)=>gl.vertexAttribDivisor(a,b),draw:(...args)=>gl.drawElementsInstanced(...args)}:null;
+  if(!this.instanced){let extension=gl.getExtension('ANGLE_instanced_arrays');if(extension)this.instanced={divisor:(a,b)=>extension.vertexAttribDivisorANGLE(a,b),draw:(...args)=>extension.drawElementsInstancedANGLE(...args)}}
+  if(!this.instanced)throw new Error('当前设备不支持实例化渲染（ANGLE_instanced_arrays）。');
+  const prog=gl.createProgram();gl.attachShader(prog,compile(gl,gl.VERTEX_SHADER,VERT));gl.attachShader(prog,compile(gl,gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));this.program=prog;gl.useProgram(prog);
+  this.a={pos:gl.getAttribLocation(prog,'aPosition'),nor:gl.getAttribLocation(prog,'aNormal'),m:[0,1,2,3].map(i=>gl.getAttribLocation(prog,'aM'+i)),tint:gl.getAttribLocation(prog,'aTint')};
+  this.u={vp:gl.getUniformLocation(prog,'uVP'),time:gl.getUniformLocation(prog,'uTime')};
+  this.meshes={};for(const [key,g] of Object.entries(GEOMETRY)){
+   let item={count:g.indices.length};item.v=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.v);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.vertices),gl.STATIC_DRAW);
+   item.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.n);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.normals),gl.STATIC_DRAW);
+   item.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,item.i);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(g.indices),gl.STATIC_DRAW);
+   item.inst=gl.createBuffer();this.meshes[key]=item;
+  }
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};this.batch=new Map();this.transparent=new Map();this.w=0;this.h=0;this.vp=null;
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(.51,.35,.26,1);
+ }
+ resize(){const dpr=Math.min(window.devicePixelRatio||1,innerWidth<650?1.5:1.8),w=Math.round(this.canvas.clientWidth*dpr),h=Math.round(this.canvas.clientHeight*dpr);if(w!==this.canvas.width||h!==this.canvas.height){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.aspect=w/h;}
+ begin(t,player,dt){
+ this.resize();
+ // Ad footage uses a fixed-quarter-view camera. Keep the azimuth fixed while
+ // gently leading the player's forward direction; never spin with the chassis.
+ const follow=Math.min(1,dt*3.4);
+ const headingX=Math.sin(player.yaw)*1.25,headingZ=-Math.cos(player.yaw)*1.25;
+ this.camera.x+=(player.x+headingX-this.camera.x)*follow;
+ this.camera.z+=(player.z+headingZ-this.camera.z)*follow;
+ const cx=this.camera.x,cz=this.camera.z-1.8;
+ const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
+ const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
+ const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
+ this.vp=mat4Mul(proj,view);
+ const gl=this.gl;
+ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ gl.useProgram(this.program);
+ gl.uniformMatrix4fv(this.u.vp,false,this.vp);
+ gl.uniform1f(this.u.time,t);
+ this.batch.clear();this.transparent.clear();
+ }
+ // All scales, angles, and positions are in world units. c=[r,g,b], opacity<1 for translucent mesh; c[3]=2 lava, 3 emissive.
+ add(kind,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){
+  if(Math.abs(x-this.camera.x)>55||Math.abs(z-this.camera.z)>59)return;
+  let mat=compose(x,y,z,sx,sy,sz,yaw,pitch,roll);let tag=opacity!==1?opacity:(c[3]||1);
+  let map=(opacity<1||c[3]===8)?this.transparent:this.batch;if(!map.has(kind))map.set(kind,[]);map.get(kind).push(...mat,c[0],c[1],c[2],tag);
+ }
+ end(){let gl=this.gl;gl.disable(gl.BLEND);gl.depthMask(true);this._draw(this.batch);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);this._draw(this.transparent);gl.depthMask(true);gl.disable(gl.BLEND)}
+ _draw(batches){let gl=this.gl;for(const [kind,data] of batches){if(!data.length)continue;let m=this.meshes[kind],itemCount=data.length/20;
+  gl.bindBuffer(gl.ARRAY_BUFFER,m.v);gl.enableVertexAttribArray(this.a.pos);gl.vertexAttribPointer(this.a.pos,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.pos,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,m.n);gl.enableVertexAttribArray(this.a.nor);gl.vertexAttribPointer(this.a.nor,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.nor,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,m.inst);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);
+  for(let i=0;i<4;i++){let loc=this.a.m[i];gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,4,gl.FLOAT,false,80,i*16);this.instanced.divisor(loc,1)}
+  gl.enableVertexAttribArray(this.a.tint);gl.vertexAttribPointer(this.a.tint,4,gl.FLOAT,false,80,64);this.instanced.divisor(this.a.tint,1);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);this.instanced.draw(gl.TRIANGLES,m.count,gl.UNSIGNED_SHORT,0,itemCount);
+ }}
+ screen(x,y,z){return project(this.vp,x,y,z,this.w,this.h)}
+}
+
+// --- world.js ---
+
+const PALETTE={
+ dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
+function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
+class World{
+ constructor(stage=0){this.stage=stage;this.static=[];this.sites={};this.gates=[];this.crusher={x:11.5,z:6,r:2.0};this.rng=seeded(stage?337:20261102);this.make(stage);}
+ n(a,b){return a+(b-a)*this.rng()}
+ add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
+ addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
+ borderRocks(pink=false){let C=pink?[[.58,.4,.53],[.66,.46,.60],[.70,.54,.67]]:[PALETTE.rock,PALETTE.rockLight,PALETTE.rockShade];for(let i=0;i<48;i++){let x=-32+i*1.37+this.n(-.7,.7);this.addRock(x,-29+this.n(-2.4,2.4),this.n(1.0,2.1),C[i%3]);}for(let i=0;i<34;i++){let z=-28+i*1.6;this.addRock(-34+this.n(-2.5,1.5),z,this.n(.7,2),C[i%3]);this.addRock(34+this.n(-1.3,2.2),z,this.n(.8,1.7),C[(i+1)%3])}for(let i=0;i<28;i++){let x=-31+i*2.4;this.addRock(x,30+this.n(-.8,2.7),this.n(.8,2.3),C[i%3])}}
+ make(stage){if(stage===1){this.makeBonus();return}
+ this.add('box',0,-.92,0,71,1.8,64,PALETTE.dirtEdge);
+ this.add('box',0,-.055,0,69,.2,61,PALETTE.dirt);
+ // Bare, soft tan-brown excavation ground; no grass, no checkerboard.
+ for(let i=0;i<36;i++){let x=this.n(-28,29),z=this.n(-22,27);if(Math.abs(x)<12&&z>0&&z<15)continue;this.add('box',x,.051,z,this.n(.2,.6),.008,this.n(.7,1.6),[.56,.374,.29,6],this.n(-2,2))}
+ this.borderRocks(false);
+ // Oblique molten river behind the collectable area, bright swirling molten texture.
+ this.add('river',-17,.124,-14.2,37,1,8.6,[.21,.062,.026],-.24);
+ this.add('river',-17,.135,-14.2,35.4,1,7.7,[1,.4,.12,2],-.24);
+ for(let i=0;i<26;i++){let x=-31+i*1.2,z=-14.2+(x+17)*-.24;this.add('box',x,.15,z+this.n(-3,3),this.n(.25,1.15),.045,this.n(.15,.42),[1,.69,.22,3],this.n(-.6,.6))}
+ // Wooden bridge across the lava: individual warm-colored planks and long railing-free edge.
+ for(let k=0;k<16;k++){let x=-23.6+k*.70,z=-14.5-(x+17)*.24;this.add('box',x,.39,z,.64,.22,9.45,k%3?[.91,.58,.29]:[.97,.66,.35],-.24);this.add('box',x,.51,z-4.53,.62,.06,.18,[.41,.22,.105],-.24)}
+ this.add('box',-18.2,.16,-14.2,11,.12,9,PALETTE.bridgeSide,-.24);
+ // The lavender ×10 fabric gate, orange posts with purple heads and violet cloud.
+ this.gates.push({id:0,x:1,z:3.1,half:5.5,multiplier:10});this.frameGate(1,3.1,5.5);
+ // Purple uprights and orange brush/rotating hazard, next to the gold pile.
+ this.crusher={x:12,z:7.2,r:2.2};
+ for(let x of [9.6,14.4]){this.add('cylinder',x,1.9,7.2,.69,3.8,.69,PALETTE.purpleCap);this.add('sphere',x,3.91,7.2,1.04,1.05,1.04,PALETTE.purpleCap);this.add('box',x,.18,7.2,1.1,.34,1.18,PALETTE.purple)}
+ this.add('box',12,3.55,7.2,5.25,.44,.65,PALETTE.purple);
+ // Black counting strip with fluorescent yellow rim and large white counter.
+ this.add('box',-13.6,.15,-20.6,6.6,.23,18,[1,.80,.05]);this.add('box',-13.6,.25,-20.6,6,.14,17.5,PALETTE.black);
+ this.sites.counter={x:-13.6,y:.54,z:-17.3};
+ // Transparent pink storage box near the count strip. Internal pearls are modeled as resources.
+ this.add('box',-20.1,.33,-26,7.2,.32,6.1,[.53,.33,.51]);
+ for(const x of [-23.6,-16.5]){this.add('box',x,2.7,-26,.10,5.2,6,PALETTE.white,0,0,0,.36)}
+ for(const z of [-29,-23]){this.add('box',-20.1,2.7,z,7.1,5.2,.09,PALETTE.white,0,0,0,.24)}
+ for(let x of [-23.55,-16.5])for(let z of [-29,-23])this.add('box',x,2.6,z,.12,5.25,.12,PALETTE.white);
+ for(let x of [-23.55,-16.5]){this.add('box',x,5.2,-26,.11,.12,6.1,PALETTE.white)}
+ for(let z of [-29,-23]){this.add('box',-20.05,5.2,z,7.2,.12,.10,PALETTE.white)}
+ // Purple ramp and cyan translucent UPGRADE board; rigid white bulldozer statue.
+ this.sites.upgrade={x:19,y:0,z:-18};
+ this.add('box',19,.12,-19,10.6,.25,10.5,PALETTE.purple);
+ this.add('box',19,.28,-20,9.0,.25,7.5,[.36,.12,.56]);
+ this.add('box',19.1,2.8,-24.65,10.4,5.2,.15,PALETTE.mint,0,0,0,.55);
+ // Cost plate: the 2500 decreases one unit per pushed coin (observed 2494).
+ this.add('box',19,.15,-12.1,8.4,.18,2.45,[.08,.07,.08]);
+ this.add('box',15.9,.20,-18.8,1.0,.10,8.3,[1,.75,.07]);
+ this.sites.cost={x:19,y:.48,z:-12.05};this.sites.upgradeText={x:19.1,y:5.7,z:-24.7};
+ this.add('box',19,1.1,-20.3,5.5,1.25,3.25,PALETTE.white);
+ this.add('box',19,1.8,-21.2,2.1,1.45,2.2,PALETTE.white);
+ this.add('box',19,.8,-17.4,7,.55,.85,PALETTE.white);
+ for(let x of [16.9,21.1]){this.add('cylinder',x,.75,-21.9,1.1,.58,1.1,PALETTE.white)}
+ // Scattered pebbles, coin glints, and soil bumps.
+ for(let i=0;i<56;i++){let x=this.n(-27,27),z=this.n(-23,22);if(x>-2&&x<14&&z>-3&&z<14)continue;this.add('boulder',x,.14,z,this.n(.26,.62),this.n(.22,.46),this.n(.27,.64),i%3?PALETTE.rockShade:PALETTE.rockLight)}
+ }
+ frameGate(x,z,half){for(const side of [-1,1]){let px=x+side*half;this.add('box',px,1.68,z,.78,3.25,.83,[.97,.28,.12]);this.add('box',px,.20,z,1.25,.40,1.22,PALETTE.purple);this.add('box',px,3.51,z,1.25,.65,1.2,PALETTE.purpleCap);this.add('sphere',px,3.87,z,1.05,.78,.98,PALETTE.purpleCap)}
+ this.add('box',x,1.66,z,half*2.04,2.83,.095,PALETTE.glass,0,0,0,.43);this.sites.gate={x,y:1.75,z:z-.11}}
+ makeBonus(){this.add('box',0,-.92,0,68,1.8,64,[.25,.27,.28]);this.add('box',0,-.05,0,66,.2,61,[.43,.44,.41]);this.borderRocks(true);
+ this.gates.push({id:1,x:-9,z:-8,half:5.1,multiplier:10000});
+ // Later quick-cut of the advertisement: long golden ingots, baby-blue steel blade and pink cave stones.
+ for(const x of [-14.1,-3.9]){this.add('box',x,.13,-8,1.25,.32,1.25,PALETTE.purple);this.add('box',x,1.95,-8,1.1,3.7,1.05,[.99,.62,.31]);this.add('box',x,3.95,-8,1.38,.83,1.38,PALETTE.purpleCap)}
+ this.add('box',-9,1.8,-8,10.5,3.2,.12,PALETTE.glass,0,0,0,.40);
+ this.sites.gate2={x:-9,y:1.6,z:-8};
+ this.sites.bonus={x:0,y:0,z:0};
+ for(let j=0;j<4;j++)for(let i=0;i<7;i++){
+  let x=-18+i*.67,z=-14-j*.55;this.add('cylinder',x,.36,z,.37,2.2,.37,[1,.75,.14],0,0,Math.PI/2);
+ }
+ for(let j=0;j<4;j++)for(let i=0;i<7;i++){
+  let x=-5+i*.67,z=-2-j*.55;this.add('cylinder',x,.36,z,.37,2.2,.37,[.94,.64,.12],0,0,Math.PI/2)
+ }
+ }
+ render(renderer,t){for(const o of this.static)renderer.add(o.mesh,o.x,o.y,o.z,o.sx,o.sy,o.sz,o.c,o.yaw,o.pitch,o.roll,o.opacity);
+  if(this.stage===0){
+   // Soft animated volcanic mist, well below collectible height so it does not occlude play.
+   for(let i=0;i<17;i++){const x=-31+i*1.68,z=-14.2+(x+17)*-.24+Math.sin(i*3.17)*1.7;
+    const rise=(t*.45+i*.31)%2.8;
+    renderer.add('sphere',x,.32+rise*.47,z,1.5+rise*.40,.49+rise*.18,1.2+rise*.50,[.86,.69,.59],0,0,0,.095*(1.-rise/3.1));
+   }
+   let c=this.crusher;
+   for(let n=0;n<3;n++){
+    let x=c.x+(n-1)*1.4;renderer.add('cylinder',x,1.52,c.z,.58,2.95,.58,[.75,.20,.07]);
+    for(let row=0;row<9;row++)for(let k=0;k<8;k++){let a=k/8*TAU+t*3*(n%2?1:-1)+row*.33;renderer.add('cone',x+Math.cos(a)*.55,.47+row*.27,c.z+Math.sin(a)*.55,.35,.50,.38,[1,.37,.10],a,0,.55)}
+   }
+  }}
+}
+function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=>a+(b-a)*rng(),items=[];
+ function pile(kind,cx,cz,count,rad,height=0){for(let i=0;i<count;i++){let a=rng()*TAU,r=Math.sqrt(rng())*rad,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r,y=height*clamp(1-r/rad,0,1)*rand(.40,1.1);items.push({kind,x,z,y,settle:y,vx:0,vz:0,spin:rand(0,TAU),angle:rand(-.4,.4),passed:false,cooldown:0,dead:false})}}
+ if(stage===0){pile('blue',0,-1.5,335,7.0,.55);pile('blue',5.7,7.1,75,4,.25);pile('blue',-17,-8.0,45,2.6,.1);
+  pile('gold',17.2,4.0,360,6.2,1.0);pile('gold',7.4,-7.6,75,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
+  pile('pearl',-20.2,-26.1,18,2.3,.5);
+ }else{pile('ingot',-13,-5,52,4.5,.4);pile('ingot',0,1.7,45,3,.1);pile('pearl',14,-17,22,3,.5)}
+ return items;
+}
+
+// --- physics.js ---
+
+
+const MAX_RESOURCES=2800;
+const RADII={blue:.29,gold:.26,pearl:.48,ingot:.23,green:.52};
+class Simulation{
+ constructor(stage=0){this.stage=stage;this.resources=createResourceLayout(stage);this.elapsed=0;this.collisionTick=0;this.lastGate=-20;this.deposit=0;this.remaining=2500;this.processed=0;this.multipliedValue=0;this.gateHits=0;this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;this.won=false;this.queuedAdd=[];this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?2:0};}
+ setStage(stage){let n=new Simulation(stage);Object.assign(this,n)}
+ emit(type,data={}){this.events.push({type,...data})}
+ update(dt,dirX,dirZ,world){dt=Math.min(dt,.044);this.elapsed+=dt;
+  const p=this.player,goal=Math.hypot(dirX,dirZ),m=goal>1?1/goal:1;
+  let desiredV=goal>0.08?(p.level?6.0:5.55)*Math.min(1,goal)*m:0;
+  p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>0.08?7.5:12));
+  if(goal>0.1){let target=Math.atan2(dirX,-dirZ),delta=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));p.yaw+=clamp(delta,-dt*5.3,dt*5.3)}
+  let fX=Math.sin(p.yaw),fZ=-Math.cos(p.yaw),step=p.speed*dt;
+  p.x=clamp(p.x+fX*step,-28,28);p.z=clamp(p.z+fZ*step,-23,26);
+  if(p.speed>.8){this.lastTrail+=step;if(this.lastTrail>.38){this.lastTrail=0;let rightX=Math.cos(p.yaw),rightZ=Math.sin(p.yaw);for(const side of [-1,1])this.treads.push({x:p.x+rightX*side*.90-fX*.62,z:p.z+rightZ*side*.90-fZ*.62,a:p.yaw,t:this.elapsed});if(this.treads.length>700)this.treads.splice(0,25)}}
+  let bladeWidth=p.level?2.28:2.04;
+  for(const r of this.resources){if(r.dead)continue;
+   r.cooldown=Math.max(0,r.cooldown-dt);
+   // A local, lightweight granular simulation: physical resources remain on the terrain.
+   r.vx=damp(r.vx,5.6,dt);r.vz=damp(r.vz,5.6,dt);
+   let dx=r.x-p.x,dz=r.z-p.z;
+   let ahead=dx*fX+dz*fZ,side=dx*Math.cos(p.yaw)+dz*Math.sin(p.yaw);
+   let radius=RADII[r.kind]||.25;
+   if(ahead>-.6&&ahead<3.1&&Math.abs(side)<bladeWidth+radius){
+    const collide=ahead>1.05&&ahead<2.65&&Math.abs(side)<bladeWidth+radius;
+    if(collide){let boost=p.speed>1?p.speed*2.6:4.0;
+     r.vx+=fX*boost*dt*12;r.vz+=fZ*boost*dt*12;
+     // Side overflow is essential: unlike the old demo, the shovel doesn't absorb items.
+     let spill=clamp((Math.abs(side)-bladeWidth*.38)/(bladeWidth*.65),0,1);
+     let sign=side>=0?1:-1;
+     let lateral=p.speed*spill*dt*5.5;
+     r.vx+=Math.cos(p.yaw)*sign*lateral;
+     r.vz+=Math.sin(p.yaw)*sign*lateral;
+     r.y=Math.min(1.7,r.y+dt*(r.kind==='gold'?1.3:.85));
+    }
+    if(Math.abs(side)<1.35&&ahead<1.2&&ahead>-.4){
+      let push=(1.2-ahead)*.7;
+      r.x+=fX*push*dt*3;r.z+=fZ*push*dt*3;
+    }
+   }
+   r.x+=r.vx*dt;r.z+=r.vz*dt;
+   r.x=clamp(r.x,-30.5,30.5);r.z=clamp(r.z,-26.2,29);
+   // Initially piles stand high, then roll off the scoop and settle naturally.
+   r.y=Math.max(0,r.y-dt*(r.kind==='gold'?.18:.29));
+   if(this.stage===0){
+    if(r.kind==='blue'&&!r.passed&&r.z<3.1&&r.z>1.8&&Math.abs(r.x-1)<5.35&&r.vz<-.22){
+      r.passed=true;this.multiply(r,10);
+    }
+    let cr=world.crusher;
+    if(Math.abs(r.x-cr.x)<2.25&&Math.abs(r.z-cr.z)<1.1){
+      r.vx+=(r.x>=cr.x?1:-1)*dt*14;
+      r.vz+=(r.z>=cr.z?1:-1)*dt*10;
+      if(this.elapsed%2<dt*.23&&r.kind==='blue'&&Math.random()<.16){r.dead=true;this.emit('crush')}
+    }
+    if(r.kind==='gold'&&r.x>14.8&&r.x<23.1&&r.z<-10.8&&r.z>-15.2&&r.cooldown===0){
+      r.dead=true;this.deposit++;this.remaining=Math.max(0,2500-this.deposit);this.emit('deposit',{value:this.remaining});
+      if(this.remaining===0&&!this.won){this.won=true;this.emit('upgrade')}
+    }
+    if(r.x>-16.5&&r.x<-10.5&&r.z<-13&&r.z>-27&&r.kind!=='pearl'){
+      r.dead=true;this.processed+=(r.kind==='gold'?1:3);this.emit('process',{value:this.processed})
+    }
+   }else if(r.kind==='ingot'&&!r.passed&&r.z<-8.0&&r.z>-9.1&&Math.abs(r.x+9)<5.1&&r.vz<-.2){
+     r.passed=true;this.multiply(r,10000);
+   }
+  }
+  if(this.queuedAdd.length){this.resources.push(...this.queuedAdd);this.queuedAdd.length=0}
+  // Collide mobile particles against nearby objects, not with O(n²) all-pairs checks.
+  this.collisionTick++;if(this.collisionTick%2===0)this.resolveGranules(dt);
+  this.restock+=dt;
+  if(this.restock>22){this.restock=0;
+    let existing=this.resources.filter(r=>!r.dead);
+    let gold=existing.filter(r=>r.kind==='gold').length,blue=existing.filter(r=>r.kind==='blue').length;
+    const make=(kind,cx,cz,n,rad)=>{for(let i=0;i<n&&this.resources.length<MAX_RESOURCES;i++){
+      let a=Math.random()*TAU,d=Math.sqrt(Math.random())*rad;
+      this.resources.push({kind,x:cx+Math.cos(a)*d,z:cz+Math.sin(a)*d,y:Math.random()*.35,vx:0,vz:0,spin:Math.random()*TAU,angle:0,passed:false,cooldown:0,dead:false})
+    }};
+    if(this.stage===0&&gold<400){make('gold',17.2,4.0,420,6.2);this.emit('restock')}
+    if(this.stage===0&&blue<170)make('blue',4,8.6,170,4.0);
+    if(this.stage===1&&existing.length<180)make('ingot',0,2,220,5.0);
+  }
+  if(this.resources.length>MAX_RESOURCES*1.2)this.resources=this.resources.filter(r=>!r.dead);
+ }
+ multiply(original,factor=10){
+  // The factor is numerically real; high tiers use aggregate-weight particles
+  // to avoid trying to simulate 10,000 unique rigid bodies per ingot.
+  const weight=original.weight||1;
+  const logicalCreated=(factor-1)*weight;
+  this.multipliedValue+=logicalCreated;
+  let free=MAX_RESOURCES-this.resources.length-this.queuedAdd.length;
+  let visualCount=Math.min(factor-1,factor>100?32:9,free);
+  for(let i=0;i<visualCount;i++){
+   let a=Math.random()*TAU,d=.35+Math.random()*1.0;
+   this.queuedAdd.push({...original,
+     x:original.x+Math.cos(a)*d,z:original.z-Math.abs(Math.sin(a)*d),y:Math.random()*.9,
+     vx:(Math.random()-.5)*5,vz:-1.5-Math.random()*3.0,
+     weight:logicalCreated/visualCount,passed:true,dead:false,spin:Math.random()*TAU,cooldown:.5});
+  }
+  if(this.elapsed-this.lastGate>1.2){this.lastGate=this.elapsed;this.gateHits++;this.emit('multiply',{factor,logicalCreated,visualCount})}
+ }
+ resolveGranules(dt){let bucket=new Map(),cell=.78,active=[];
+  for(let i=0;i<this.resources.length;i++){const p=this.resources[i];if(p.dead)continue;
+   let cx=Math.floor(p.x/cell),cz=Math.floor(p.z/cell),key=cx+','+cz;if(!bucket.has(key))bucket.set(key,[]);bucket.get(key).push(i);
+   if(Math.abs(p.vx)+Math.abs(p.vz)>.2)active.push(i);
+  }
+  let processed=0;
+  for(const i of active){let a=this.resources[i],ix=Math.floor(a.x/cell),iz=Math.floor(a.z/cell);
+   for(let gx=-1;gx<=1;gx++)for(let gz=-1;gz<=1;gz++){
+    let v=bucket.get((ix+gx)+','+(iz+gz));if(!v)continue;
+    for(let j of v){if(j===i)continue;let b=this.resources[j],dx=a.x-b.x,dz=a.z-b.z,rr=(RADII[a.kind]||.24)+(RADII[b.kind]||.24),sq=dx*dx+dz*dz;
+     if(sq>=rr*rr||sq<.000001)continue;let d=Math.sqrt(sq),force=(rr-d)*.40,nx=dx/d,nz=dz/d;
+     a.x+=nx*force;a.z+=nz*force;b.x-=nx*force*.72;b.z-=nz*force*.72;
+     b.vx+=nx*-force*.9;b.vz+=nz*-force*.9;
+    }
+   }
+   if(++processed>1700)break;
+  }
+ }
+}
+
+// --- vehicle.js ---
+/* Procedural bulldozer and collectables derived from observations of the ad footage.
+ * Geometry is authored here rather than importing the advertised game's assets.
+ */
+const RUBBER=[.105,.121,.121,5],RUBBER_EDGE=[.18,.21,.21,5];
+const STEEL=[.37,.42,.41,4],STEEL_LIGHT=[.66,.69,.65,4];
+const YELLOW=[1.0,.69,.065,4],YELLOW_LIT=[1,.81,.17,4],YELLOW_DARK=[.75,.44,.037,4];
+function renderVehicle(renderer,player,t){
+ const {x,z,yaw,level}=player;
+ const advanced=level>=2,upgraded=level>=1;
+ const blade=advanced?[.24,.69,.82,4]:YELLOW;
+ const bladeEdge=advanced?[.11,.42,.54,4]:YELLOW_DARK;
+ const hood=advanced?[.92,.44,.25,4]:YELLOW;
+ const co=Math.cos(yaw),si=Math.sin(yaw);
+ function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
+  const xx=x+lx*co+lz*si,zz=z-lx*si+lz*co;
+  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,yaw+a,p,roll,opacity);
+ }
+ part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
+ // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
+ for(const side of [-1,1]){
+  const xx=side*.99;
+  part('track',xx,.55,.49,.77,1.03,1.10,RUBBER);
+  part('track',xx,.57,.49,.46,.70,.86,RUBBER_EDGE);
+  for(const zz of [-.55,.48,1.43]){
+   part('cylinder',side*1.395,.55,zz,.68,.27,.68,[.87,.61,.10,4],0,0,Math.PI/2);
+   part('cylinder',side*1.54,.55,zz,.31,.28,.31,STEEL,0,0,Math.PI/2);
+  }
+  // Offset rubber shoes around each track. These are visible individually in close shots.
+  for(let j=-6;j<=6;j++){
+   const tz=.48+j*.204;
+   part('box',side*.99,.124,tz,.81,.115,.125,RUBBER_EDGE);
+   part('box',side*.99,.981,tz,.81,.08,.125,RUBBER);
+  }
+  part('box',side*.94,.88,.54,.68,.125,2.25,[.25,.28,.27,5]);
+ }
+ // Articulated chassis, engine bonnet, and sloped front cover.
+ part('box',0,.88,.65,1.73,.64,2.45,hood);
+ part('box',0,1.16,-.47,1.48,.51,1.22,hood);
+ part('box',0,1.39,-.85,1.50,.11,.65,YELLOW_LIT);
+ part('box',0,.78,-.94,1.62,.24,.44,YELLOW_DARK);
+ for(let i=-2;i<=2;i++)part('box',i*.19,1.02,-1.185,.055,.20,.037,RUBBER);
+ part('box',0,1.0,1.89,1.6,.48,.90,STEEL);
+ part('box',0,1.0,2.31,1.15,.50,.28,RUBBER_EDGE);
+ // Rounded rear tank is visually distinct in the later ad cuts.
+ if(upgraded){
+  part('cylinder',0,1.34,1.63,1.37,1.61,1.37,[.87,.22,.19,4],0,0,Math.PI/2);
+  for(const zz of [1.18,2.06])part('cylinder',0,1.35,zz,1.41,.17,1.43,STEEL,0,0,Math.PI/2);
+  part('box',0,1.84,1.64,.57,.20,.53,[1,.47,.37,4]);
+ }else{
+  part('box',0,1.31,1.72,.68,.51,.58,YELLOW_DARK);
+ }
+ // Open driver's station with green figure and steering wheel.
+ part('box',0,1.42,.50,.69,.14,.75,STEEL);
+ part('box',0,1.65,.77,.74,.77,.67,[.44,.53,.11,4]);
+ part('box',0,1.92,.37,.58,.57,.54,[.64,.78,.20,4]);
+ part('sphere',0,2.29,.22,.66,.66,.63,[.65,.94,.16,4]);
+ part('box',0,2.18,-.015,.70,.13,.23,[.93,.80,.30,4]);
+ part('box',-.48,1.90,.21,.23,.42,.30,hood);
+ part('box',.48,1.90,.21,.23,.42,.30,hood);
+ part('cylinder',0,1.58,-.12,.65,.09,.65,RUBBER,0,.65,0);
+ part('box',0,1.18,-.46,.55,.08,.42,STEEL);
+ // Exhaust with hollow dark top, hydraulic booms mounted to sidewalls.
+ part('cylinder',.68,1.92,1.02,.25,1.31,.25,STEEL);
+ part('cylinder',.68,2.61,1.02,.33,.13,.33,RUBBER);
+ for(const side of [-1,1]){
+  part('box',side*.81,.93,-1.22,.27,.31,1.93,YELLOW_DARK);
+  part('cylinder',side*1.05,1.09,-1.66,.25,1.22,.25,STEEL,0,.35,Math.PI/2);
+  part('cylinder',side*1.07,1.10,-1.89,.12,.82,.14,STEEL_LIGHT,0,.35,Math.PI/2);
+  part('sphere',side*1.12,1.00,-2.17,.22,.22,.22,[.36,.40,.41,4]);
+ }
+ // v0.2: actual concave bucket shell, with dedicated sideplates, bolted upper rim
+ // and a sharp scraper lip. Its silhouette is modelled in 3D and is visible at any yaw.
+ part('scoop',0,0,0,advanced?1.11:1,1,1,blade);
+ for(const side of [-1,1]){
+  part('cheek',side*1.97,0,0,.23,1,1,bladeEdge);
+  part('box',side*1.96,.22,-2.56,.28,.17,.72,blade);
+  part('cylinder',side*1.99,1.23,-1.63,.19,.25,.19,STEEL_LIGHT,0,0,Math.PI/2);
+ }
+ part('box',0,1.40,-1.72,4.03,.13,.22,YELLOW_LIT);
+ part('box',0,.17,-2.79,4.02,.075,.30,STEEL_LIGHT);
+ part('box',0,.14,-2.94,3.94,.040,.11,bladeEdge);
+ for(const side of [-1,1])part('box',side*1.45,1.43,-1.72,.12,.10,.27,STEEL);
+}
+function renderTreads(renderer,treads,stage){
+ const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
+ for(const q of treads){
+  renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,q.a+.15);
+  renderer.add('box',q.x+Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,q.a-.24);
+ }
+}
+function renderResources(renderer,resources,time,cam){let count=0;
+ for(const p of resources){
+  if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
+  const y=.12+p.y,spin=p.spin||0;
+  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.69:.83,1,p.kind==='gold'?.69:.83,[0,0,0,8]);
+  switch(p.kind){
+   case 'blue':{
+    renderer.add('sphere',p.x,y+.235,p.z,.58,.59,.58,[.045,.49,.92,4],spin);
+    // Three reflective blue/white arcs make each orb read as a collectible at a distance.
+    renderer.add('sphere',p.x-.11,y+.423,p.z+.03,.24,.13,.16,[.28,.87,1,4],spin);
+    renderer.add('sphere',p.x+.14,y+.286,p.z+.19,.18,.09,.09,[.74,.93,1,4]);
+    renderer.add('sphere',p.x-.17,y+.19,p.z+.17,.105,.15,.09,[.19,.80,1,4]);
+    break;
+   }
+   case 'gold':{
+    renderer.add('coin',p.x,y+.098,p.z,.64,.15,.64,[1,.71,.018,7],spin,0);
+    renderer.add('coin',p.x,y+.187,p.z,.53,.025,.53,[1,.85,.13,7],spin,0);
+    renderer.add('coin',p.x,y+.201,p.z,.34,.027,.34,[.95,.58,.018,7],spin,0);
+    // Raised square and cross are tiny non-text relief (visible in closer piles).
+    renderer.add('box',p.x,y+.221,p.z,.075,.027,.32,[1,.88,.23,7],spin);
+    renderer.add('box',p.x,y+.233,p.z,.25,.025,.064,[1,.88,.23,7],spin);
+    break;
+   }
+   case 'pearl':
+    renderer.add('sphere',p.x,y+.39,p.z,.87,.88,.86,[.99,.71,.81,4]);
+    renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);break;
+   case 'ingot':
+    renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7],spin);
+    renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7],spin);break;
+   default:renderer.add('sphere',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
+  }
+  count++;
+ }
+ return count;
+}
+
+// --- main.js ---
+
+
+
+
+
+const canvas=document.getElementById('scene');
+// v0.2 uses a fixed azimuth like the ad; mouse wheel only changes photographic distance.
+canvas.addEventListener('wheel',e=>{if(renderer){renderer.camera.zoom=clamp(renderer.camera.zoom+e.deltaY*.00042,.74,1.4);e.preventDefault()}},{passive:false});
+const menu=document.getElementById('menu');
+const toastElement=document.getElementById('toast');
+const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
+const labels={gate:document.getElementById('label-gate'),gate2:document.getElementById('label-gate2'),cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
+const pauseButton=document.getElementById('pauseButton');
+const playButton=document.getElementById('playButton');
+const sceneButton=document.getElementById('sceneButton');
+let renderer,world,sim,stage=0,paused=true,keys=new Set(),drag={id:null,x:0,y:0,originX:0,originY:0},last=0,clocks=0,sound=null,notifUntil=0,upgradeUnlocked=false;
+function loadProgress(){try{let p=JSON.parse(localStorage.getItem('video-dozer-v01')||'null');if(p&&Number.isInteger(p.deposit)){return {deposit:clamp(p.deposit,0,2500),done:!!p.done}}}catch(e){}return {deposit:0,done:false}}
+function saveProgress(){try{localStorage.setItem('video-dozer-v01',JSON.stringify({deposit:sim.deposit,done:sim.won}))}catch(e){}}
+function loadScene(s,preserve=false){stage=s;world=new World(stage);sim=new Simulation(stage);if(stage===0&&preserve){let p=loadProgress();sim.deposit=p.deposit;sim.remaining=2500-p.deposit;sim.won=p.done;sim.player.level=p.done?1:0}if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z};sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI()}
+function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds}
+function beep(freq=530,length=.1,vol=.045){try{sound=sound||new(window.AudioContext||window.webkitAudioContext)();if(sound.state==='suspended')sound.resume();let oscillator=sound.createOscillator(),gain=sound.createGain();oscillator.type='triangle';oscillator.frequency.setValueAtTime(freq,sound.currentTime);oscillator.frequency.exponentialRampToValueAtTime(freq*.72,sound.currentTime+length);gain.gain.setValueAtTime(vol,sound.currentTime);gain.gain.exponentialRampToValueAtTime(.0002,sound.currentTime+length);oscillator.connect(gain);gain.connect(sound.destination);oscillator.start();oscillator.stop(sound.currentTime+length)}catch(e){}}
+function handleEvents(){let deposited=0,processed=0;
+ for(const event of sim.events){switch(event.type){
+  case 'multiply':toast('×'+event.factor+'！资源按倍数增殖（超大数量使用聚合显示）',1.65);beep(850,.13,.065);break;
+  case 'deposit':deposited++;if(sim.deposit%10===0||sim.remaining===2499){beep(380+sim.deposit%100*4,.045,.015)}break;
+  case 'process':processed++;break;
+  case 'upgrade':sim.player.level=1;upgradeUnlocked=true;toast('UPGRADE！升级已完成，重型红罐履带机已解锁',5);beep(660,.65,.12);saveProgress();break;
+  case 'restock':toast('新的矿石和金币已刷新',2.2);break;
+ }}sim.events.length=0;
+ if(deposited&&sim.deposit%7===0)saveProgress();
+}
+function updateUI(){document.getElementById('score').textContent=formatNum(sim?(stage?sim.multipliedValue:sim.processed):0);document.getElementById('left').textContent=stage===0?(sim.won?'完成':formatNum(sim.remaining)):'预览';labels.cost.textContent=stage===0?formatNum(sim.remaining):'10000';labels.lane.textContent=formatNum(sim.processed);document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'倍增值 ':'已入库 ';document.getElementById('hint').textContent=paused?'触摸屏幕任意处驾驶 / WASD':'触摸拖动驾驶 · P 暂停 · 铲球过门，推金币升级';}
+function positionLabels(){for(const e of Object.values(labels))e.style.display='none';const sites=world.sites;
+ function place(el,site,yOffset=0){if(!site)return;let p=renderer.screen(site.x,site.y+yOffset,site.z);if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px'}}
+ if(stage===0){place(labels.gate,sites.gate);place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter)}
+ else place(labels.gate2,sites.gate2);
+}
+function inputVector(){let x=0,y=0;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
+ if(drag.id!==null){x+=drag.x;y+=drag.y}
+ let len=Math.hypot(x,y);if(len>1){x/=len;y/=len}
+ // View-aligned: upper-left screen movement maps consistently to world-space.
+ return {x:x*.852+y*.523,z:-x*.523+y*.852};}
+function drawFrame(t){let dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
+ if(renderer){
+ if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents()}
+ renderer.begin(clocks,sim.player,dt);
+ world.render(renderer,clocks);
+ renderTreads(renderer,sim.treads,stage);
+ renderResources(renderer,sim.resources,clocks,renderer.camera);
+ renderVehicle(renderer,sim.player,clocks);
+ renderer.end();positionLabels();
+ if(Math.floor(clocks*8)!==Math.floor((clocks-dt)*8))updateUI();
+ document.getElementById('hint').classList.toggle('dismissed',!paused&&clocks>12);
+ }
+ if(clocks>notifUntil)toastElement.classList.remove('active');
+ requestAnimationFrame(drawFrame)
+}
+function showMenu(){paused=true;menu.classList.add('visible');playButton.textContent='继续驾驶';drag.id=null;joystick.style.display='none';updateUI()}
+function hideMenu(){paused=false;menu.classList.remove('visible');toast(stage===0?'先推蓝色球体穿过 ×10，再铲起金币推往右上方 UPGRADE': '后期场景预览：青色铲斗、紫色岩层、金条与 ×10000 门',4);updateUI()}
+function moveTouch(e){const dx=e.clientX-drag.originX,dy=e.clientY-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);drag.x=dx/max/mag;drag.y=dy/max/mag;knob.style.transform=`translate(${drag.x*42}px,${drag.y*42}px)`}
+function releasePointer(e){if(drag.id!==e.pointerId)return;drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)'}
+canvas.addEventListener('pointerdown',e=>{if(paused||drag.id!==null||e.button>0)return;drag.id=e.pointerId;drag.originX=e.clientX;drag.originY=e.clientY;drag.x=drag.y=0;joystick.style.left=e.clientX+'px';joystick.style.top=e.clientY+'px';joystick.style.display='block';canvas.setPointerCapture(e.pointerId);moveTouch(e);e.preventDefault()});
+canvas.addEventListener('pointermove',e=>{if(e.pointerId===drag.id){moveTouch(e);e.preventDefault()}});
+canvas.addEventListener('pointerup',releasePointer);canvas.addEventListener('pointercancel',releasePointer);
+window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.code==='KeyP'||e.code==='Escape'){e.preventDefault();if(paused)hideMenu();else showMenu()}});
+window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();drag.id=null;joystick.style.display='none'});
+playButton.addEventListener('click',hideMenu);pauseButton.addEventListener('click',showMenu);
+sceneButton.addEventListener('click',()=>{loadScene(stage===0?1:0,true);toast('场景已切换',2)});
+document.getElementById('resetButton').addEventListener('click',()=>{if(!confirm('清除升级进度并重置当前场景？'))return;try{localStorage.removeItem('video-dozer-v01')}catch(e){}loadScene(stage,false);toast('当前场景已重置')});
+try{renderer=new Renderer(canvas);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame)}catch(error){console.error(error);let panel=document.querySelector('.panel');let p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}
+
+})();
+</script>
+</body>
+</html>
