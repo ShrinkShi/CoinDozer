@@ -13,7 +13,7 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.4</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.4.1</span></div><div class="stats"><span>已入库 <strong id="score">0</strong></span><span>升级还差 <strong id="left">2500</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="worldLabels" aria-hidden="true">
       <div id="label-gate" class="world-label gate">×10</div>
       <div id="label-gate2" class="world-label gate">×10000</div>
@@ -54,6 +54,25 @@ function compose(x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){const a=Math.cos(yaw),b=Ma
  return [ (a*e+b*d*f)*sx,(c*f)*sx,(-b*e+a*d*f)*sx,0,(-a*f+b*d*e)*sy,(c*e)*sy,(b*f+a*d*e)*sy,0,(b*c)*sz,(-d)*sz,(a*c)*sz,0,x,y,z,1 ];}
 function project(vp,x,y,z,w,h){let p=[x,y,z,1],q=[0,0,0,0];for(let row=0;row<4;row++)q[row]=vp[row]*p[0]+vp[row+4]*p[1]+vp[row+8]*p[2]+vp[row+12]*p[3];if(q[3]<=0)return null;const nx=q[0]/q[3],ny=q[1]/q[3];return {x:(nx+1)*w/2,y:(1-ny)*h/2,visible:Math.abs(nx)<1.25&&Math.abs(ny)<1.25};}
 function formatNum(n){return Math.max(0,Math.floor(n)).toLocaleString('en-US')}
+
+// --- heading.js ---
+/** Vehicle and input heading conventions used by every gameplay subsystem.
+ * Heading yaw=0 points toward world -Z; positive yaw turns toward world +X.
+ * Local vehicle -Z is the front blade; renderer.compose uses the opposite
+ * yaw sign, so modelYaw(yaw) is always -yaw.
+ */
+function headingBasis(yaw){
+ const sin=Math.sin(yaw),cos=Math.cos(yaw);
+ return {fx:sin,fz:-cos,rx:cos,rz:sin};
+}
+function modelYaw(yaw){return -yaw;}
+/** Screen-aligned stick translation for the fixed world camera.
+ * Camera eye-target horizontal offset is (17, 30.3) world units.
+ */
+function screenStickToWorld(x,y){
+ const length=Math.hypot(17,30.3);
+ return {x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
+}
 
 // --- scoop.js ---
 /** One bucket profile shared by both the visible steel mesh and collision solver.
@@ -213,6 +232,7 @@ const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),c
 // --- renderer.js ---
 
 
+
 const VERT=`
 precision highp float;
 attribute vec3 aPosition;
@@ -331,7 +351,8 @@ class Renderer{
  // Ad footage uses a fixed-quarter-view camera. Keep the azimuth fixed while
  // gently leading the player's forward direction; never spin with the chassis.
  const follow=Math.min(1,dt*3.4);
- const headingX=Math.sin(player.yaw)*1.25,headingZ=-Math.cos(player.yaw)*1.25;
+ const {fx,fz}=headingBasis(player.yaw);
+ const headingX=fx*1.25,headingZ=fz*1.25;
  this.camera.x+=(player.x+headingX-this.camera.x)*follow;
  this.camera.z+=(player.z+headingZ-this.camera.z)*follow;
  const cx=this.camera.x,cz=this.camera.z-1.8;
@@ -472,6 +493,7 @@ function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=
  */
 
 
+
 const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
   gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
@@ -546,8 +568,7 @@ class GranularSolver {
   substep(resources, dt, player, previousPlayer, substeps){
     this.contacts=0;
     this.height=0;
-    const vx=Math.sin(player.yaw), vz=-Math.cos(player.yaw);
-    const rx=Math.cos(player.yaw), rz=Math.sin(player.yaw);
+    const {fx:vx,fz:vz,rx,rz}=headingBasis(player.yaw);
     const playerDx=player.x-previousPlayer.x,playerDz=player.z-previousPlayer.z;
     // The lip follows the machine, not an invisible attraction toward the player.
     const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);
@@ -707,6 +728,7 @@ class GranularSolver {
 
 
 
+
 const MAX_RESOURCES=2800;
 const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
 
@@ -730,21 +752,26 @@ class Simulation {
   const p=this.player;
   const previous={x:p.x,z:p.z};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
-  const desiredV=goal>.08?(p.level?6.0:5.55)*strength:0;
-  p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?7.5:12));
+  let alignment=1;
   if(goal>.1){
    const target=Math.atan2(dirX,-dirZ);
    const delta=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
-   p.yaw+=clamp(delta,-dt*5.3,dt*5.3);
+   p.yaw+=clamp(delta,-dt*7.5,dt*7.5);
+   // An arcade joystick must never move the vehicle backwards while the
+   // model is still rotating toward a newly reversed stick direction.
+   const error=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
+   alignment=Math.max(0,Math.cos(error));
   }
-  const fx=Math.sin(p.yaw),fz=-Math.cos(p.yaw),step=p.speed*dt;
+  const desiredV=goal>.08?(p.level?6.0:5.55)*strength*alignment:0;
+  p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?8.8:12));
+  if(goal>.1 && alignment<.001)p.speed=0;
+  const {fx,fz,rx,rz}=headingBasis(p.yaw),step=p.speed*dt;
   p.x=clamp(p.x+fx*step,-28,28);
   p.z=clamp(p.z+fz*step,-23,26);
   if(p.speed>.8){
    this.lastTrail+=step;
    if(this.lastTrail>.38){
     this.lastTrail=0;
-    const rx=Math.cos(p.yaw),rz=Math.sin(p.yaw);
     for(const side of [-1,1])this.treads.push({x:p.x+rx*side*.90-fx*.62,z:p.z+rz*side*.90-fz*.62,a:p.yaw,t:this.elapsed});
     if(this.treads.length>700)this.treads.splice(0,25);
    }
@@ -833,6 +860,7 @@ class Simulation {
 
 // --- vehicle.js ---
 
+
 /* Procedural bulldozer and collectables derived from observations of the ad footage.
  * Geometry is authored here rather than importing the advertised game's assets.
  */
@@ -845,10 +873,11 @@ function renderVehicle(renderer,player,t){
  const blade=advanced?[.24,.69,.82,4]:YELLOW;
  const bladeEdge=advanced?[.11,.42,.54,4]:YELLOW_DARK;
  const hood=advanced?[.92,.44,.25,4]:YELLOW;
- const co=Math.cos(yaw),si=Math.sin(yaw);
+ const {fx,fz,rx,rz}=headingBasis(yaw);
  function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
-  const xx=x+lx*co+lz*si,zz=z-lx*si+lz*co;
-  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,yaw+a,p,roll,opacity);
+  // Match the movement/physical blade convention: local -Z is FORWARD.
+  const xx=x+lx*rx-lz*fx,zz=z+lx*rz-lz*fz;
+  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
  // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
@@ -919,8 +948,8 @@ function renderVehicle(renderer,player,t){
 function renderTreads(renderer,treads,stage){
  const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
  for(const q of treads){
-  renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,q.a+.15);
-  renderer.add('box',q.x+Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,q.a-.24);
+  renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,modelYaw(q.a)+.15);
+  renderer.add('box',q.x-Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,modelYaw(q.a)-.24);
  }
 }
 function renderResources(renderer,resources,time,cam){let count=0;
@@ -962,6 +991,7 @@ function renderResources(renderer,resources,time,cam){let count=0;
 
 
 
+
 const canvas=document.getElementById('scene');
 // v0.2 uses a fixed azimuth like the ad; mouse wheel only changes photographic distance.
 canvas.addEventListener('wheel',e=>{if(renderer){renderer.camera.zoom=clamp(renderer.camera.zoom+e.deltaY*.00042,.74,1.4);e.preventDefault()}},{passive:false});
@@ -997,8 +1027,8 @@ function positionLabels(){for(const e of Object.values(labels))e.style.display='
 function inputVector(){let x=0,y=0;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
  if(drag.id!==null){x+=drag.x;y+=drag.y}
  let len=Math.hypot(x,y);if(len>1){x/=len;y/=len}
- // View-aligned: upper-left screen movement maps consistently to world-space.
- return {x:x*.852+y*.523,z:-x*.523+y*.852};}
+ // Project joystick motion using the exact fixed-camera azimuth.
+ return screenStickToWorld(x,y);}
 function drawFrame(t){let dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
  if(renderer){
  if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents()}

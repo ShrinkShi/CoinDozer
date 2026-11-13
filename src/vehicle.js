@@ -1,4 +1,5 @@
 import {particleHalfHeight} from './granular.js';
+import {headingBasis,modelYaw} from './heading.js';
 /* Procedural bulldozer and collectables derived from observations of the ad footage.
  * Geometry is authored here rather than importing the advertised game's assets.
  */
@@ -11,10 +12,11 @@ export function renderVehicle(renderer,player,t){
  const blade=advanced?[.24,.69,.82,4]:YELLOW;
  const bladeEdge=advanced?[.11,.42,.54,4]:YELLOW_DARK;
  const hood=advanced?[.92,.44,.25,4]:YELLOW;
- const co=Math.cos(yaw),si=Math.sin(yaw);
+ const {fx,fz,rx,rz}=headingBasis(yaw);
  function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
-  const xx=x+lx*co+lz*si,zz=z-lx*si+lz*co;
-  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,yaw+a,p,roll,opacity);
+  // Match the movement/physical blade convention: local -Z is FORWARD.
+  const xx=x+lx*rx-lz*fx,zz=z+lx*rz-lz*fz;
+  renderer.add(mesh,xx,ly,zz,sx,sy,sz,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
  // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
@@ -85,8 +87,8 @@ export function renderVehicle(renderer,player,t){
 export function renderTreads(renderer,treads,stage){
  const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
  for(const q of treads){
-  renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,q.a+.15);
-  renderer.add('box',q.x+Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,q.a-.24);
+  renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,modelYaw(q.a)+.15);
+  renderer.add('box',q.x-Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,modelYaw(q.a)-.24);
  }
 }
 export function renderResources(renderer,resources,time,cam){let count=0;

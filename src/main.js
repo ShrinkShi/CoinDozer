@@ -3,6 +3,7 @@ import {World} from './world.js';
 import {Simulation} from './physics.js';
 import {renderVehicle,renderTreads,renderResources} from './vehicle.js';
 import {clamp,formatNum} from './math.js';
+import {screenStickToWorld} from './heading.js';
 const canvas=document.getElementById('scene');
 // v0.2 uses a fixed azimuth like the ad; mouse wheel only changes photographic distance.
 canvas.addEventListener('wheel',e=>{if(renderer){renderer.camera.zoom=clamp(renderer.camera.zoom+e.deltaY*.00042,.74,1.4);e.preventDefault()}},{passive:false});
@@ -38,8 +39,8 @@ function positionLabels(){for(const e of Object.values(labels))e.style.display='
 function inputVector(){let x=0,y=0;if(keys.has('KeyW')||keys.has('ArrowUp'))y--;if(keys.has('KeyS')||keys.has('ArrowDown'))y++;if(keys.has('KeyA')||keys.has('ArrowLeft'))x--;if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
  if(drag.id!==null){x+=drag.x;y+=drag.y}
  let len=Math.hypot(x,y);if(len>1){x/=len;y/=len}
- // View-aligned: upper-left screen movement maps consistently to world-space.
- return {x:x*.852+y*.523,z:-x*.523+y*.852};}
+ // Project joystick motion using the exact fixed-camera azimuth.
+ return screenStickToWorld(x,y);}
 function drawFrame(t){let dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
  if(renderer){
  if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents()}

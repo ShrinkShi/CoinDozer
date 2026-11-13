@@ -1,6 +1,7 @@
 import {clamp,TAU} from './math.js';
 import {createResourceLayout} from './world.js';
 import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
+import {headingBasis} from './heading.js';
 
 export const MAX_RESOURCES=2800;
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -25,21 +26,26 @@ export class Simulation {
   const p=this.player;
   const previous={x:p.x,z:p.z};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
-  const desiredV=goal>.08?(p.level?6.0:5.55)*strength:0;
-  p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?7.5:12));
+  let alignment=1;
   if(goal>.1){
    const target=Math.atan2(dirX,-dirZ);
    const delta=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
-   p.yaw+=clamp(delta,-dt*5.3,dt*5.3);
+   p.yaw+=clamp(delta,-dt*7.5,dt*7.5);
+   // An arcade joystick must never move the vehicle backwards while the
+   // model is still rotating toward a newly reversed stick direction.
+   const error=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
+   alignment=Math.max(0,Math.cos(error));
   }
-  const fx=Math.sin(p.yaw),fz=-Math.cos(p.yaw),step=p.speed*dt;
+  const desiredV=goal>.08?(p.level?6.0:5.55)*strength*alignment:0;
+  p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?8.8:12));
+  if(goal>.1 && alignment<.001)p.speed=0;
+  const {fx,fz,rx,rz}=headingBasis(p.yaw),step=p.speed*dt;
   p.x=clamp(p.x+fx*step,-28,28);
   p.z=clamp(p.z+fz*step,-23,26);
   if(p.speed>.8){
    this.lastTrail+=step;
    if(this.lastTrail>.38){
     this.lastTrail=0;
-    const rx=Math.cos(p.yaw),rz=Math.sin(p.yaw);
     for(const side of [-1,1])this.treads.push({x:p.x+rx*side*.90-fx*.62,z:p.z+rz*side*.90-fz*.62,a:p.yaw,t:this.elapsed});
     if(this.treads.length>700)this.treads.splice(0,25);
    }

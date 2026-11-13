@@ -9,6 +9,7 @@
  * No dependencies, no allocations proportional to particle count squared.
  */
 import {clamp} from './math.js';
+import {headingBasis} from './heading.js';
 import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
 export const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
@@ -84,8 +85,7 @@ export class GranularSolver {
   substep(resources, dt, player, previousPlayer, substeps){
     this.contacts=0;
     this.height=0;
-    const vx=Math.sin(player.yaw), vz=-Math.cos(player.yaw);
-    const rx=Math.cos(player.yaw), rz=Math.sin(player.yaw);
+    const {fx:vx,fz:vz,rx,rz}=headingBasis(player.yaw);
     const playerDx=player.x-previousPlayer.x,playerDz=player.z-previousPlayer.z;
     // The lip follows the machine, not an invisible attraction toward the player.
     const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);

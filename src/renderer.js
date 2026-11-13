@@ -1,5 +1,6 @@
 import {GEOMETRY} from './geometry.js';
 import {compose, mat4Mul, ortho, lookAt, project} from './math.js';
+import {headingBasis} from './heading.js';
 const VERT=`
 precision highp float;
 attribute vec3 aPosition;
@@ -118,7 +119,8 @@ export class Renderer{
  // Ad footage uses a fixed-quarter-view camera. Keep the azimuth fixed while
  // gently leading the player's forward direction; never spin with the chassis.
  const follow=Math.min(1,dt*3.4);
- const headingX=Math.sin(player.yaw)*1.25,headingZ=-Math.cos(player.yaw)*1.25;
+ const {fx,fz}=headingBasis(player.yaw);
+ const headingX=fx*1.25,headingZ=fz*1.25;
  this.camera.x+=(player.x+headingX-this.camera.x)*follow;
  this.camera.z+=(player.z+headingZ-this.camera.z)*follow;
  const cx=this.camera.x,cz=this.camera.z-1.8;
