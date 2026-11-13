@@ -15,7 +15,7 @@ with sync_playwright() as p:
   page.set_content(html,wait_until='load',timeout=25000)
   page.locator('#playButton').click(timeout=10000)
   page.wait_for_timeout(120)
-  assert '0.5.0' in page.locator('.ver').inner_text()
+  assert '0.5.1' in page.locator('.ver').inner_text()
   assert '实体' in page.locator('#resourceCount').inner_text()
   assert page.locator('#label-gate-0').count()==1
   # Hit the real canvas wheel event.

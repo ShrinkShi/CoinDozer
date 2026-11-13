@@ -39,8 +39,8 @@ with sync_playwright() as p:
   coin.x=19;coin.z=-12;coin.vx=0;coin.vz=0;
   const before=sim.remaining;
   sim.update(.022,0,0,world);
-  const deducted=before===150&&sim.remaining===149;
-  sim.deposit=149;sim.remaining=1;
+  const deducted=before===30&&sim.remaining===29;
+  sim.deposit=29;sim.remaining=1;
   const another={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
   sim.resources.push(another);
   another.x=19;another.z=-12;another.vx=0;another.vz=0;

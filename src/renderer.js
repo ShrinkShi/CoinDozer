@@ -87,6 +87,12 @@ void main(){
  }else{
   color+=specular*.07;
  }
+ // Highlight spawned portal particles without an extra per-instance attribute.
+ // Integer material ID is preserved; fraction 0..0.25 encodes white flash.
+ if((mat>=7. && mat<7.5)||(mat>=9. && mat<9.5)){
+  float flash=clamp(fract(mat)*4.,0.,1.);
+  color=mix(color,vec3(1.0),flash*.94);
+ }
  float alpha=mat<.99?mat:1.;
  gl_FragColor=vec4(color,alpha);
 }`;

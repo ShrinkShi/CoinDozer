@@ -1,6 +1,6 @@
 /** Visible-resource economy. One particle always represents one real item. */
 export const MAX_RESOURCES = 6500;
-export const UPGRADE_COSTS = Object.freeze([150, 600, 2500, 6000]);
+export const UPGRADE_COSTS = Object.freeze([30, 90, 240, 600]);
 export const MAX_VEHICLE_LEVEL = UPGRADE_COSTS.length;
 export function upgradeCost(level){ return UPGRADE_COSTS[level] ?? 0; }
 export function remainingCost(level, deposited){

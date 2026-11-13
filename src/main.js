@@ -70,7 +70,7 @@ function handleEvents(){
  if(upgrades.length){toast('载具升级至 Lv.'+upgrades[upgrades.length-1]+'！下一辆升级车已就位',3);beep(690,.48,.10);}
  else if(full)toast('现场已有 '+MAX_RESOURCES+' 个实体资源，请先粉碎或投入金币',2.8);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
- else if(converted){toast('粉碎成功：'+converted+' 颗矿石转成金币',1.6);beep(460,.095,.038);}
+ else if(converted){toast('粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
 }
 function updateUI(){
  if(!sim)return;

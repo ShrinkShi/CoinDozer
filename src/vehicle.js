@@ -1,3 +1,4 @@
+import {flashIntensity} from './flash.js';
 import {particleHalfHeight} from './granular.js';
 import {headingBasis,modelYaw} from './heading.js';
 /* Procedural bulldozer and collectables derived from observations of the ad footage.
@@ -109,12 +110,15 @@ export function renderResources(renderer,resources,time,cam){let count=0;
  for(const p of resources){
   if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
   const y=.12+p.y,spin=p.spin||0;
+  // Spawn-only white flare: fast ignition, much slower decay.
+  const flash=p.flashStartedAt===undefined?0:flashIntensity(time-p.flashStartedAt);
+
   if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
   switch(p.kind){
    case 'blue':{
     // A single shaded ball with view-independent shell markings. Avoid four
     // overlapping meshes per orb, which is expensive on mobile GPUs.
-    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9],spin*.22,spin*.32,spin*.19);
+    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9+flash*.25],spin*.22,spin*.32,spin*.19);
     break;
    }
    case 'gold':{
@@ -122,15 +126,15 @@ export function renderResources(renderer,resources,time,cam){let count=0;
     // a rigid-looking body. The centre follows the solver's tilt-aware support.
     const half=particleHalfHeight(p);
     renderer.add('coin',p.x,p.y+.052+half,p.z,.70,.70,.70,
-      [1,.73,.024,7],p.angle||0,p.tiltX||0,p.tiltZ||0);
+      [1,.73,.024,7+flash*.25],p.angle||0,p.tiltX||0,p.tiltZ||0);
     break;
    }
    case 'pearl':
-    renderer.add('sphere',p.x,y+.39,p.z,.87,.88,.86,[.99,.71,.81,4]);
+    renderer.add('sphere',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
     renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);break;
    case 'ingot':
-    renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7],spin);
-    renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7],spin);break;
+    renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7+flash*.25],spin);
+    renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7+flash*.25],spin);break;
    default:renderer.add('sphere',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
   }
   count++;

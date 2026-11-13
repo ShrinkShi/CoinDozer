@@ -10,7 +10,7 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.5.0</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>升级还差 <strong id="left">150</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.5.1</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>升级还差 <strong id="left">30</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="worldLabels" aria-hidden="true">
@@ -19,7 +19,7 @@
       <div id="label-gate-2" class="world-label gate">×5</div>
       <div id="label-gate-3" class="world-label gate">×10</div>
       <div id="label-gate-4" class="world-label gate">×5</div>
-      <div id="label-cost" class="world-label cost">150</div>
+      <div id="label-cost" class="world-label cost">30</div>
       <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
       <div id="label-score" class="world-label lane">0</div>
     </div>
@@ -28,13 +28,13 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.5</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.5.1</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
-        <p>选择 <b>×2、×3、×5、×10</b> 门，亲眼看矿石真正增加。把蓝球推进右侧的橙色粉碎轮变成金币，再将金币推入右上方的紫色升级站；车辆靠近站台时自动逐枚投入金币，站上的新车就是你的下一次升级。</p>
+        <p>选择 <b>×2、×3、×5、×10</b> 门，亲眼看矿石真正增加。把蓝球推进右侧的橙色粉碎轮，每颗变成 3 枚金币，再将金币推入右上方的紫色升级站；车辆靠近站台时自动逐枚投入金币，站上的新车就是你的下一次升级。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">v0.5：每次倍增都创建真实独立实体，不使用视觉聚合；场景上限 6500，达到上限会阻止继续倍增。颗粒碰撞采用邻近求解和远处休眠，以适配浏览器。所有素材由程序建模，不依赖后端或外部美术资源。</p>
+        <p class="footnote">v0.5.1：双向倍数门，每次倍增都创建真实独立实体，不使用视觉聚合；场景上限 6500，达到上限会阻止继续倍增。颗粒碰撞采用邻近求解和远处休眠，以适配浏览器。所有素材由程序建模，不依赖后端或外部美术资源。</p>
       </div>
     </section>
   </div>
