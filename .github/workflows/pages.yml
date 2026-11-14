@@ -27,6 +27,7 @@ jobs:
           node --check src/triggers.js
           node tests/v0631_triggers.mjs
           node tests/v064_vehicle.mjs
+          node tests/v065_cave.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -41,7 +42,7 @@ jobs:
       - name: Check repository offline HTML is in sync
         run: git diff --exit-code -- dist/index.html
       - name: Verify bundled gameplay version
-        run: grep -q 'VIDEO REPLICA · 0.6.4' dist/index.html
+        run: grep -q 'VIDEO REPLICA · 0.6.5' dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
