@@ -1,0 +1,22 @@
+name: Validate pull requests
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gameplay regression suite
+        run: |
+          node tests/v062_mechanics.mjs
+          node tests/v061_economy.mjs
+          node tests/v06_progression.mjs
+          node tests/v051_mechanics.mjs
+          node tests/v041_controls.mjs
+      - name: Rebuild offline distribution
+        run: |
+          python build.py
+          grep -q 'VIDEO REPLICA · 0.6.2' dist/index.html
