@@ -25,6 +25,7 @@ jobs:
         run: |
           python build.py
           node tests/v0632_bundle_syntax.mjs
+          git diff --exit-code -- dist/index.html
           grep -q 'VIDEO REPLICA · 0.6.3.2' dist/index.html
 
   browser-smoke:
