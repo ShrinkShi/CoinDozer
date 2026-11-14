@@ -106,7 +106,7 @@ export class Simulation{
   if(r.dead||!isStageCurrency(this.stage,r.kind))return false;
   let progress,costs;
   if(station==='gate'){
-   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.gateTracks.length)return false;
+   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
   }else if(station==='feature'){
    if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
