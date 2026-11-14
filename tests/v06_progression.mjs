@@ -10,10 +10,10 @@ const make=()=>{const s=new Simulation(0);s.resources=[];s.granular.step=()=>{};
 assert.deepEqual(GATE_FACTORS,[2,3,5,8,12,16,20]);
 assert.deepEqual(world.gates.map(g=>g.multiplier),[2,2,2,2]);
 for(let id=0;id<4;id++){
- const s=make(),pad=world.gateStations[id],gate=world.gates[id],c=coin(pad.x,pad.z);
+ const s=make(),pad=world.gateStations[id],gate=world.gates[id],c=coin(pad.x,pad.z+2);
  s.resources=[c];s.player.x=0;s.player.z=24;s.update(.016,0,0,world);
  assert.equal(c.dead,false);s.player.x=pad.x;s.player.z=pad.z;
- s.update(.016,0,0,world);assert.equal(c.dead,true);
+ s.granular.step=()=>{c.z=pad.z;};s.update(.016,0,0,world);assert.equal(c.dead,true);
  for(let tier=0;tier<GATE_COSTS.length;tier++){
   const amount=trackRemaining(s.gateTracks[id],GATE_COSTS);
   for(let i=0;i<amount;i++)assert.equal(s.payCoin(coin(pad.x,pad.z),null,'gate',id),true);

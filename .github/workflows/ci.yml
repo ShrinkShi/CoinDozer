@@ -12,6 +12,9 @@ jobs:
       - name: Gameplay regression suite
         run: |
           node --check src/main.js
+          node --check src/triggers.js
+          node tests/v0631_triggers.mjs
+          python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
           node tests/v061_economy.mjs
@@ -21,4 +24,4 @@ jobs:
       - name: Rebuild offline distribution
         run: |
           python build.py
-          grep -q 'VIDEO REPLICA · 0.6.3' dist/index.html
+          grep -q 'VIDEO REPLICA · 0.6.3.1' dist/index.html

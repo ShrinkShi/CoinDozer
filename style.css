@@ -41,3 +41,14 @@
 
 /* v0.6.2: temporary crusher yield, anchored to the 3D impact. */
 .world-label.crush-popup{font-size:clamp(18px,4vw,32px);color:#fff6ab;text-shadow:1px 2px #5f2e0c,0 0 9px #ffa624;z-index:4;pointer-events:none}
+
+/* v0.6.3.1: WebGL device-lost fallback; input is blocked until restoration. */
+#graphicsStatus[hidden]{display:none}
+#graphicsStatus{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+ padding:24px;background:#1b100ce8;pointer-events:auto}
+.graphics-recovery-panel{max-width:390px;width:100%;padding:22px;border:1px solid #f5cf8c88;
+ border-radius:14px;background:#2d211b;color:#f9eed7;text-align:center;box-shadow:0 12px 35px #0009}
+.graphics-recovery-panel strong{font-size:17px}
+.graphics-recovery-panel p{line-height:1.6;font-size:13px}
+#graphicsRefresh{padding:10px 20px;border-radius:8px;border:0;background:#fbc251;
+ color:#32220c;font-weight:800;pointer-events:auto}
