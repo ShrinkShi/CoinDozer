@@ -5,11 +5,12 @@ import {coinCredit} from './economy.js';
  * Gate progress is local to the map; chassis upgrades are shared.
  */
 export const SCENE_RULES=Object.freeze({
- 0:Object.freeze({id:0,name:'熔岩矿场',ore:'blue',currency:'gold',
-  yield:3,creditFactor:1,gateCount:4,
-  oreSupply:{x:4.5,z:9.0,below:220,batch:110,radius:3.2},
-  currencySupply:{x:14.6,z:5.5,below:280,batch:90,radius:3.6}}),
- 1:Object.freeze({id:1,name:'粉晶岩洞',ore:'pearl',currency:'ingot',
+ 0:Object.freeze({id:0,name:'冰河矿场',ore:'blue',currency:'gold',
+  yield:3,creditFactor:1,gateCount:1,
+  // Ore must be multiplied then processed. Gold is NOT auto-created.
+  oreSupply:{x:0,z:-39,below:180,batch:100,radius:6.5},
+  currencySupply:{x:0,z:13,below:0,batch:0,radius:2.8}}),
+ 1:Object.freeze({id:1,name:'冰雪矿区',ore:'pearl',currency:'ingot',
   yield:3,creditFactor:3,gateCount:2,
   oreSupply:{x:2.0,z:7.6,below:180,batch:90,radius:3.4},
   currencySupply:{x:9.1,z:3.6,below:125,batch:65,radius:3.0}})

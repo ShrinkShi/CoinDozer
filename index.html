@@ -17,10 +17,10 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.5</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.0</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
-    <div id="stageBadge" class="stage-badge" aria-live="polite">熔岩矿场</div>
+    <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
     <button type="button" id="cameraModeButton" aria-pressed="false" title="切换矿场跟随视角和铲车特写镜头">镜头：全景</button>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
     <section id="telemetryPanel" hidden aria-label="经济与性能监控">
@@ -41,14 +41,15 @@
         <span>近60秒矿石 / 粉晶加工</span><strong id="metricCrushed">0</strong>
         <span>近60秒实体倍增</span><strong id="metricClones">0</strong>
         <span>补货原料 / 可支付实体</span><strong id="metricSupply">0 / 0</strong>
-        <span>回收 / 倍增受阻</span><strong id="metricRecycled">0 / 0</strong>
+        <span>生产 / 倍增受阻</span><strong id="metricRecycled">0</strong>
       </div>
       <p id="metricStatus" class="telemetry-note">仅统计本次游玩；刷新后归零。前60秒为折算速率。</p>
     </section>
     <section id="upgradePicker" aria-label="选择铲车升级路线" hidden>
-      <div class="picker-title">选择升级目标 <small>选中后把金币或金锭推入载具升级台</small></div>
+      <div class="picker-title">车辆改装路线 <small>第一关仅底盘、速度、转向、铲斗在北岸车辆台选择升级</small></div>
       <div id="trackButtons" class="track-buttons"></div>
-      <p class="picker-footnote">每件可支付资源抵扣 <b id="pickerCoinValue">1</b> 金额。数字门需将对应资源推到门前投放台。</p>
+      <p class="picker-footnote">每枚金币可抵扣 <b id="pickerCoinValue">1</b> 金额。数字门、金币价值、粉碎门、主桥及下一关桥分别有专用投币台，不能在菜单直接购买。</p>
+      <p id="featureStatus" class="feature-status">粉碎门、桥梁及关卡解锁状态</p>
     </section>
     <div id="worldLabels" aria-hidden="true">
       <div id="label-gate-0" class="world-label gate">×2</div>
@@ -63,7 +64,10 @@
 
       <div id="label-cost" class="world-label cost">30</div>
       <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
-      <div id="label-score" class="world-label lane">0</div>
+      <div id="label-feature-crusher" class="world-label feature">粉碎门 还需 35</div>
+      <div id="label-feature-bridge" class="world-label feature">主桥 还需 30</div>
+      <div id="label-feature-exit" class="world-label feature">下一关桥 还需 350</div>
+      <div id="label-feature-coin" class="world-label feature">金币价值 还需 25</div>
       <div id="crushPopup" class="world-label crush-popup" style="display:none">+3</div>
     </div>
     <div id="toast" role="status"></div>
@@ -71,16 +75,16 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.5</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.0</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
-        <p id="stageInfo">熔岩矿场：把蓝色矿石推入粉碎轮，每颗产出3枚真实金币。金币过双向数字门，再推到投币台升级。</p>
-        <p>v0.6.5：粉晶岩洞正式开放！粉晶被加工为3根真实金锭，每根基础价值为普通金币的3倍，两座双向数字门分别升级；两关共用五项铲车改装，切换地图不会清除升级等级。</p>
-        <p>右上角的「<b>改装</b>」可切换升级路线。将本关金币或金锭从投币台外推入且靠近台面才能支付；从上方飞过、车辆靠近静止资源，都不会自动扣费。</p>
+        <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
+        <p>v0.7.0 六类升级：①数字门倍数 ②粉碎门金币产量 ③铲车底盘、速度、转向、铲斗 ④主桥宽度 ⑤金币价值 ⑥通往下一关的桥（默认锁定）。<b>矿石不能直接支付升级；只允许实物金币在指定站台支付。</b></p>
+        <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>
-        <div class="menuActions"><button id="sceneButton">切换地图：粉晶岩洞</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.5：新增完整粉晶岩洞地图、可加工粉晶、真实金锭、两座可升级双向倍数门、补货、回收与改装台，保留 v0.6.4 载具机械动画与镜头效果。第一关四门与第二关两门的等级分别保存，车辆五路线升级和金币升值等级跨图共用。各地图每15秒按库存缺口补货，真实实体不能超过6500个。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
+        <div class="menuActions"><button id="sceneButton" disabled>下一关未解锁：请先到北端投币</button><button id="resetButton">清除记录</button></div>
+        <p class="footnote">玩家出生于南端，初始只有矿石，不会凭空获得金币。每15秒检查矿石库存；不会自动生成可支付金币。1颗矿石初始产出3枚真实金币，升级粉碎门后每颗最多7枚。数字门初始×2、最高×20。全场上限6500个独立实体，达到上限停止新增。原有升级和第一关数字门进度保留；地图内数千物体的即时位置不会持久保存。</p>
       </div>
     </section>
   </div>

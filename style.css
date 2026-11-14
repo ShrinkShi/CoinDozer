@@ -71,3 +71,16 @@
  border:1px solid #d4a3d488;border-radius:8px;background:#312330c9;
  padding:5px 8px;color:#ffefff;font-size:11px;font-weight:850}
 @media(max-width:390px){.stage-badge{top:145px;right:8px;font-size:10px}}
+
+/* v0.7.0: fixed-function infrastructure stations, readable on portrait phones. */
+.track-option[hidden]{display:none!important}
+.feature-status{margin:11px 0 0;padding:9px 10px;border:1px solid #8dc9dc6e;
+ border-radius:10px;background:#1e3034ba;color:#d8f3ff;font-size:11px;line-height:1.65}
+.feature-status[hidden]{display:none}
+.world-label.feature{font-size:clamp(10px,2.7vw,18px);color:#f9f7e5;
+ background:#251c21df;border:1px solid #a0d2e4a5;letter-spacing:0;
+ border-radius:7px;padding:5px 8px;line-height:1.25;text-shadow:0 1px 3px #000}
+.menuActions button:disabled{opacity:.52;cursor:not-allowed;border-color:#77818c8c;
+ background:#181c21;color:#b5bfcc}
+@media(max-width:540px){.world-label.feature{font-size:10px;padding:3px 5px}
+ .feature-status{font-size:10px}}

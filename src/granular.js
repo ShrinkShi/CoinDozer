@@ -9,6 +9,7 @@
  * No dependencies, no allocations proportional to particle count squared.
  */
 import {clamp} from './math.js';
+import {constrainToTerrain} from './terrain.js';
 import {headingBasis} from './heading.js';
 import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
 import {StaticCollisionField} from './collisions.js';
@@ -179,9 +180,13 @@ export class GranularSolver {
       }
       p.vx=clamp(p.vx,-MAX_SPEED,MAX_SPEED);
       p.vz=clamp(p.vz,-MAX_SPEED,MAX_SPEED);
-      p.x=clamp(p.x,-30.5,30.5);
-      p.z=clamp(p.z,-26.2,29);
+      const bounds=this.obstacleWorld?.bounds||{minX:-30.5,maxX:30.5,minZ:-26.2,maxZ:29};
+      p.x=clamp(p.x,bounds.minX+shape.radius,bounds.maxX-shape.radius);
+      p.z=clamp(p.z,bounds.minZ+shape.radius,bounds.maxZ-shape.radius);
       if(this.obstacleField)this.obstacleContacts+=this.obstacleField.resolve(p,shape.radius);
+      const river=constrainToTerrain(p,{x:p.prevX,z:p.prevZ},
+       this.obstacleWorld?.terrain,shape.radius);
+      if(river){p.vx*=.35;p.vz*=.35;this.obstacleContacts+=river;}
       nowMoving.push(i);
     }
 
@@ -249,14 +254,18 @@ export class GranularSolver {
             this.contacts++;
           }
         }
-        a.x=clamp(a.x,-30.5,30.5);
-        a.z=clamp(a.z,-26.2,29);
+        const b=this.obstacleWorld?.bounds||{minX:-30.5,maxX:30.5,minZ:-26.2,maxZ:29};
+        a.x=clamp(a.x,b.minX+.35,b.maxX-.35);
+        a.z=clamp(a.z,b.minZ+.35,b.maxZ-.35);
         a.y=clamp(a.y,0,5.2);
       }
     }
     for(const i of nowMoving){
       const a=resources[i];
       if(this.obstacleField)this.obstacleContacts+=this.obstacleField.resolve(a,S(a.kind).radius);
+      const water=constrainToTerrain(a,{x:a.prevX,z:a.prevZ},
+       this.obstacleWorld?.terrain,S(a.kind).radius);
+      if(water){a.vx*=.35;a.vz*=.35;this.obstacleContacts+=water;}
       // Position correction should create limited momentum, not an explosion.
       const dx=a.x-a.prevX,dz=a.z-a.prevZ;
       a.vx=clamp(a.vx+clamp(dx/dt-a.vx,-4,4)*.16,-MAX_SPEED,MAX_SPEED);

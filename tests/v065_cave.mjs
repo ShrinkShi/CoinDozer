@@ -18,8 +18,8 @@ assert.equal(cave.gates.length,2,'two real cave portals');
 assert.equal(cave.gateStations.length,2,'every cave portal has a separate payment station');
 assert.equal(cave.sites.gates.length,2);
 assert.equal(cave.sites.gateCosts.length,2);
-assert.ok(cave.crusher.trigger&&cave.recycler.trigger&&cave.upgradeStation.trigger,'all cave gameplay triggers exist');
-assert.ok(cave.sites.cost&&cave.sites.counter&&cave.sites.upgradeText,'cave labels exist');
+assert.ok(cave.crusher.trigger&&cave.upgradeStation.trigger,'all remaining snow gameplay triggers exist');
+assert.ok(cave.sites.cost&&cave.sites.upgradeText,'snow upgrade labels exist');
 assert.equal(new Simulation(1).gateTracks.length,2);
 assert.equal(new Simulation(0).gateTracks.length,4);
 assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in cave');
@@ -128,12 +128,13 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  assert.equal(s.tracks.chassis.deposited,3);
 }
 {
- const r=ore('ingot',cave.recycler.trigger.x,cave.recycler.trigger.z,2);
- const s=make(1,[r]);s.update(.016,0,0,cave);
- assert.equal(r.dead,false,'ingot above recycler remains physical');
- r.y=.1;s.update(.016,0,0,cave);
- assert.equal(r.dead,true,'surface contact recycles one real object');
+ assert.equal(cave.recycler,undefined,'snow stage no longer has a recycler');
+ const r=ore('ingot',-20,-20.8,.1),s=make(1,[r]);
+ s.update(.016,0,0,cave);
+ assert.equal(r.dead,false,'snow ingot cannot be destroyed by old recycler coordinates');
+ assert.equal(s.telemetry.totals.recycled,0);
 }
+
 {
  const s=make(1),stock=s.replenishResources();
  assert.ok(stock.currency>0&&stock.ore>0,'cave refills both economy inputs');

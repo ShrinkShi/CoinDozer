@@ -59,7 +59,7 @@ const ore=(x=world.crusher.x,z=world.crusher.z)=>({
  assert.equal(field.resolve({x:4.12,z:0,y:2,vx:0,vz:0},.35),0,'high objects can pass over short barriers');
 }
 {
- assert.ok(world.obstacles.length>80,'terrain rocks and guide rails have colliders');
+ assert.ok(world.obstacles.length>30,'long-map edge rocks and crusher guide rails have colliders');
  assert.equal(world.obstacles.filter(o=>o.type==='segment').length,2);
  const guide=world.obstacles.find(o=>o.type==='segment');
  const field=new StaticCollisionField(world.obstacles);

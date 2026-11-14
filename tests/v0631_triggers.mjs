@@ -29,8 +29,8 @@ for(const direction of [-1,1]){
  assert.equal(crossedGatePlane({_frameZ:gate.z,z:gate.z+.005,x:gate.x},gate),0);
 }
 {
- const pad=world.gateStations[3],existing=createResourceLayout(0).filter(p=>insideTrigger(p,pad.trigger));
- assert.equal(existing.length,0,'initial stage cannot pre-load gate 4 payment zone');
+ const pad=world.gateStations[0],existing=createResourceLayout(0).filter(p=>insideTrigger(p,pad.trigger));
+ assert.equal(existing.length,0,'initial stage cannot pre-load its only gate payment zone');
  const c=particle('gold',pad.x,pad.z),sim=make(c);
  sim.player.x=pad.x;sim.player.z=pad.z;
  sim.update(.016,0,0,world);
@@ -42,7 +42,7 @@ for(const direction of [-1,1]){
  sim.granular.step=()=>{c.z=pad.z;};
  sim.update(.016,0,0,world);
  assert.equal(c.dead,true);
- assert.equal(sim.gateTracks[3].deposited,1);
+ assert.equal(sim.gateTracks[0].deposited,1);
  assert.equal(sim.totalDeposited,1);
  assert.equal(sim.activeCount,0);
 }
@@ -63,18 +63,15 @@ for(const direction of [-1,1]){
  assert.equal(sim.tracks.chassis.deposited,1);
 }
 {
- const recycle=world.recycler.trigger;
- const r=particle('blue',recycle.x,recycle.z,3),survivor=particle('gold',25,25,0);
+ assert.equal(world.recycler,undefined,'v0.7 removes recycler entirely');
+ const r=particle('blue',-22,18,.1),survivor=particle('gold',25,25);
  const sim=make(r);sim.resources.push(survivor);
  sim.update(.016,0,0,world);
- assert.equal(r.dead,false,'flying above recycling belt does not destroy particle');
- r.y=.1;sim.update(.016,0,0,world);
- assert.equal(r.dead,true,'physical belt contact recycles particle');
- assert.equal(sim.resources.length,2,'dead slots need not be physically compacted every frame');
- assert.equal(sim.liveCount,1);
- assert.equal(sim.activeCount,1,'UI count excludes uncollected dead storage slots');
- assert.equal(sim.telemetry.totals.recycled,1);
+ assert.equal(r.dead,false,'idle ore is never silently reclaimed');
+ assert.equal(sim.activeCount,2,'HUD reports both independent resources');
+ assert.equal(sim.telemetry.totals.recycled,0,'no recycler-side deletion remains');
 }
+
 {
  const sim=new Simulation(0);
  const ore=particle('blue',world.crusher.x,world.crusher.z);
