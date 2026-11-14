@@ -2,7 +2,8 @@ import {clamp,TAU} from './math.js';
 import {createResourceLayout} from './world.js';
 import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
-import {MAX_RESOURCES,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
+import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
+import {EconomyTelemetry} from './telemetry.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -25,6 +26,7 @@ export class Simulation{
   this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
   this._crowdedNotified=-50;
   this.coinsSpent={vehicle:0,gate:0};
+  this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
  }
  setStage(stage){Object.assign(this,new Simulation(stage))}
  emit(type,data={}){this.events.push({type,...data})}
@@ -37,6 +39,7 @@ export class Simulation{
    r.vx=-Math.max(.7,Math.abs(r.vx||0)*.6);
    r._crushBlockUntil=this.elapsed+.65;
    if(this.elapsed-this._crowdedNotified>3){this.emit('gateFull',{limit:MAX_RESOURCES});this._crowdedNotified=this.elapsed;}
+   this.telemetry.record('blocked',1,this.elapsed);
    return false;
   }
   r.kind='gold';r.passedGates=r.passedGates||0;
@@ -57,10 +60,15 @@ export class Simulation{
    });
   }
   this.crushed++;this.processed++;
+  this.telemetry.record('oreCrushed',1,this.elapsed);
+  this.telemetry.record('goldProduced',3,this.elapsed);
+  this.telemetry.record('goldValueProduced',3*coinCredit(this.tracks),this.elapsed);
   this.emit('crush',{x:r.x,z:r.z,coins:3});
   return true;
  }
- /** Only a real, visible coin may pay a physical station. */
+ /** Each deposited coin contributes its current face value (credits).
+  * Upgrades are independent and payable only at their own physical pads.
+  */
  selectUpgrade(key){if(!TRACK_KEYS.includes(key))return false;this.selectedUpgrade=key;return true;}
  payCoin(r,trackKey=this.selectedUpgrade,station='vehicle',gateId=-1){
   if(r.dead||r.kind!=='gold')return false;
@@ -73,19 +81,23 @@ export class Simulation{
    progress=this.tracks[trackKey];costs=TRACK_COSTS[trackKey];
   }
   if(progress.level>=costs.length)return false;
-  const value=coinCredit(this.tracks),result=applyCredit(progress,value,costs);
+  const value=coinCredit(this.tracks);
+  const result=applyCredit(progress,value,costs);
   progress.level=result.level;progress.deposited=result.deposited;
   r.dead=true;this.totalDeposited++;this.coinsSpent[station]++;
+  this.telemetry.record('goldPaid',1,this.elapsed);
+  this.telemetry.record('creditsPaid',result.spent,this.elapsed);
   if(station==='gate'){
    this.emit('deposit',{station:'gate',id:gateId,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    if(result.upgrades)this.emit('gateUpgrade',{id:gateId,factor:gateFactor(progress),level:result.level});
   }else{
    this.emit('deposit',{station:'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
-   this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
+   this.level=this.tracks.chassis.level;
+   this.deposit=this.tracks.chassis.deposited;
    this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
    this.player.level=this.stage?Math.max(2,this.level):this.level;
    this.player.bladeLevel=this.tracks.blade.level;
-   this.won=this.level===MAX_VEHICLE_LEVEL;
+   this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
    if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:coinCredit(this.tracks),nextCost:result.remaining});
   }
   return true;
@@ -105,6 +117,7 @@ export class Simulation{
    original.vx=(original.vx||0)*.5;
    original._gateBlockUntil=this.elapsed+.55;
    if(this.elapsed-this._crowdedNotified>3){this.emit('gateFull',{limit:MAX_RESOURCES});this._crowdedNotified=this.elapsed;}
+   this.telemetry.record('blocked',1,this.elapsed);
    return false;
   }
   const mask=1<<gate.id;
@@ -129,6 +142,11 @@ export class Simulation{
     cooldown:.35,dead:false,
     tiltX:0,tiltZ:0,omegaX:0,omegaZ:0,_frameZ:outputZ
    });
+  }
+  this.telemetry.record('gateClones',created,this.elapsed);
+  if(original.kind==='gold'){
+   this.telemetry.record('goldProduced',created,this.elapsed);
+   this.telemetry.record('goldValueProduced',created*coinCredit(this.tracks),this.elapsed);
   }
   this.multipliedValue+=created;
   this.gateHits++;
@@ -167,6 +185,7 @@ export class Simulation{
   for(const r of this.resources)if(!r.dead){r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous);
   this.physics.contacts=this.granular.lastPairs;this.physics.height=this.granular.height;
+  this.physics.active=this.granular.lastActive;
   let count=0;
   this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
   let crushedThisFrame=0,depositedThisFrame=0;
@@ -201,6 +220,8 @@ export class Simulation{
     }
     if(r.kind==='gold'){
      let paid=false;
+     // Gate pads have their own upgrade tracks; one physical coin enters
+     // only one pad in a frame. Vehicle must remain nearby to enable payment.
      for(const pad of gatePads){
       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
          Math.abs(r.x-pad.x)<pad.depositHalfX && Math.abs(r.z-pad.z)<pad.depositHalfZ){
@@ -214,7 +235,9 @@ export class Simulation{
      }
     }
     if(r.x>-16.5&&r.x<-10.5&&r.z<-13&&r.z>-27&&r.kind!=='pearl'){
-     r.dead=true;this.processed++;this.emit('process',{value:this.processed});
+     r.dead=true;this.processed++;
+     this.telemetry.record('recycled',1,this.elapsed);
+     this.emit('process',{value:this.processed});
     }
    }
   }
@@ -228,24 +251,44 @@ export class Simulation{
   this._liveGateCount=null;
   this.physics.objects=this.activeCount;
   this.restock+=dt;
-  if(this.restock>=22){
-   this.restock=0;
-   const existing=this.resources;
-   const gold=existing.filter(r=>r.kind==='gold').length;
-   const blue=existing.filter(r=>r.kind==='blue').length;
-   const spawn=(kind,cx,cz,n,rad)=>{
-    const available=Math.max(0,MAX_RESOURCES-this.resources.length);
-    for(let i=0;i<Math.min(n,available);i++){
-     const a=Math.random()*TAU,d=Math.sqrt(Math.random())*rad;
-     this.resources.push({kind,x:cx+Math.cos(a)*d,z:cz+Math.sin(a)*d,y:Math.random()*.2,vx:0,vy:0,vz:0,spin:Math.random()*TAU,angle:0,passedGates:0,cooldown:0,dead:false});
-    }
-   };
-   if(this.stage===0){
-    if(gold<250)spawn('gold',17.2,4,260,5.3);
-    if(blue<160)spawn('blue',4,8.6,170,3.7);
-   }else if(existing.length<150)spawn('ingot',0,2,120,4);
-   this.activeCount=this.resources.length;
-   this.emit('restock');
+  if(this.restock>=SUPPLY.interval){
+   this.restock%=SUPPLY.interval;
+   this.replenishResources();
   }
+ }
+ /** Fill genuinely missing supply piles, reserving capacity for 1->3 and gates.
+  * No visual aggregation, no clearing resources, no hidden inventory.
+  */
+ replenishResources(){
+  const living=this.resources.filter(r=>!r.dead);
+  const available=MAX_RESOURCES-living.length;
+  if(living.length>=SUPPLY.holdAt){
+   if(!this.supplyPaused)this.emit('supplyPaused',{count:living.length});
+   this.supplyPaused=true;return {gold:0,blue:0};
+  }
+  this.supplyPaused=false;
+  const gold=living.reduce((n,r)=>n+(r.kind==='gold'),0);
+  const blue=living.reduce((n,r)=>n+(r.kind==='blue'),0);
+  let budget=Math.min(available,SUPPLY.holdAt-living.length);
+  const spawn=(kind,cx,cz,n,rad)=>{
+   const amount=Math.min(n,budget);
+   for(let i=0;i<amount;i++){
+    const a=Math.random()*TAU,d=Math.sqrt(Math.random())*rad;
+    this.resources.push({kind,x:cx+Math.cos(a)*d,z:cz+Math.sin(a)*d,
+     y:Math.random()*.14,vx:0,vy:0,vz:0,
+     spin:Math.random()*TAU,angle:0,passedGates:0,cooldown:0,dead:false});
+   }
+   budget-=amount;
+   if(amount)this.telemetry.record(kind==='gold'?'restockedGold':'restockedOre',amount,this.elapsed);
+   return amount;
+  };
+  let newGold=0,newBlue=0;
+  if(this.stage===0){
+   if(gold<SUPPLY.goldBelow)newGold=spawn('gold',14.6,5.5,Math.min(SUPPLY.goldBatch,SUPPLY.goldBelow-gold),3.6);
+   if(blue<SUPPLY.oreBelow)newBlue=spawn('blue',4.5,9.0,Math.min(SUPPLY.oreBatch,SUPPLY.oreBelow-blue),3.2);
+  }else if(living.length<150)newGold=spawn('ingot',0,2,Math.min(90,150-living.length),4);
+  this.activeCount=this.resources.length;
+  if(newGold||newBlue)this.emit('restock',{gold:newGold,blue:newBlue});
+  return {gold:newGold,blue:newBlue};
  }
 }

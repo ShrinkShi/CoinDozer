@@ -18,10 +18,37 @@ const playButton=document.getElementById('playButton');
 const sceneButton=document.getElementById('sceneButton');
 const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=document.getElementById('upgradePicker');
 const trackButtons=document.getElementById('trackButtons');
-for(const key of TRACK_KEYS){
- const b=document.createElement('button');b.className='track-option';b.dataset.track=key;b.type='button';trackButtons.append(b);
- b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});
+const telemetryToggle=document.getElementById('telemetryToggle');
+const telemetryPanel=document.getElementById('telemetryPanel');
+let measuredFps=0,frameSeconds=0,frameSamples=0;
+function toggleTelemetry(force){
+ const open=force===undefined?telemetryPanel.hidden:Boolean(force);
+ telemetryPanel.hidden=!open;
+ telemetryToggle.setAttribute('aria-expanded',String(open));
+ if(open)updateTelemetry();
 }
+telemetryToggle.addEventListener('click',()=>toggleTelemetry());
+function updateTelemetry(){
+ if(!sim||telemetryPanel.hidden)return;
+ const snapshot=sim.telemetry.snapshot(sim.elapsed),r=snapshot.recent,t=snapshot.totals;
+ const set=(id,value)=>{document.getElementById(id).textContent=value;};
+ set('metricFps',measuredFps?Math.round(measuredFps):'--');
+ set('metricEntities',`${formatNum(sim.activeCount)} / ${Math.min(sim.activeCount,sim.physics.active||0)}`);
+ set('metricContacts',formatNum(sim.physics.contacts||0));
+ set('metricGoldRate',formatNum(Math.round(snapshot.producedGoldPerMinute)));
+ set('metricValueRate',formatNum(Math.round(snapshot.producedCreditsPerMinute)));
+ set('metricPaidRate',formatNum(Math.round(snapshot.paidCreditsPerMinute)));
+ set('metricCrushed',formatNum(r.oreCrushed));
+ set('metricClones',formatNum(r.gateClones));
+ set('metricSupply',`${formatNum(t.restockedOre)} / ${formatNum(t.restockedGold)}`);
+ set('metricRecycled',`${formatNum(t.recycled)} / ${formatNum(t.blocked)}`);
+ const busy=sim.activeCount>=MAX_RESOURCES*.86;
+ document.getElementById('metricStatus').textContent=busy?
+ '资源拥挤：补货已暂缓。把金币推入升级站，或用计数带回收。':
+ '仅统计本次游玩；产金不含免费补货，前60秒的分钟数值为折算速率。';
+}
+for(const key of TRACK_KEYS){const b=document.createElement('button');b.className='track-option';b.dataset.track=key;b.type='button';trackButtons.append(b);
+ b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
 upgradeButton.addEventListener('click',()=>{upgradePicker.hidden=!upgradePicker.hidden;upgradeButton.setAttribute('aria-expanded',String(!upgradePicker.hidden));updateUI();});
 let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=null,notifUntil=0;
 const drag={id:null,x:0,y:0,originX:0,originY:0};
@@ -50,7 +77,8 @@ function saveProgress(){
 }
 function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
- effects.length=0;if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
+ effects.length=0;frameSeconds=0;frameSamples=0;measuredFps=0;
+ if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
  sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
@@ -65,11 +93,12 @@ function beep(freq=530,length=.1,vol=.045){try{
  }catch(e){}
 }
 function handleEvents(){
- let paid=0,converted=0,upgrades=[],gateUpgrades=[],gate=null,full=false;
+ let paid=0,converted=0,upgrades=[],gateUpgrades=[],gate=null,full=false,supplyPaused=false;
  for(const event of sim.events){
   switch(event.type){
    case 'multiply':gate=event;break;
    case 'gateFull':full=true;break;
+   case 'supplyPaused':supplyPaused=true;break;
    case 'crushBatch':converted+=event.count;break;
    case 'deposit':paid++;if(effects.length<40)effects.push({x:event.x,z:event.z,start:clocks});break;
    case 'upgrade':upgrades.push(event);break;
@@ -80,7 +109,8 @@ function handleEvents(){
  if(paid){saveProgress();if(!upgrades.length)beep(360+sim.deposit%100*3,.06,.026);}
  if(upgrades.length){const item=upgrades.at(-1);toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
- else if(full)toast('现场已有 '+MAX_RESOURCES+' 个实体资源，请先粉碎或投入金币',2.8);
+ else if(full)toast('倍增已受资源上限限制：请把金币投入升级台或使用计数带回收',2.8);
+ else if(supplyPaused)toast('矿场资源较满，已暂停自动补货；不会删除现有实体',2.7);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
  else if(converted){toast('粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
 }
@@ -92,18 +122,21 @@ function updateUI(){
  document.getElementById('left').textContent=stage?'预览':(track.level===costs.length?'已满级':formatNum(need));
  document.getElementById('coinValueStat').textContent='×'+coinCredit(sim.tracks);
  labels.cost.textContent=track.level===costs.length?'MAX':formatNum(need);
- labels.upgrade.textContent=TRACK_LABELS[selected]+' · Lv.'+track.level+'/'+costs.length;
- for(const button of trackButtons.children){
-  const key=button.dataset.track,record=sim.tracks[key],rates=TRACK_COSTS[key],remain=trackRemaining(record,rates);
+ labels.upgrade.textContent=`${TRACK_LABELS[selected]} · Lv.${track.level}/${costs.length}`;
+ for(const button of trackButtons.children){const key=button.dataset.track,record=sim.tracks[key],rates=TRACK_COSTS[key];
+  const remain=trackRemaining(record,rates),max=record.level===rates.length;
   button.setAttribute('aria-pressed',String(selected===key));
-  button.innerHTML='<strong>'+TRACK_LABELS[key]+' · Lv.'+record.level+'/'+rates.length+'</strong><small>'+(record.level===rates.length?'已满级':'下一级需 '+formatNum(remain)+' 金额')+'</small>';
+  button.innerHTML=`<strong>${TRACK_LABELS[key]} · Lv.${record.level}/${rates.length}</strong><small>${max?'已满级':`下一级需 ${formatNum(remain)} 金额`}</small>`;
  }
  document.getElementById('pickerCoinValue').textContent=coinCredit(sim.tracks);
- labels.lane.textContent=formatNum(sim.processed);
- document.getElementById('resourceCount').textContent=`实体 ${formatNum(sim.activeCount)} / ${formatNum(MAX_RESOURCES)}`;
+ labels.lane.textContent='回收 '+formatNum(sim.processed);
+ const resourceCount=document.getElementById('resourceCount');
+ resourceCount.textContent=`实体 ${formatNum(sim.activeCount)} / ${formatNum(MAX_RESOURCES)}`;
+ resourceCount.classList.toggle('crowded',sim.activeCount>=MAX_RESOURCES*.86);
+ updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'倍增值 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 滚轮及双指缩放':'先粉碎矿石获取金币，再分别升级数字门和载具';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 滚轮及双指缩放':'初始金币在附近；通过粉碎轮生产金币，送进投币站升级';
 }
 function positionLabels(){
  for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels])if(el)el.style.display='none';
@@ -111,7 +144,7 @@ function positionLabels(){
  function place(el,site){if(!el||!site)return;let p=renderer.screen(site.x,site.y,site.z);
   if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px';}}
  for(const site of sites.gates||[]){const el=gateLabels[site.id];if(el){el.textContent='×'+(site.id<sim.gateTracks.length?gateFactor(sim.gateTracks[site.id]):2);place(el,site);}}
- for(const site of sites.gateCosts||[]){const el=gateCostLabels[site.id],record=sim.gateTracks[site.id];if(el&&record){el.textContent=record.level===GATE_COSTS.length?'MAX':'升门还差 '+trackRemaining(record,GATE_COSTS);place(el,site);}}
+ for(const site of sites.gateCosts||[]){const el=gateCostLabels[site.id],record=sim.gateTracks[site.id];if(el&&record){el.textContent=record.level===GATE_COSTS.length?'MAX':`升门还差 ${trackRemaining(record,GATE_COSTS)}`;place(el,site);}}
  if(stage===0){place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter);}
 }
 function inputVector(){
@@ -134,7 +167,12 @@ function drawEffects(){
  }
 }
 function drawFrame(t){
- const dt=Math.min((t-last)/1000||.016,.046);last=t;clocks+=dt;
+ const rawDt=(t-last)/1000||.016;
+ const dt=Math.min(rawDt,.046);last=t;clocks+=dt;
+ if(!paused && rawDt>0 && rawDt<2){
+  frameSeconds+=rawDt;frameSamples++;
+  if(frameSeconds>=.65){measuredFps=frameSamples/frameSeconds;frameSamples=0;frameSeconds=0;}
+ }
  if(renderer){
   if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
   renderer.begin(clocks,sim.player,dt);
@@ -195,6 +233,7 @@ canvas.addEventListener('pointercancel',releasePointer);
 window.addEventListener('keydown',e=>{
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  keys.add(e.code);
+ if(e.code==='F3'){e.preventDefault();toggleTelemetry();return;}
  if(e.code==='KeyP'||e.code==='Escape'){e.preventDefault();if(paused)hideMenu();else showMenu();}
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));

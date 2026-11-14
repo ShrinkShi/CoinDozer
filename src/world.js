@@ -1,6 +1,6 @@
 import {rnd,clamp,TAU} from './math.js';
 import {renderVehicle} from './vehicle.js';
-import {MAX_VEHICLE_LEVEL} from './economy.js';
+import {MAX_VEHICLE_LEVEL,SUPPLY} from './economy.js';
 export const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
@@ -28,6 +28,8 @@ export class World{
  for(const [id,factor,x] of [[0,2,-8.4],[1,2,-2.8],[2,2,2.8],[3,2,8.4]]){
   const gate={id,x,z:3.1,half:2.18,multiplier:factor};
   this.gates.push(gate);this.frameGate(gate);
+  // A separate gold-feed plate for EVERY gate. Physical coins are consumed
+  // only when the vehicle pushes them onto this plate while in range.
   const pad={id,x,z:-4.65,vehicleRadius:4.6,depositHalfX:1.45,depositHalfZ:.75};
   this.gateStations.push(pad);
   this.add('box',x,.16,-4.65,3.35,.24,1.95,[.95,.64,.07]);
@@ -113,6 +115,8 @@ export class World{
 export function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=>a+(b-a)*rng(),items=[];
  function pile(kind,cx,cz,count,rad,height=0){for(let i=0;i<count;i++){let a=rng()*TAU,r=Math.sqrt(rng())*rad,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r,y=height*clamp(1-r/rad,0,1)*rand(.40,1.1);items.push({kind,x,z,y,settle:y,vx:0,vz:0,spin:rand(0,TAU),angle:rand(-.4,.4),passedGates:0,cooldown:0,dead:false})}}
  if(stage===0){pile('blue',0,-1.5,335,7.0,.55);pile('blue',5.7,7.1,75,4,.25);pile('blue',-17,-8.0,45,2.6,.1);
+  // Starter cache is one short drive from spawn. No invisible starter wallet.
+  pile('gold',2.0,6.2,SUPPLY.starterCoins,2.0,.12);
   pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-7.6,90,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
   pile('pearl',-20.2,-26.1,18,2.3,.5);
  }else{pile('ingot',-13,-5,52,4.5,.4);pile('ingot',0,1.7,45,3,.1);pile('pearl',14,-17,22,3,.5)}

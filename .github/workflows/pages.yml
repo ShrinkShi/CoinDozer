@@ -21,13 +21,16 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Test gameplay and controls
+      - name: Run deterministic economy & controls regressions
         run: |
+          node tests/v061_economy.mjs
           node tests/v06_progression.mjs
-          node tests/v041_controls.mjs
           node tests/v051_mechanics.mjs
-      - name: Build bundled offline site
+          node tests/v041_controls.mjs
+      - name: Build checked static site
         run: python build.py
+      - name: Verify bundled gameplay version
+        run: grep -q 'VIDEO REPLICA · 0.6.1' dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist

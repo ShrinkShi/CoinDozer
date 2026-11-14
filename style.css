@@ -18,3 +18,23 @@
 .picker-footnote{font-size:11px;color:#d2c0a7;margin:10px 0 0;line-height:1.5}
 .world-label.gate-cost{font-size:clamp(12px,2.9vw,19px);color:#fff3ad;background:#1e1722dc;border:1px solid #f9cc57a8;border-radius:7px;padding:4px 7px;text-shadow:0 1px 2px black}
 @media(max-width:540px){#topbar{gap:6px;padding-left:8px;padding-right:8px}.brand{font-size:11px}.stats{gap:5px}.stats span{font-size:9px}.stats strong{font-size:12px}#upgradeButton{font-size:10px;padding:9px 7px}#pauseButton{flex-shrink:0}#upgradePicker{top:70px;max-height:43dvh}.track-option{min-height:58px}.world-label.gate-cost{font-size:11px;padding:3px 4px}}
+
+/* v0.6.1 optional performance/economy inspector: compact on phones. */
+#telemetryToggle{position:absolute;top:118px;left:12px;z-index:6;pointer-events:auto;
+ border:1px solid #e6d0968c;border-radius:9px;background:#251a16de;color:#ffdc93;
+ padding:6px 12px;font-size:11px;font-weight:850}
+#telemetryToggle[aria-expanded="true"]{background:#ddac52;color:#302012}
+#telemetryPanel{position:absolute;top:152px;left:12px;z-index:6;width:min(308px,calc(100vw - 24px));
+ max-height:calc(100dvh - 188px);overflow:auto;border:1px solid #f4d08c67;
+ border-radius:14px;background:#211916ed;box-shadow:0 10px 30px #140b088a;
+ padding:12px;pointer-events:none}
+#telemetryPanel[hidden]{display:none}
+.telemetry-heading{font-size:14px;font-weight:900;color:#ffe2a6;margin-bottom:10px}
+.telemetry-heading small{font-size:10px;color:#c3b1a1;font-weight:400;float:right}
+.telemetry-grid{display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:7px;
+ font-size:11px;align-items:center;color:#deccb5}
+.telemetry-grid strong{color:#fff4db;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+.telemetry-note{font-size:10px;line-height:1.45;color:#bda994;margin:10px 0 0}
+.resource-counter.crowded{background:#78341ce0;color:#fff0c7}
+@media(max-width:540px){#telemetryToggle{top:111px;left:8px;padding:5px 9px}
+ #telemetryPanel{top:145px;left:8px;max-height:calc(100dvh - 176px);width:min(288px,calc(100vw - 16px))}}
