@@ -50,12 +50,30 @@
 /* v0.6.2: temporary crusher yield, anchored to the 3D impact. */
 .world-label.crush-popup{font-size:clamp(18px,4vw,32px);color:#fff6ab;text-shadow:1px 2px #5f2e0c,0 0 9px #ffa624;z-index:4;pointer-events:none}
 
+/* v0.6.3.1: WebGL device-lost fallback; input is blocked until restoration. */
+#graphicsStatus[hidden]{display:none}
+#graphicsStatus{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+ padding:24px;background:#1b100ce8;pointer-events:auto}
+.graphics-recovery-panel{max-width:390px;width:100%;padding:22px;border:1px solid #f5cf8c88;
+ border-radius:14px;background:#2d211b;color:#f9eed7;text-align:center;box-shadow:0 12px 35px #0009}
+.graphics-recovery-panel strong{font-size:17px}
+.graphics-recovery-panel p{line-height:1.6;font-size:13px}
+#graphicsRefresh{padding:10px 20px;border-radius:8px;border:0;background:#fbc251;
+ color:#32220c;font-weight:800;pointer-events:auto}
+
 </style>
 </head>
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
+  <section id="graphicsStatus" hidden role="alert" aria-live="assertive">
+    <div class="graphics-recovery-panel">
+      <strong>图形设备连接中断</strong>
+      <p id="graphicsMessage">游戏已暂停渲染，等待图形设备恢复。</p>
+      <button type="button" id="graphicsRefresh">刷新页面重新加载</button>
+    </div>
+  </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.3</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.3.1</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
@@ -107,14 +125,14 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.3</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.3.1</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p>四座倍数门现在都从 <b>×2</b> 开始。把金币推到门前的黑金色投放台，每座门可以分别升级，最高 <b>×20</b>。蓝球经过粉碎轮后，一颗可得到三枚真实金币。</p>
-        <p>点右上角的「<b>改装</b>」切换底盘、车速、转向、铲斗宽度或金币价值，再到紫色车辆升级台投入金币。升值后的金币可以抵扣更多升级金额，但仍然只有一枚实物。</p>
+        <p>点右上角的「<b>改装</b>」切换底盘、车速、转向、铲斗宽度或金币价值，再到紫色车辆升级台投入金币。<b>需要把金币从站台外推进投币区域，不能只把铲车开到预放金币旁。</b>金币从上方飞过不算投币。升值后的金币可以抵扣更多升级金额，但仍然只有一枚实物。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.3：每帧一次活动筛选并复用物理子步结果、动态空间索引、可视范围剔除、远距独立低面数模型、GPU 实例缓存和自动画质；不会聚合或删除金币。v0.6.2 的粉碎轮严格 1→3、火花反馈、岩石碰撞继续保留。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
+        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.3.1：修复低速双向过门、实体支付与回收高度判定、图形上下文恢复、场景切换提示、实体计数和离线构建。保留 v0.6.3 的动态空间索引、独立模型与 GPU 缓存优化。v0.6.2 的粉碎轮严格 1→3、火花反馈、岩石碰撞继续保留。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
       </div>
     </section>
   </div>
@@ -146,7 +164,6 @@ function composeInto(out,i,x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){
  out[i+12]=x;out[i+13]=y;out[i+14]=z;out[i+15]=1;
  return out;
 }
-
 // --- heading.js ---
 /** Vehicle and input heading conventions used by every gameplay subsystem.
  * Heading yaw=0 points toward world -Z; positive yaw turns toward world +X.
@@ -165,7 +182,6 @@ function screenStickToWorld(x,y){
  const length=Math.hypot(17,30.3);
  return {x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
 }
-
 // --- cameraZoom.js ---
 
 const ZOOM_MIN=.52;
@@ -179,7 +195,6 @@ function pinchZoom(startZoom,startDistance,currentDistance){
  return clamp(startZoom*startDistance/currentDistance,ZOOM_MIN,ZOOM_MAX);
 }
 function pointerDistance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
-
 // --- economy.js ---
 /** CoinDozer v0.6 economy. Each particle is one visible physical coin.
  * Coin-value upgrades increase CREDIT paid per coin, not object count.
@@ -250,7 +265,6 @@ function coinCredit(tracks){return COIN_VALUES[Math.min(tracks.coin.level,COIN_V
 function vehicleSpeed(tracks,frame=0){return 5.55+Math.min(4,frame)*.25+tracks.speed.level*.98;}
 function vehicleTurnRate(tracks){return 7.5+tracks.steering.level*1.55;}
 function bucketScale(tracks){return 1+tracks.blade.level*.17;}
-
 // --- telemetry.js ---
 /** Lightweight per-second counters for a rolling 60s economy trace.
  * Diagnostics only: counters NEVER affect the actual economy or spawn logic.
@@ -289,7 +303,6 @@ class EconomyTelemetry{
    paidCreditsPerMinute:recent.creditsPaid*60/measuredSeconds};
  }
 }
-
 // --- flash.js ---
 /** White flash on actual newly-spawned portal resources.
  * Rise in 0.07s, fade out in 1.25s (pause safe: game simulation time).
@@ -302,7 +315,6 @@ function flashIntensity(age){
  const t=(age-FLASH_RISE)/FLASH_FADE;
  return (1-t)*(1-t)*(1+2*t);
 }
-
 // --- scoop.js ---
 /** One bucket profile shared by both the visible steel mesh and collision solver.
  * a = forward distance from vehicle origin; h = height above ground.
@@ -336,7 +348,6 @@ function nearestScoopContact(ahead, height) {
   }
   return {...best,distance:Math.sqrt(distanceSq)};
 }
-
 // --- geometry.js ---
 
 /* CoinDozer procedural art kit. Units are meters in a deliberately stylized scene.
@@ -457,7 +468,6 @@ function stampedCoin(){
 }
 function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
 const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),coinLite:prism(12),sphereLite:ico(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
-
 // --- quality.js ---
 /**
  * Visual quality only: does not change the number, value, state or physics of
@@ -490,7 +500,6 @@ class AdaptiveQuality{
   return true;
  }
 }
-
 // --- renderer.js ---
 
 
@@ -738,8 +747,44 @@ class Renderer{
  }
  screen(x,y,z){return project(this.vp,x,y,z,this.w,this.h)}
 }
-
+// --- triggers.js ---
+/**
+ * World-space gameplay triggers. Coordinates use the bottom of each particle;
+ * render meshes and collision metadata refer to the same pads / recycler.
+ * Trigger functions never mutate resources or assign economic credit.
+ */
+function boxTrigger(x,z,halfX,halfZ,maxBottomY,minBottomY=-0.2){
+ return Object.freeze({x,z,halfX,halfZ,maxBottomY,minBottomY});
+}
+function insideTrigger(p,box){
+ if(!box||!p||p.dead)return false;
+ const y=p.y??0;
+ return Number.isFinite(p.x)&&Number.isFinite(p.z)&&Number.isFinite(y)&&
+  Math.abs(p.x-box.x)<=box.halfX&&Math.abs(p.z-box.z)<=box.halfZ&&
+  y>=box.minBottomY&&y<=box.maxBottomY;
+}
+/** Require a real outside->inside transition within the simulation step.
+ * A coin already lying on a pad will NOT be paid by driving near the station.
+ */
+function enteredTrigger(p,box){
+ if(!insideTrigger(p,box))return false;
+ const previous={x:p._frameX??p.x,z:p._frameZ??p.z,y:p._frameY??p.y};
+ return !insideTrigger(previous,box);
+}
+/** Crossing is defined by the two sides of the plane, without a minimum
+ * frame-displacement threshold. Rearming / jitter suppression is separate.
+ */
+function crossedGatePlane(p,gate){
+ const from=p._frameZ??p.z,to=p.z;
+ if(!Number.isFinite(from)||!Number.isFinite(to)||from===gate.z)return 0;
+ const direction=from<gate.z&&to>=gate.z?1:from>gate.z&&to<=gate.z?-1:0;
+ if(!direction)return 0;
+ const aperture=gate.apertureHalf??(gate.half-.25);
+ if(Math.abs(p.x-gate.x)>=aperture)return 0;
+ return direction;
+}
 // --- world.js ---
+
 
 
 
@@ -747,7 +792,7 @@ const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
+ constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.recycler=null;this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
  addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.obstacles.push({type:'circle',x,z,radius:r*.79,height:r*1.3});this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
@@ -768,11 +813,13 @@ class World{
  // The lavender ×10 fabric gate, orange posts with purple heads and violet cloud.
  this.sites.gates=[];this.sites.gateCosts=[];
  for(const [id,factor,x] of [[0,2,-8.4],[1,2,-2.8],[2,2,2.8],[3,2,8.4]]){
-  const gate={id,x,z:3.1,half:2.18,multiplier:factor};
+  const gate={id,x,z:3.1,half:2.18,apertureHalf:1.93,multiplier:factor};
   this.gates.push(gate);this.frameGate(gate);
   // A separate gold-feed plate for EVERY gate. Physical coins are consumed
   // only when the vehicle pushes them onto this plate while in range.
-  const pad={id,x,z:-4.65,vehicleRadius:4.6,depositHalfX:1.45,depositHalfZ:.75};
+  const trigger=boxTrigger(x,-4.65,1.45,.72,.32);
+  const pad={id,x,z:-4.65,vehicleRadius:4.6,trigger,
+   depositHalfX:trigger.halfX,depositHalfZ:trigger.halfZ};
   this.gateStations.push(pad);
   this.add('box',x,.16,-4.65,3.35,.24,1.95,[.95,.64,.07]);
   this.add('box',x,.31,-4.65,2.95,.12,1.45,PALETTE.black);
@@ -780,7 +827,8 @@ class World{
   this.sites.gateCosts.push({id,x,y:.52,z:-4.65});
  }
  // Purple uprights and orange brush/rotating hazard, next to the gold pile.
- this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};
+ this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12,
+  trigger:boxTrigger(12,7.2,2.65,1.12,2.1)};
  // Tapered steel rails have matching visible meshes and solid footprints.
  const guide=(x1,z1,x2,z2)=>{
   const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz);
@@ -792,7 +840,10 @@ class World{
  for(let x of [9.6,14.4]){this.add('cylinder',x,1.9,7.2,.69,3.8,.69,PALETTE.purpleCap);this.add('sphere',x,3.91,7.2,1.04,1.05,1.04,PALETTE.purpleCap);this.add('box',x,.18,7.2,1.1,.34,1.18,PALETTE.purple)}
  this.add('box',12,3.55,7.2,5.25,.44,.65,PALETTE.purple);
  // Black counting strip with fluorescent yellow rim and large white counter.
- this.add('box',-13.6,.15,-20.6,6.6,.23,18,[1,.80,.05]);this.add('box',-13.6,.25,-20.6,6,.14,17.5,PALETTE.black);
+ this.recycler={trigger:boxTrigger(-13.6,-20.6,3,8.75,.34)};
+ this.add('box',this.recycler.trigger.x,.15,this.recycler.trigger.z,6.6,.23,18,[1,.80,.05]);
+ this.add('box',this.recycler.trigger.x,.25,this.recycler.trigger.z,
+  this.recycler.trigger.halfX*2,.14,this.recycler.trigger.halfZ*2,PALETTE.black);
  this.sites.counter={x:-13.6,y:.54,z:-17.3};
  // Transparent pink storage box near the count strip. Internal pearls are modeled as resources.
  this.add('box',-20.1,.33,-26,7.2,.32,6.1,[.53,.33,.51]);
@@ -803,7 +854,10 @@ class World{
  for(let z of [-29,-23]){this.add('box',-20.05,5.2,z,7.2,.12,.10,PALETTE.white)}
  // Purple ramp and cyan translucent UPGRADE board; rigid white bulldozer statue.
  this.sites.upgrade={x:19,y:0,z:-18};
- this.upgradeStation={x:19,z:-12.05,vehicleRadius:6.5,depositHalfX:4.1,depositHalfZ:1.3,previewX:19,previewZ:-20.3};
+ const upgradeTrigger=boxTrigger(19,-12.05,4.1,1.2,.34);
+ this.upgradeStation={x:19,z:-12.05,vehicleRadius:6.5,
+  trigger:upgradeTrigger,depositHalfX:upgradeTrigger.halfX,depositHalfZ:upgradeTrigger.halfZ,
+  previewX:19,previewZ:-20.3};
  this.add('box',19,.12,-19,10.6,.25,10.5,PALETTE.purple);
  this.add('box',19,.28,-20,9.0,.25,7.5,[.36,.12,.56]);
  this.add('box',19.1,2.8,-24.65,10.4,5.2,.15,PALETTE.mint,0,0,0,.55);
@@ -872,12 +926,11 @@ function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand=(a,b)=
  if(stage===0){pile('blue',0,-1.5,335,7.0,.55);pile('blue',5.7,7.1,75,4,.25);pile('blue',-17,-8.0,45,2.6,.1);
   // Starter cache is one short drive from spawn. No invisible starter wallet.
   pile('gold',2.0,6.2,SUPPLY.starterCoins,2.0,.12);
-  pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-7.6,90,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
+  pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-9.1,90,3.0,.28);pile('gold',-1,-17.7,30,4.5,.08);
   pile('pearl',-20.2,-26.1,18,2.3,.5);
  }else{pile('ingot',-13,-5,52,4.5,.4);pile('ingot',0,1.7,45,3,.1);pile('pearl',14,-17,22,3,.5)}
  return items;
 }
-
 // --- collisions.js ---
 /**
  * Static obstacle contacts shared by the granular resources and vehicle body.
@@ -941,7 +994,6 @@ class StaticCollisionField{
   return contacts;
  }
 }
-
 // --- activity.js ---
 /**
  * Reusable 2D broadphase for scheduling independent granular bodies.
@@ -1032,7 +1084,6 @@ class ParticleActivity{
   return this.active;
  }
 }
-
 // --- granular.js ---
 /**
  * A compact 2.5D granular dynamics solver for the original advert's visible
@@ -1306,8 +1357,8 @@ class GranularSolver {
     this.lastPairs=this.contacts;
   }
 }
-
 // --- physics.js ---
+
 
 
 
@@ -1330,7 +1381,7 @@ class Simulation{
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
   this.processed=0;this.crushed=0;this.multipliedValue=0;this.gateHits=0;
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
-  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.activeCount=this.resources.length;
+  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
   this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
   this._crowdedNotified=-50;
@@ -1339,13 +1390,25 @@ class Simulation{
  }
  setStage(stage){Object.assign(this,new Simulation(stage))}
  emit(type,data={}){this.events.push({type,...data})}
+ countLiving(){return this.resources.reduce((n,r)=>n+(!r.dead?1:0),0);}
+ /** Reserve all children before changing the source object. Freed slots are
+  * usable later in the same frame; no coin or ore is partially converted. */
+ hasCapacity(extra){
+  const live=this._liveGateCount??this.countLiving();
+  return live+this.queuedAdd.length+extra<=MAX_RESOURCES;
+ }
+ markDead(r){
+  if(r.dead)return false;
+  r.dead=true;
+  if(this._liveGateCount!==null)this._liveGateCount--;
+  return true;
+ }
  /** Atomic 1 ore -> 3 independent coins. If two additional slots are not
   * available, retain the ore and nudge it back to the entry lane.
   */
  crush(r,crusher){
   if(r.dead||r.kind!=='blue'||this.elapsed<(r._crushBlockUntil||0))return false;
-  const alive=this._liveGateCount ?? this.resources.reduce((n,p)=>n+(p.dead?0:1),0);
-  if(alive+this.queuedAdd.length+2>MAX_RESOURCES){
+  if(!this.hasCapacity(2)){
    r.x=crusher.x-crusher.halfWidth-.57;
    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
    r._crushBlockUntil=this.elapsed+.65;
@@ -1401,7 +1464,7 @@ class Simulation{
   const value=coinCredit(this.tracks);
   const result=applyCredit(progress,value,costs);
   progress.level=result.level;progress.deposited=result.deposited;
-  r.dead=true;this.totalDeposited++;this.coinsSpent[station]++;
+  this.markDead(r);this.totalDeposited++;this.coinsSpent[station]++;
   this.telemetry.record('goldPaid',1,this.elapsed);
   this.telemetry.record('creditsPaid',result.spent,this.elapsed);
   if(station==='gate'){
@@ -1426,8 +1489,7 @@ class Simulation{
   const factor=gateFactor(this.gateTracks[gate.id]??{level:0});
   if(!Number.isInteger(factor)||factor<2||factor>20)throw Error('Invalid multiplier');
   const created=factor-1;
-  const alive=this._liveGateCount ?? this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
-  if(alive+this.queuedAdd.length+created>MAX_RESOURCES){
+  if(!this.hasCapacity(created)){
    const incoming=direction<0?1:-1;
    original.z=gate.z+incoming*.46;
    original.vz=incoming*Math.max(.3,Math.abs(original.vz||0)*.6);
@@ -1499,7 +1561,7 @@ class Simulation{
    }
   }
   // Store positions before the 3D granular solver for reliable portal crossings.
-  for(const r of this.resources)if(!r.dead){r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
+  for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
@@ -1507,32 +1569,27 @@ class Simulation{
   this.physics.sleeping=this.granular.lastSleeping||0;
   this.physics.scheduled=this.granular.lastScheduled||0;
   this.physics.deferred=this.granular.activity?.dropped||0;
-  let count=0;
-  this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
+  this._liveGateCount=this.countLiving();
   let crushedThisFrame=0,depositedThisFrame=0;
   const station=world.upgradeStation;
   const playerAtStation=station && this.stage===0 && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
   const gatePads=world.gateStations||[];
   for(const r of this.resources){
    if(r.dead)continue;
-   count++;
    // Both directions count. A particle can traverse a portal again after
    // clearing it, but tiny plane jitter and newly spawned copies cannot chain.
    for(const gate of world.gates){
-    const from=r._frameZ,to=r.z;
+    const from=r._frameZ;
     if((r._gateBlockUntil||0)>this.elapsed)continue;
     if(r._lastGate===gate.id &&
       (this.elapsed<(r._gateRearmAt||0) || Math.abs(from-gate.z)<.82))continue;
-    const direction=Math.sign(to-from);
-    if(!direction || Math.abs(to-from)<.02)continue;
-    if((from-gate.z)*(to-gate.z)<0 && Math.abs(r.x-gate.x)<gate.half-.25){
-     if(this.multiply(r,gate,direction))break;
-    }
+    const direction=crossedGatePlane(r,gate);
+    if(direction&&this.multiply(r,gate,direction))break;
    }
    if(this.stage===0){
     const crusher=world.crusher;
     // The visible rotating teeth span the bar between these columns.
-    const inside=(Math.abs(r.x-crusher.x)<crusher.halfWidth && Math.abs(r.z-crusher.z)<crusher.halfDepth && r.y<2.1);
+    const inside=insideTrigger(r,crusher.trigger);
     if(inside && r.kind==='blue'){
      if(this.crush(r,crusher))crushedThisFrame++;
     }else if(inside && r.kind==='gold'){
@@ -1545,18 +1602,20 @@ class Simulation{
      // only one pad in a frame. Vehicle must remain nearby to enable payment.
      for(const pad of gatePads){
       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
-         Math.abs(r.x-pad.x)<pad.depositHalfX && Math.abs(r.z-pad.z)<pad.depositHalfZ){
-       if(this.payCoin(r,null,'gate',pad.id)){paid=true;depositedThisFrame++;}
+         insideTrigger(r,pad.trigger)){
+       if(enteredTrigger(r,pad.trigger)&&this.payCoin(r,null,'gate',pad.id)){
+        paid=true;depositedThisFrame++;
+       }
        break;
       }
      }
-     if(!paid&&station&&playerAtStation&&
-        Math.abs(r.x-station.x)<station.depositHalfX&&Math.abs(r.z-station.z)<station.depositHalfZ){
+     if(!paid&&!r.dead&&station&&playerAtStation&&
+        enteredTrigger(r,station.trigger)){
        if(this.payCoin(r))depositedThisFrame++;
      }
     }
-    if(r.x>-16.5&&r.x<-10.5&&r.z<-13&&r.z>-27&&r.kind!=='pearl'){
-     r.dead=true;this.processed++;
+    if(!r.dead&&r.kind!=='pearl'&&insideTrigger(r,world.recycler?.trigger)){
+     this.markDead(r);this.processed++;
      this.telemetry.record('recycled',1,this.elapsed);
      this.emit('process',{value:this.processed});
     }
@@ -1568,9 +1627,10 @@ class Simulation{
   // Clear consumed slots before next gate multiplication. Never remove live objects.
   if(depositedThisFrame || this.resources.length>MAX_RESOURCES*.75 || this.elapsed%1<dt)
    this.resources=this.resources.filter(r=>!r.dead);
-  this.activeCount=this.resources.length;
   this._liveGateCount=null;
-  this.physics.objects=this.activeCount;
+  this.liveCount=this.countLiving();
+  this.activeCount=this.liveCount;
+  this.physics.objects=this.liveCount;
   this.restock+=dt;
   if(this.restock>=SUPPLY.interval){
    this.restock%=SUPPLY.interval;
@@ -1608,12 +1668,12 @@ class Simulation{
    if(gold<SUPPLY.goldBelow)newGold=spawn('gold',14.6,5.5,Math.min(SUPPLY.goldBatch,SUPPLY.goldBelow-gold),3.6);
    if(blue<SUPPLY.oreBelow)newBlue=spawn('blue',4.5,9.0,Math.min(SUPPLY.oreBatch,SUPPLY.oreBelow-blue),3.2);
   }else if(living.length<150)newGold=spawn('ingot',0,2,Math.min(90,150-living.length),4);
-  this.activeCount=this.resources.length;
+  this.liveCount=this.countLiving();
+  this.activeCount=this.liveCount;
   if(newGold||newBlue)this.emit('restock',{gold:newGold,blue:newBlue});
   return {gold:newGold,blue:newBlue};
  }
 }
-
 // --- vehicle.js ---
 
 
@@ -1772,7 +1832,6 @@ function renderResources(renderer,resources,time,cam){
  }
  return drawn;
 }
-
 // --- main.js ---
 
 
@@ -1784,6 +1843,8 @@ function renderResources(renderer,resources,time,cam){
 
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
+const graphicsStatus=document.getElementById('graphicsStatus');
+const graphicsMessage=document.getElementById('graphicsMessage');
 const toastElement=document.getElementById('toast');
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
 const gateCostLabels=Array.from({length:4},(_,id)=>document.getElementById('label-gatecost-'+id));
@@ -1836,6 +1897,7 @@ for(const key of TRACK_KEYS){const b=document.createElement('button');b.classNam
  b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
 upgradeButton.addEventListener('click',()=>{upgradePicker.hidden=!upgradePicker.hidden;upgradeButton.setAttribute('aria-expanded',String(!upgradePicker.hidden));updateUI();});
 let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=null,notifUntil=0;
+let graphicsLost=false;
 const drag={id:null,x:0,y:0,originX:0,originY:0};
 const pointers=new Map();let pinch=null,pinchLocked=false;
 const effects=[];
@@ -1866,11 +1928,19 @@ function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
  effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
- sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
+ sceneButton.textContent='切换预览场景：'+(stage===0?'粉晶岩洞':'熔岩矿场');updateUI();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
+function unlockAudio(){
+ try{
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return;
+  sound=sound||new Audio();
+  if(sound.state==='suspended')sound.resume().catch(()=>{});
+ }catch(error){console.info('Audio unavailable; gameplay remains usable',error);}
+}
 function beep(freq=530,length=.1,vol=.045){try{
- sound=sound||new(window.AudioContext||window.webkitAudioContext)();if(sound.state==='suspended')sound.resume();
+ if(!sound||sound.state!=='running')return;
  let oscillator=sound.createOscillator(),gain=sound.createGain();oscillator.type='triangle';
  oscillator.frequency.setValueAtTime(freq,sound.currentTime);
  oscillator.frequency.exponentialRampToValueAtTime(freq*.72,sound.currentTime+length);
@@ -1981,7 +2051,7 @@ function drawEffects(){
 function drawFrame(t){
  const rawDt=(t-last)/1000||.016;
  const dt=Math.min(rawDt,.046);last=t;clocks+=dt;
- if(!paused && rawDt>0 && rawDt<2){
+ if(!paused && !graphicsLost && rawDt>0 && rawDt<2){
   frameSeconds+=rawDt;frameSamples++;
   if(frameSeconds>=.65){
    measuredFps=frameSamples/frameSeconds;
@@ -1989,7 +2059,7 @@ function drawFrame(t){
    frameSamples=0;frameSeconds=0;
   }
  }
- if(renderer){
+ if(renderer&&!graphicsLost){
   if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
   renderer.begin(clocks,sim.player,dt);
   world.render(renderer,clocks,sim.player);
@@ -2005,7 +2075,7 @@ function drawFrame(t){
 }
 function resetInput(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';pointers.clear();pinch=null;pinchLocked=false;}
 function showMenu(){paused=true;menu.classList.add('visible');upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');playButton.textContent='继续驾驶';resetInput();updateUI();}
-function hideMenu(){paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
+function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
 function moveTouch(point){
  const dx=point.x-drag.originX,dy=point.y-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);
  drag.x=dx/max/mag;drag.y=dy/max/mag;
@@ -2015,7 +2085,7 @@ function endJoystick(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none
 function setZoom(zoom){if(!renderer)return;renderer.camera.zoom=zoom;updateUI();}
 canvas.addEventListener('wheel',e=>{if(renderer){setZoom(wheelZoom(renderer.camera.zoom,e.deltaY));e.preventDefault();}},{passive:false});
 canvas.addEventListener('pointerdown',e=>{
- if(paused||e.button>0)return;
+ if(paused||graphicsLost||e.button>0)return;
  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  try{canvas.setPointerCapture(e.pointerId);}catch(_){}
  if(pointers.size>=2){
@@ -2061,9 +2131,41 @@ document.getElementById('resetButton').addEventListener('click',()=>{
  try{localStorage.removeItem('coindozer-progress-v06');localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
  loadScene(stage,false);toast('游戏进度已重置');
 });
+/** Recreate all GPU programs, buffers and instancing extension handles on the
+ * restored context; keep the same Simulation and camera instead of reloading.
+ */
+function graphicsNotice(message){
+ graphicsMessage.textContent=message;
+ graphicsStatus.hidden=false;
+}
+canvas.addEventListener('webglcontextlost',event=>{
+ event.preventDefault(); // required for the browser to attempt restoration
+ graphicsLost=true;
+ saveProgress();
+ resetInput();
+ graphicsNotice('图形上下文已丢失，游戏计算已暂停。正在尝试恢复；若无法恢复，请点击刷新。');
+});
+canvas.addEventListener('webglcontextrestored',()=>{
+ try{
+  const previous=renderer?.camera?{...renderer.camera}:null;
+  const next=new Renderer(canvas);
+  next.setQuality(qualityController.mode);
+  if(previous)Object.assign(next.camera,previous);
+  renderer=next;
+  graphicsLost=false;
+  graphicsStatus.hidden=true;
+  frameSamples=0;frameSeconds=0;measuredFps=0;
+  last=0;
+  toast('图形设备已恢复，游戏进度已保留',2.4);
+ }catch(error){
+  graphicsLost=true;
+  console.error('WebGL context restore failed',error);
+  graphicsNotice('图形恢复失败：'+error.message+'。请点击刷新页面。');
+ }
+});
+document.getElementById('graphicsRefresh').addEventListener('click',()=>location.reload());
 try{renderer=new Renderer(canvas);renderer.setQuality(qualityController.mode);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
 catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}
-
 })();
 </script>
 </body>
