@@ -15,6 +15,19 @@ export const MAX_VEHICLE_LEVEL = UPGRADE_COSTS.length;
 export const GATE_FACTORS = Object.freeze([2,3,5,8,12,16,20]);
 export const GATE_COSTS = Object.freeze([12,25,50,85,140,220]);
 export const COIN_VALUES = Object.freeze([1,2,3,5,8]);
+export const CRUSHER_COSTS=Object.freeze([35,75,135,240]);
+export const CRUSHER_YIELDS=Object.freeze([3,4,5,6,7]);
+export const BRIDGE_COSTS=Object.freeze([30,65,115,210]);
+export const EXIT_COSTS=Object.freeze([350]);
+export const INFRA_COSTS=Object.freeze({
+ crusher:CRUSHER_COSTS,bridge:BRIDGE_COSTS,exit:EXIT_COSTS
+});
+export const INFRA_LABELS=Object.freeze({
+ crusher:'粉碎门收益',bridge:'主桥宽度',exit:'冰雪关卡通路'
+});
+export function crusherYield(tracks){
+ return CRUSHER_YIELDS[Math.min(CRUSHER_YIELDS.length-1,Math.max(0,tracks?.crusher?.level||0))];
+}
 export const TRACK_COSTS = Object.freeze({
  chassis:UPGRADE_COSTS,
  speed:Object.freeze([18,38,72,120]),
@@ -56,6 +69,14 @@ export function newProgress(raw={}){
    // the now-cheaper tiers rather than capping away already paid coins.
    tracks.chassis=applyCredit({level:boundedTier(raw.level,UPGRADE_COSTS),deposited:0},nonnegative(raw.deposited),UPGRADE_COSTS);
   }else tracks[key]=makeTrack(raw.tracks?.[key]??{},TRACK_COSTS[key]);
+ }
+ // Extend the existing v0.6 tracks in place; never reset a paid upgrade.
+ for(const key of Object.keys(INFRA_COSTS)){
+  let record=raw.tracks?.[key]??{};
+  // Users who already entered stage two before the locked-bridge update
+  // must not be stranded by save migration.
+  if(key==='exit'&&!raw.tracks?.exit&&raw.stage===1)record={level:1,deposited:0};
+  tracks[key]=makeTrack(record,INFRA_COSTS[key]);
  }
  const gates=Array.from({length:4},(_,i)=>makeTrack(raw.gates?.[i]??{},GATE_COSTS));
  // Cave gate upgrades are saved separately from the four lava-field gates.

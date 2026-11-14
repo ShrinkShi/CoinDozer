@@ -185,7 +185,7 @@ export function renderTreads(renderer,treads,stage){
  * Every visible resource is still one independent coin/ore mesh; distant
  * assets may use fewer triangles, never a combined count or impostor pile.
  */
-export function renderResources(renderer,resources,time,cam){
+export function renderResources(renderer,resources,time,cam,stage=0){
  let drawn=0;
  const quality=renderer.quality||{detailDistance:22,shadowDistance:23};
  const detail2=quality.detailDistance**2,shadow2=quality.shadowDistance**2;
@@ -211,8 +211,10 @@ export function renderResources(renderer,resources,time,cam){
     break;
    }
    case 'pearl':
-    renderer.add(near?'sphere':'sphereLite',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
-    if(near)renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);
+    renderer.add(near?'sphere':'sphereLite',p.x,y+.39,p.z,.87,.88,.86,
+      stage===1?[.58+flash*.4,.85+flash*.15,1,4]:[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
+    if(near)renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,
+      stage===1?[.95,.99,1,4]:[1,.96,.95,4]);
     break;
    case 'ingot':
     renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7+flash*.25],spin);

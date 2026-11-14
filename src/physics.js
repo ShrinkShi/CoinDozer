@@ -7,6 +7,9 @@ import {EconomyTelemetry} from './telemetry.js';
 import {insideTrigger,enteredTrigger,crossedGatePlane} from './triggers.js';
 import {advanceTrackOdometer} from './vehicleRig.js';
 import {sceneRules,paymentValue,isStageCurrency} from './sceneRules.js';
+import {INFRA_COSTS,crusherYield} from './economy.js';
+import {LONG_MAP} from './mapLayout.js';
+import {constrainToTerrain} from './terrain.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -27,13 +30,13 @@ export class Simulation{
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
   this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
-  this.player={x:stage?2:0,z:stage?12:11,yaw:0,speed:0,
+  this.player={x:stage?2:LONG_MAP.spawn.x,z:stage?12:LONG_MAP.spawn.z,yaw:stage?0:Math.PI,speed:0,
    level:this.level,bladeLevel:this.tracks.blade.level,
    speedLevel:this.tracks.speed.level,steeringLevel:this.tracks.steering.level,
    coinLevel:this.tracks.coin.level,trackLeft:0,trackRight:0,travelDistance:0,
    bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
-  this.coinsSpent={vehicle:0,gate:0};
+  this.coinsSpent={vehicle:0,gate:0,feature:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
  }
  setStage(stage,progress={}){Object.assign(this,new Simulation(stage,progress))}
@@ -56,7 +59,8 @@ export class Simulation{
   */
  crush(r,crusher){
   if(r.dead||r.kind!==this.rules.ore||this.elapsed<(r._crushBlockUntil||0))return false;
-  if(!this.hasCapacity(2)){
+  const outputCount=this.stage===0?crusherYield(this.tracks):this.rules.yield;
+  if(!this.hasCapacity(outputCount-1)){
    r.x=crusher.x-crusher.halfWidth-.57;
    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
    r._crushBlockUntil=this.elapsed+.65;
@@ -77,7 +81,7 @@ export class Simulation{
   r.cooldown=.35;r.flashStartedAt=this.elapsed;
   r.tiltX=(Math.random()-.5)*.2;r.tiltZ=(Math.random()-.5)*.2;
   r.omegaX=0;r.omegaZ=0;r._frameZ=r.z;
-  for(let i=0;i<2;i++){
+  for(let i=0;i<outputCount-1;i++){
    const side=i?1:-1;
    this.queuedAdd.push({...r,
     x:outputX+.2+i*.21,z:impactZ+side*.34,
@@ -89,9 +93,9 @@ export class Simulation{
   }
   this.crushed++;this.processed++;
   this.telemetry.record('oreCrushed',1,this.elapsed);
-  this.telemetry.record('goldProduced',3,this.elapsed);
-  this.telemetry.record('goldValueProduced',3*paymentValue(this.stage,this.tracks),this.elapsed);
-  this.emit('crush',{x:crusher.x+.5,z:impactZ,coins:3});
+  this.telemetry.record('goldProduced',outputCount,this.elapsed);
+  this.telemetry.record('goldValueProduced',outputCount*paymentValue(this.stage,this.tracks),this.elapsed);
+  this.emit('crush',{x:crusher.x+.5,z:impactZ,coins:outputCount});
   return true;
  }
  /** Each deposited coin contributes its current face value (credits).
@@ -102,10 +106,14 @@ export class Simulation{
   if(r.dead||!isStageCurrency(this.stage,r.kind))return false;
   let progress,costs;
   if(station==='gate'){
-   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.gateTracks.length)return false;
+   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='feature'){
+   if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
+   progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
   }else{
    if(!TRACK_KEYS.includes(trackKey))return false;
+   if(this.stage===0&&trackKey==='coin')return false;
    progress=this.tracks[trackKey];costs=TRACK_COSTS[trackKey];
   }
   if(progress.level>=costs.length)return false;
@@ -130,7 +138,10 @@ export class Simulation{
    this.player.coinLevel=this.tracks.coin.level;
    if(result.upgrades)this.player.upgradeFlashAt=this.elapsed;
    this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
-   if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:paymentValue(this.stage,this.tracks),nextCost:result.remaining});
+   if(result.upgrades)this.emit(station==='feature'?'featureUpgrade':'upgrade',{
+    track:trackKey,level:result.level,value:paymentValue(this.stage,this.tracks),
+    nextCost:result.remaining,yield:crusherYield(this.tracks)});
+
   }
   return true;
  }
@@ -138,6 +149,7 @@ export class Simulation{
   * after leaving the portal and returning for a deliberate new crossing.
   */
  multiply(original,gate,direction=-1){
+  if(this.stage===0&&original.kind!==this.rules.ore)return false;
   const factor=gateFactor(this.gateTracks[gate.id]??{level:0});
   if(!Number.isInteger(factor)||factor<2||factor>20)throw Error('Invalid multiplier');
   const created=factor-1;
@@ -187,6 +199,7 @@ export class Simulation{
  update(dt,dirX,dirZ,world){
   dt=clamp(dt,0,.044);if(!dt)return;
   this.elapsed+=dt;
+  if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks);
   const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
@@ -203,7 +216,10 @@ export class Simulation{
   p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?8.8:12));
   if(goal>.1&&alignment<.001)p.speed=0;
   const {fx,fz,rx,rz}=headingBasis(p.yaw),step=p.speed*dt;
-  p.x=clamp(p.x+fx*step,-28,28);p.z=clamp(p.z+fz*step,-23,26);
+  const bounds=world.bounds||{minX:-28,maxX:28,minZ:-23,maxZ:26};
+  p.x=clamp(p.x+fx*step,bounds.minX+1.05,bounds.maxX-1.05);
+  p.z=clamp(p.z+fz*step,bounds.minZ+1.05,bounds.maxZ-1.05);
+  constrainToTerrain(p,previous,world.terrain,1.05);
   if(p.speed>.8){
    this.lastTrail+=step;
    if(this.lastTrail>.38){
@@ -216,6 +232,7 @@ export class Simulation{
   for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  constrainToTerrain(p,previous,world.terrain,1.05);
   // Visual odometer observes actual resolved movement, never drives the physics.
   advanceTrackOdometer(p,previous);
   const impact=Math.min(.085,Math.max(0,this.granular.lastPairs||0)*.004);
@@ -265,20 +282,33 @@ export class Simulation{
        break;
       }
      }
+     if(!paid&&!r.dead&&this.stage===0){
+      for(const [key,pad] of Object.entries(world.featureStations||{})){
+       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
+          enteredTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
+        paid=true;depositedThisFrame++;break;
+       }
+      }
+      const pad=world.coinStation;
+      if(!paid&&pad&&Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
+         enteredTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
+       paid=true;depositedThisFrame++;
+      }
+     }
      if(!paid&&!r.dead&&station&&playerAtStation&&
         enteredTrigger(r,station.trigger)){
-       if(this.payCoin(r))depositedThisFrame++;
+      if(this.payCoin(r))depositedThisFrame++;
      }
     }
-    if(!r.dead&&(this.stage===1||r.kind!=='pearl')&&insideTrigger(r,world.recycler?.trigger)){
-     this.markDead(r);this.processed++;
-     this.telemetry.record('recycled',1,this.elapsed);
-     this.emit('process',{value:this.processed});
-    }
+
    }
   }
   if(crushedThisFrame)this.emit('crushBatch',{count:crushedThisFrame});
   if(depositedThisFrame)this.emit('depositBatch',{count:depositedThisFrame});
+  if(this.stage===0&&!this.stageExitIssued&&this.tracks.exit.level>=1&&
+     p.z>=43&&Math.abs(p.x)<=LONG_MAP.entry.halfWidth){
+   this.stageExitIssued=true;this.emit('stageExit',{to:1});
+  }
   if(this.queuedAdd.length){this.resources.push(...this.queuedAdd);this.queuedAdd.length=0;}
   // Clear consumed slots before next gate multiplication. Never remove live objects.
   if(depositedThisFrame || this.resources.length>MAX_RESOURCES*.75 || this.elapsed%1<dt)

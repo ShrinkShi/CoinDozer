@@ -16,6 +16,7 @@ jobs:
           node tests/v0631_triggers.mjs
           node tests/v064_vehicle.mjs
           node tests/v065_cave.mjs
+          node tests/v070_layout.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -28,7 +29,7 @@ jobs:
           python build.py
           node tests/v0632_bundle_syntax.mjs
           git diff --exit-code -- dist/index.html
-          grep -q 'VIDEO REPLICA · 0.6.5' dist/index.html
+          grep -q 'VIDEO REPLICA · 0.7.0' dist/index.html
 
   browser-smoke:
     runs-on: ubuntu-24.04
@@ -48,5 +49,5 @@ jobs:
           node tests/v0632_bundle_syntax.mjs
       - name: Mobile Chromium entrance smoke
         run: python tests/v0632_mobile_start.py
-      - name: Crystal cave map persistence smoke
-        run: python tests/v065_browser.py
+      - name: Long map bridge and snow transition smoke
+        run: python tests/v070_browser.py

@@ -33,6 +33,7 @@ assert.notDeepEqual(trackLinkPose(0,0),trackLinkPose(.3,0),'links advance along 
 {
  const w=new World(0),s=new Simulation(0);
  s.resources=[];s.granular.step=()=>{};s.granular.lastPairs=0;
+ s.player.x=0;s.player.z=-45;s.player.yaw=0; // stable north/south heading on long map
  let initialLeft=s.player.trackLeft,initialRight=s.player.trackRight;
  s.update(.016,0,0,w);
  assert.equal(s.player.trackLeft,initialLeft,'stationary tracks remain still');

@@ -14,7 +14,7 @@ for(const g of w.gates)for(const d of [-1,1]){
  assert.ok(sim.resources.every(q=>!q.weight));
 }
 {
- const g=w.gates[0],sim=new Simulation(0),r=p('gold',g.x,g.z+.45);
+ const g=w.gates[0],sim=new Simulation(0),r=p('blue',g.x,g.z+.45);
  sim.resources=[r];sim.granular.step=()=>{r.z=g.z-.15;};sim.update(.032,0,0,w);
  assert.equal(sim.resources.length,2);
  sim.granular.step=()=>{r.z=r.z<g.z?g.z+.08:g.z-.08;};
@@ -47,4 +47,4 @@ const draws=[];
 renderResources({add:(...a)=>draws.push(a)},[Object.assign(p('gold',1,1),{flashStartedAt:2}),Object.assign(p('blue',2,1),{flashStartedAt:2})],2+FLASH_RISE,{x:0,z:0});
 assert.ok(draws.some(c=>c[0]==='coin'&&c[7][3]>7.2));
 assert.ok(draws.some(c=>c[0]==='sphere'&&c[7][3]>9.2));
-console.log('v0.5.1: bidirectional, rearm, 1→3, prices, flash PASS');
+console.log('v0.5.1/v0.7: bidirectional ore-only gate, rearm, 1→3, prices and flash PASS');
