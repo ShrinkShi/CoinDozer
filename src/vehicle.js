@@ -106,42 +106,52 @@ export function renderVehicle(renderer,player,t,baseY=0){
 export function renderTreads(renderer,treads,stage){
  const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
  for(const q of treads){
+  if(typeof renderer.visible==='function'&&!renderer.visible(q.x,.1,q.z,.09))continue;
   renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,modelYaw(q.a)+.15);
   renderer.add('box',q.x-Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,modelYaw(q.a)-.24);
  }
 }
-export function renderResources(renderer,resources,time,cam){let count=0;
+/**
+ * Culls by the actual orthographic clip volume, not a fixed giant rectangle.
+ * Every visible resource is still one independent coin/ore mesh; distant
+ * assets may use fewer triangles, never a combined count or impostor pile.
+ */
+export function renderResources(renderer,resources,time,cam){
+ let drawn=0;
+ const quality=renderer.quality||{detailDistance:22,shadowDistance:23};
+ const detail2=quality.detailDistance**2,shadow2=quality.shadowDistance**2;
  for(const p of resources){
-  if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
-  const y=.12+p.y,spin=p.spin||0;
-  // Spawn-only white flare: fast ignition, much slower decay.
+  if(p.dead)continue;
+  const dy=p.y||0;
+  if(typeof renderer.visible==='function'){
+   if(!renderer.visible(p.x,dy+.45,p.z,.16))continue;
+  }else if(Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
+  const d2=(p.x-cam.x)**2+(p.z-cam.z)**2,near=d2<=detail2;
+  const y=.12+dy,spin=p.spin||0;
   const flash=p.flashStartedAt===undefined?0:flashIntensity(time-p.flashStartedAt);
-
-  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
+  if(p.kind!=='pearl'&&d2<=shadow2)
+   renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
   switch(p.kind){
-   case 'blue':{
-    // A single shaded ball with view-independent shell markings. Avoid four
-    // overlapping meshes per orb, which is expensive on mobile GPUs.
-    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9+flash*.25],spin*.22,spin*.32,spin*.19);
+   case 'blue':
+    renderer.add(near?'sphere':'sphereLite',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9+flash*.25],spin*.22,spin*.32,spin*.19);
     break;
-   }
    case 'gold':{
-    // One stamped coin mesh, including raised rim and face marks, rotating as
-    // a rigid-looking body. The centre follows the solver's tilt-aware support.
     const half=particleHalfHeight(p);
-    renderer.add('coin',p.x,p.y+.052+half,p.z,.70,.70,.70,
+    renderer.add(near?'coin':'coinLite',p.x,dy+.052+half,p.z,.70,near?.70:.40,.70,
       [1,.73,.024,7+flash*.25],p.angle||0,p.tiltX||0,p.tiltZ||0);
     break;
    }
    case 'pearl':
-    renderer.add('sphere',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
-    renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);break;
+    renderer.add(near?'sphere':'sphereLite',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
+    if(near)renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);
+    break;
    case 'ingot':
     renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7+flash*.25],spin);
-    renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7+flash*.25],spin);break;
-   default:renderer.add('sphere',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
+    if(near)renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7+flash*.25],spin);
+    break;
+   default:renderer.add(near?'sphere':'sphereLite',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
   }
-  count++;
+  drawn++;
  }
- return count;
+ return drawn;
 }

@@ -113,14 +113,15 @@ export class World{
     renderer.add('box',19,.33+Math.sin(t*3)*.04,-12.05,7.7,.06,1.6,[1,.81,.08,3]);
    }
    // Soft animated volcanic mist, well below collectible height so it does not occlude play.
-   for(let i=0;i<17;i++){const x=-31+i*1.68,z=-14.2+(x+17)*-.24+Math.sin(i*3.17)*1.7;
+   const cosmeticStep=renderer.quality?.decorationStep||1;
+   for(let i=0;i<17;i+=cosmeticStep){const x=-31+i*1.68,z=-14.2+(x+17)*-.24+Math.sin(i*3.17)*1.7;
     const rise=(t*.45+i*.31)%2.8;
     renderer.add('sphere',x,.32+rise*.47,z,1.5+rise*.40,.49+rise*.18,1.2+rise*.50,[.86,.69,.59],0,0,0,.095*(1.-rise/3.1));
    }
    let c=this.crusher;
    for(let n=0;n<3;n++){
     let x=c.x+(n-1)*1.4;renderer.add('cylinder',x,1.52,c.z,.58,2.95,.58,[.75,.20,.07]);
-    for(let row=0;row<9;row++)for(let k=0;k<8;k++){let a=k/8*TAU+t*3*(n%2?1:-1)+row*.33;renderer.add('cone',x+Math.cos(a)*.55,.47+row*.27,c.z+Math.sin(a)*.55,.35,.50,.38,[1,.37,.10],a,0,.55)}
+    for(let row=0;row<9;row+=cosmeticStep)for(let k=0;k<8;k+=cosmeticStep){let a=k/8*TAU+t*3*(n%2?1:-1)+row*.33;renderer.add('cone',x+Math.cos(a)*.55,.47+row*.27,c.z+Math.sin(a)*.55,.35,.50,.38,[1,.37,.10],a,0,.55)}
    }
   }}
 }

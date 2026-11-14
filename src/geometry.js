@@ -116,4 +116,4 @@ function stampedCoin(){
  return o;
 }
 function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
-export const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+export const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),coinLite:prism(12),sphereLite:ico(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};

@@ -1,5 +1,6 @@
 import {GEOMETRY} from './geometry.js';
-import {compose, mat4Mul, ortho, lookAt, project} from './math.js';
+import {composeInto, mat4Mul, ortho, lookAt, project} from './math.js';
+import {QUALITY_LEVELS} from './quality.js';
 import {headingBasis} from './heading.js';
 const VERT=`
 precision highp float;
@@ -97,64 +98,149 @@ void main(){
  gl_FragColor=vec4(color,alpha);
 }`;
 const compile=(gl,kind,src)=>{const o=gl.createShader(kind);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
+/**
+ * v0.6.3: persistent CPU-side typed instance storage + geometrically growing
+ * GPU allocations. The former version allocated arrays and gl.bufferData for
+ * every instance batch each frame, producing avoidable GC / driver churn.
+ */
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;
-  this.gl=canvas.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'})||canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});
+  this.gl=canvas.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'})||
+    canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});
   if(!this.gl)throw new Error('当前浏览器不支持 WebGL。请改用 Chrome、Edge 或支持 WebGL 的浏览器。');
   const gl=this.gl;
-  this.instanced=gl.vertexAttribDivisor?{divisor:(a,b)=>gl.vertexAttribDivisor(a,b),draw:(...args)=>gl.drawElementsInstanced(...args)}:null;
-  if(!this.instanced){let extension=gl.getExtension('ANGLE_instanced_arrays');if(extension)this.instanced={divisor:(a,b)=>extension.vertexAttribDivisorANGLE(a,b),draw:(...args)=>extension.drawElementsInstancedANGLE(...args)}}
-  if(!this.instanced)throw new Error('当前设备不支持实例化渲染（ANGLE_instanced_arrays）。');
-  const prog=gl.createProgram();gl.attachShader(prog,compile(gl,gl.VERTEX_SHADER,VERT));gl.attachShader(prog,compile(gl,gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(prog);
-  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));this.program=prog;gl.useProgram(prog);
-  this.a={pos:gl.getAttribLocation(prog,'aPosition'),nor:gl.getAttribLocation(prog,'aNormal'),m:[0,1,2,3].map(i=>gl.getAttribLocation(prog,'aM'+i)),tint:gl.getAttribLocation(prog,'aTint')};
-  this.u={vp:gl.getUniformLocation(prog,'uVP'),time:gl.getUniformLocation(prog,'uTime')};
-  this.meshes={};for(const [key,g] of Object.entries(GEOMETRY)){
-   let item={count:g.indices.length};item.v=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.v);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.vertices),gl.STATIC_DRAW);
-   item.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.n);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.normals),gl.STATIC_DRAW);
-   item.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,item.i);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(g.indices),gl.STATIC_DRAW);
-   item.inst=gl.createBuffer();this.meshes[key]=item;
+  this.instanced=gl.vertexAttribDivisor?
+   {divisor:(a,b)=>gl.vertexAttribDivisor(a,b),draw:(...args)=>gl.drawElementsInstanced(...args)}:null;
+  if(!this.instanced){
+   const ext=gl.getExtension('ANGLE_instanced_arrays');
+   if(ext)this.instanced={divisor:(a,b)=>ext.vertexAttribDivisorANGLE(a,b),
+    draw:(...args)=>ext.drawElementsInstancedANGLE(...args)};
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};this.batch=new Map();this.transparent=new Map();this.w=0;this.h=0;this.vp=null;
-  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(.51,.35,.26,1);
+  if(!this.instanced)throw new Error('当前设备不支持实例化渲染（ANGLE_instanced_arrays）。');
+  const prog=gl.createProgram();
+  gl.attachShader(prog,compile(gl,gl.VERTEX_SHADER,VERT));
+  gl.attachShader(prog,compile(gl,gl.FRAGMENT_SHADER,FRAG));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+  this.program=prog;gl.useProgram(prog);
+  this.a={pos:gl.getAttribLocation(prog,'aPosition'),nor:gl.getAttribLocation(prog,'aNormal'),
+   m:[0,1,2,3].map(i=>gl.getAttribLocation(prog,'aM'+i)),tint:gl.getAttribLocation(prog,'aTint')};
+  this.u={vp:gl.getUniformLocation(prog,'uVP'),time:gl.getUniformLocation(prog,'uTime')};
+  this.meshes={};
+  this.batch=new Map();this.transparent=new Map();
+  for(const [name,g] of Object.entries(GEOMETRY)){
+   const item={count:g.indices.length,instCapacity:0};
+   item.v=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.v);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.vertices),gl.STATIC_DRAW);
+   item.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.n);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.normals),gl.STATIC_DRAW);
+   item.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,item.i);
+   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(g.indices),gl.STATIC_DRAW);
+   item.inst=gl.createBuffer();this.meshes[name]=item;
+   this.batch.set(name,{data:new Float32Array(20*32),count:0});
+   this.transparent.set(name,{data:new Float32Array(20*16),count:0});
+  }
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};
+  this.w=0;this.h=0;this.vp=null;
+  this.quality=QUALITY_LEVELS.high;this.qualityName='high';
+  this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
+  gl.clearColor(.51,.35,.26,1);
  }
- resize(){const dpr=Math.min(window.devicePixelRatio||1,innerWidth<650?1.5:1.8),w=Math.round(this.canvas.clientWidth*dpr),h=Math.round(this.canvas.clientHeight*dpr);if(w!==this.canvas.width||h!==this.canvas.height){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.aspect=w/h;}
+ setQuality(name){
+  if(!Object.hasOwn(QUALITY_LEVELS,name))return false;
+  if(this.qualityName===name)return false;
+  this.qualityName=name;this.quality=QUALITY_LEVELS[name];
+  return true;
+ }
+ resize(){
+  const dpr=Math.min(window.devicePixelRatio||1,this.quality.dpr);
+  const w=Math.max(1,Math.round(this.canvas.clientWidth*dpr));
+  const h=Math.max(1,Math.round(this.canvas.clientHeight*dpr));
+  if(w!==this.canvas.width||h!==this.canvas.height){
+   this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h);
+  }
+  this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.aspect=w/h;
+ }
  begin(t,player,dt){
- this.resize();
- // Ad footage uses a fixed-quarter-view camera. Keep the azimuth fixed while
- // gently leading the player's forward direction; never spin with the chassis.
- const follow=Math.min(1,dt*3.4);
- const {fx,fz}=headingBasis(player.yaw);
- const headingX=fx*1.25,headingZ=fz*1.25;
- this.camera.x+=(player.x+headingX-this.camera.x)*follow;
- this.camera.z+=(player.z+headingZ-this.camera.z)*follow;
- const cx=this.camera.x,cz=this.camera.z-1.8;
- const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
- const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
- const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
- this.vp=mat4Mul(proj,view);
- const gl=this.gl;
- gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- gl.useProgram(this.program);
- gl.uniformMatrix4fv(this.u.vp,false,this.vp);
- gl.uniform1f(this.u.time,t);
- this.batch.clear();this.transparent.clear();
+  this.resize();
+  const follow=Math.min(1,dt*3.4);
+  const {fx,fz}=headingBasis(player.yaw);
+  this.camera.x+=(player.x+fx*1.25-this.camera.x)*follow;
+  this.camera.z+=(player.z+fz*1.25-this.camera.z)*follow;
+  const cx=this.camera.x,cz=this.camera.z-1.8;
+  const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
+  const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
+  const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
+  this.vp=mat4Mul(proj,view);
+  const gl=this.gl;
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
+  gl.uniformMatrix4fv(this.u.vp,false,this.vp);gl.uniform1f(this.u.time,t);
+  for(const pack of this.batch.values())pack.count=0;
+  for(const pack of this.transparent.values())pack.count=0;
+  this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
  }
- // All scales, angles, and positions are in world units. c=[r,g,b], opacity<1 for translucent mesh; c[3]=2 lava, 3 emissive.
+ /** Conservative orthographic clip test for an individual collectible. */
+ visible(x,y,z,margin=.16){
+  const m=this.vp;if(!m)return true;
+  const w=m[3]*x+m[7]*y+m[11]*z+m[15];
+  if(w<=0)return false;
+  const sx=(m[0]*x+m[4]*y+m[8]*z+m[12])/w;
+  const sy=(m[1]*x+m[5]*y+m[9]*z+m[13])/w;
+  return Math.abs(sx)<1+margin&&Math.abs(sy)<1+margin;
+ }
  add(kind,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){
   if(Math.abs(x-this.camera.x)>55||Math.abs(z-this.camera.z)>59)return;
-  let mat=compose(x,y,z,sx,sy,sz,yaw,pitch,roll);let tag=opacity!==1?opacity:(c[3]||1);
-  let map=(opacity<1||c[3]===8)?this.transparent:this.batch;if(!map.has(kind))map.set(kind,[]);map.get(kind).push(...mat,c[0],c[1],c[2],tag);
+  const map=(opacity<1||c[3]===8)?this.transparent:this.batch;
+  const pack=map.get(kind);
+  if(!pack)throw Error('Unknown mesh: '+kind);
+  const i=pack.count*20;
+  if(i+20>pack.data.length){
+   const next=new Float32Array(Math.max(i+20,pack.data.length*2));
+   next.set(pack.data);pack.data=next;
+  }
+  composeInto(pack.data,i,x,y,z,sx,sy,sz,yaw,pitch,roll);
+  pack.data[i+16]=c[0];pack.data[i+17]=c[1];pack.data[i+18]=c[2];
+  pack.data[i+19]=opacity!==1?opacity:(c[3]||1);
+  pack.count++;
  }
- end(){let gl=this.gl;gl.disable(gl.BLEND);gl.depthMask(true);this._draw(this.batch);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);this._draw(this.transparent);gl.depthMask(true);gl.disable(gl.BLEND)}
- _draw(batches){let gl=this.gl;for(const [kind,data] of batches){if(!data.length)continue;let m=this.meshes[kind],itemCount=data.length/20;
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.v);gl.enableVertexAttribArray(this.a.pos);gl.vertexAttribPointer(this.a.pos,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.pos,0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.n);gl.enableVertexAttribArray(this.a.nor);gl.vertexAttribPointer(this.a.nor,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.nor,0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.inst);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);
-  for(let i=0;i<4;i++){let loc=this.a.m[i];gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,4,gl.FLOAT,false,80,i*16);this.instanced.divisor(loc,1)}
-  gl.enableVertexAttribArray(this.a.tint);gl.vertexAttribPointer(this.a.tint,4,gl.FLOAT,false,80,64);this.instanced.divisor(this.a.tint,1);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);this.instanced.draw(gl.TRIANGLES,m.count,gl.UNSIGNED_SHORT,0,itemCount);
- }}
+ end(){
+  const gl=this.gl;gl.disable(gl.BLEND);gl.depthMask(true);this._draw(this.batch);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);this._draw(this.transparent);gl.depthMask(true);gl.disable(gl.BLEND);
+ }
+ _draw(batches){
+  const gl=this.gl;
+  for(const [kind,pack] of batches){
+   if(!pack.count)continue;
+   const mesh=this.meshes[kind],n=pack.count*20,bytes=n*4;
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.v);
+   gl.enableVertexAttribArray(this.a.pos);
+   gl.vertexAttribPointer(this.a.pos,3,gl.FLOAT,false,0,0);
+   this.instanced.divisor(this.a.pos,0);
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.n);
+   gl.enableVertexAttribArray(this.a.nor);
+   gl.vertexAttribPointer(this.a.nor,3,gl.FLOAT,false,0,0);
+   this.instanced.divisor(this.a.nor,0);
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.inst);
+   if(bytes>mesh.instCapacity){
+    mesh.instCapacity=Math.max(2560,mesh.instCapacity*2,bytes);
+    gl.bufferData(gl.ARRAY_BUFFER,mesh.instCapacity,gl.DYNAMIC_DRAW);
+   }
+   gl.bufferSubData(gl.ARRAY_BUFFER,0,pack.data.subarray(0,n));
+   this.uploadedBytes+=bytes;
+   for(let i=0;i<4;i++){
+    const loc=this.a.m[i];gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc,4,gl.FLOAT,false,80,i*16);this.instanced.divisor(loc,1);
+   }
+   gl.enableVertexAttribArray(this.a.tint);
+   gl.vertexAttribPointer(this.a.tint,4,gl.FLOAT,false,80,64);
+   this.instanced.divisor(this.a.tint,1);
+   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.i);
+   this.instanced.draw(gl.TRIANGLES,mesh.count,gl.UNSIGNED_SHORT,0,pack.count);
+   this.drawCalls++;this.drawnInstances+=pack.count;
+  }
+ }
  screen(x,y,z){return project(this.vp,x,y,z,this.w,this.h)}
 }
