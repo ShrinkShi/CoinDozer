@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist'/'index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.7.0' in html, 'offline bundle did not build'
+assert 'VIDEO REPLICA · 0.7.1' in html, 'offline bundle did not build'
 
 flags=['--no-sandbox','--disable-dev-shm-usage','--ignore-gpu-blocklist',
        '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',

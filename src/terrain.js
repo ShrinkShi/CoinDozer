@@ -28,28 +28,65 @@ export function configureTerrain(world,tracks){
  */
 export function constrainToTerrain(p,previous,terrain,radius=.3){
  if(!terrain||!p||p.dead)return 0;
- const {bounds,rivers}=terrain;let contacts=0;
- const oldX=previous?.x??p.x,oldZ=previous?.z??p.z;
- const limit=(value,min,max)=>clamp(value,min,max);
- const x=limit(p.x,bounds.minX+radius,bounds.maxX-radius);
- const z=limit(p.z,bounds.minZ+radius,bounds.maxZ-radius);
+ const {bounds,rivers}=terrain;
+ const oldX=Number.isFinite(previous?.x)?previous.x:p.x;
+ const oldZ=Number.isFinite(previous?.z)?previous.z:p.z;
+ let contacts=0;
+ const x=clamp(p.x,bounds.minX+radius,bounds.maxX-radius);
+ const z=clamp(p.z,bounds.minZ+radius,bounds.maxZ-radius);
  if(x!==p.x||z!==p.z){p.x=x;p.z=z;contacts++;}
+ const EPS=.003;
  for(const r of rivers){
-  if(p.z<r.zMin-radius||p.z>r.zMax+radius)continue;
-  const edge=(r.width||0)*.5-radius-.04;
-  const insideBridge=edge>0&&Math.abs(p.x-r.x)<=edge;
-  if(insideBridge)continue;
-  // Already in the corridor: prevent lateral slipping off the bridge deck.
-  const startedInside=oldZ>=r.zMin-radius&&oldZ<=r.zMax+radius;
-  const oldOnBridge=edge>0&&Math.abs(oldX-r.x)<=edge;
-  if(startedInside&&oldOnBridge){
-   p.x=clamp(p.x,r.x-edge,r.x+edge);contacts++;
+  // A circular body's CENTER may enter the open bridge corridor only after
+  // subtracting its radius and a small safety margin from the deck width.
+  const south=r.zMin-radius,north=r.zMax+radius;
+  const half=(r.width||0)/2-radius-.04;
+  const onBridge=x=>half>0&&Math.abs(x-r.x)<=half;
+  const corridor=x=>clamp(x,r.x-half,r.x+half);
+  const wasSouth=oldZ<south,wasNorth=oldZ>north;
+  const nowSouth=p.z<south,nowNorth=p.z>north;
+  if((wasSouth&&nowSouth)||(wasNorth&&nowNorth))continue;
+  // True swept crossing: checking only final Z misses a body jumping from one
+  // bank to the other during a long frame or a large collision impulse.
+  if(wasSouth||wasNorth){
+   const bank=wasSouth?south:north;
+   const travelZ=p.z-oldZ;
+   if(Math.abs(travelZ)<1e-9)continue;
+   const atZ=z0=>oldX+(p.x-oldX)*(z0-oldZ)/travelZ;
+   const entersAt=atZ(bank);
+   const exitsOpposite=wasSouth?nowNorth:nowSouth;
+   const exitsAt=exitsOpposite?atZ(wasSouth?north:south):entersAt;
+   if(!onBridge(entersAt)||(exitsOpposite&&!onBridge(exitsAt))){
+    p.z=wasSouth?south-EPS:north+EPS;
+    contacts++;
+    continue;
+   }
+   if(!exitsOpposite&&!onBridge(p.x)){
+    p.x=corridor(p.x);contacts++;
+   }
    continue;
   }
-  // River bank is impermeable outside the bridge aperture.
-  const southern=oldZ<r.zMin+radius || (startedInside && oldZ<= (r.zMin+r.zMax)*.5);
-  p.z=southern?r.zMin-radius-.003:r.zMax+radius+.003;
-  contacts++;
+  // Started over a river, inside the legitimate bridge strip: a sideways
+  // impulse may not throw the vehicle or a particle into open water.
+  if(onBridge(oldX)){
+   const crossingOut=p.z<south||p.z>north;
+   if(crossingOut){
+    const edgeZ=p.z<south?south:north;
+    const t=(edgeZ-oldZ)/(p.z-oldZ||1);
+    const exitX=oldX+(p.x-oldX)*t;
+    if(!onBridge(exitX)){p.x=corridor(p.x);contacts++;}
+   }else if(!onBridge(p.x)){p.x=corridor(p.x);contacts++;}
+   continue;
+  }
+  // Corrupt/legacy states already above water without a supporting bridge
+  // should settle on their nearest bank, not tunnel to the opposite bank.
+  if(p.z>=south&&p.z<=north){
+   p.z=Math.abs(oldZ-south)<=Math.abs(oldZ-north)?south-EPS:north+EPS;
+   contacts++;
+  }else if((oldZ-south)*(p.z-south)<0||(oldZ-north)*(p.z-north)<0){
+   p.z=Math.abs(oldZ-south)<=Math.abs(oldZ-north)?south-EPS:north+EPS;
+   contacts++;
+  }
  }
  return contacts;
 }

@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist/index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.7.0' in html
+assert 'VIDEO REPLICA · 0.7.1' in html
 needle='try{\n loadScene(loadProgress().stage===1?1:0,true);'
 assert needle in html
 html=html.replace(needle,

@@ -10,6 +10,7 @@ import {AdaptiveQuality,QUALITY_NAMES} from './quality.js';
 import {sceneRules,paymentValue} from './sceneRules.js';
 import {INFRA_COSTS,INFRA_LABELS,crusherYield} from './economy.js';
 import {mainBridgeWidth} from './mapLayout.js';
+import {NAV_TARGETS,drawNavigation} from './navigation.js';
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
 const graphicsStatus=document.getElementById('graphicsStatus');
@@ -33,10 +34,28 @@ const telemetryToggle=document.getElementById('telemetryToggle');
 const telemetryPanel=document.getElementById('telemetryPanel');
 const stageBadge=document.getElementById('stageBadge');
 const stageInfo=document.getElementById('stageInfo');
+const navHud=document.getElementById('navHud');
+const navCycle=document.getElementById('navCycle');
+const navReadout=document.getElementById('navReadout');
+const navContext=document.getElementById('navMap').getContext('2d');
+let navChoice='auto';
 const qualityController=new AdaptiveQuality(
  typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches
 );
 let measuredFps=0,frameSeconds=0,frameSamples=0,visibleResources=0;
+function updateNavigation(){
+ navHud.hidden=stage!==0;
+ if(stage!==0||!sim)return;
+ const nav=drawNavigation(navContext,sim,world,navChoice);
+ if(!nav)return;
+ navCycle.textContent=navChoice==='auto'?'导航：自动':'目标：'+nav.target.label;
+ navReadout.textContent=nav.target.label+' · '+Math.round(nav.distance)+'m';
+}
+navCycle.addEventListener('click',()=>{
+ const targets=['auto',...NAV_TARGETS.map(t=>t.id)];
+ navChoice=targets[(targets.indexOf(navChoice)+1)%targets.length];
+ updateNavigation();
+});
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
  telemetryPanel.hidden=!open;
@@ -124,6 +143,7 @@ function loadScene(s,preserve=false){
   '冰河矿场：下方铲矿石、通过唯一数字门倍增；跨中央主桥到北岸粉碎门获取金币。金币可升级数字门、粉碎门、铲车、主桥、金币价值；最后解锁北端桥并驾驶前往冰雪第二关。冰河不能直接通行。':
   '冰雪矿区：冰晶通过粉碎机变成独立金锭，金锭在数字门倍增、投入升级；铲车进度两关共享，可从菜单返回第一关。';
  updateUI();
+ updateNavigation();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
 function unlockAudio(){
@@ -187,7 +207,7 @@ function handleEvents(){
  }
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('实体已达到上限：请将金币用于升级释放容量',2.8);
- else if(crusherBlocked)toast(stage?'粉晶粉碎机资源已满：保留粉晶等待空位':'粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
+ else if(crusherBlocked)toast(stage?'冰晶加工已达容量上限：保留冰晶等待空位':'实体已满：粉碎机保留矿石，待能完整产出'+crusherYield(sim.tracks)+'枚金币时重试',3);
  else if(supplyPaused)toast('矿场资源较满，已暂停自动补货；不会删除现有实体',2.7);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
  else if(converted){lastImpact.coins=convertedYield;toast(stage?'冰晶加工：'+converted+' 颗 → '+convertedYield+' 根金锭':'粉碎成功：'+converted+' 颗矿石 → '+convertedYield+' 枚金币',1.6);beep(460,.095,.038);}
@@ -305,6 +325,7 @@ function drawFrame(t){
   renderVehicle(renderer,sim.player,clocks);
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
+ if(Math.floor(clocks*4)!==Math.floor((clocks-dt)*4))updateNavigation();
   document.getElementById('hint').classList.toggle('dismissed',!paused&&clocks>12);
  }
  if(clocks>notifUntil)toastElement.classList.remove('active');
@@ -312,7 +333,7 @@ function drawFrame(t){
 }
 function resetInput(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';pointers.clear();pinch=null;pinchLocked=false;}
 function showMenu(){paused=true;menu.classList.add('visible');upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');playButton.textContent='继续驾驶';resetInput();updateUI();}
-function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
+function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast(stage===0?'先把矿石推过南侧数字门，再沿主桥送到北岸粉碎门':'把冰晶推入粉碎机，金锭用于升级',3);updateUI();updateNavigation();}
 function moveTouch(point){
  const dx=point.x-drag.originX,dy=point.y-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);
  drag.x=dx/max/mag;drag.y=dy/max/mag;
