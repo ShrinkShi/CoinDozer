@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist'/'index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.6.3' in html, 'offline bundle did not build'
+assert 'VIDEO REPLICA · 0.6.4' in html, 'offline bundle did not build'
 
 flags=['--no-sandbox','--disable-dev-shm-usage','--ignore-gpu-blocklist',
        '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
@@ -44,7 +44,15 @@ with sync_playwright() as p:
         page.wait_for_timeout(400)
         assert not page.locator('#menu').evaluate('(el)=>el.classList.contains("visible")'),(
             f'click did not close menu; errors={errors!r}')
+        camera=page.locator('#cameraModeButton')
+        assert camera.is_visible(), 'camera framing control should remain visible'
+        assert camera.get_attribute('aria-pressed') == 'false'
+        camera.click()
+        assert camera.get_attribute('aria-pressed') == 'true', 'close-up toggle works'
+        assert '特写' in camera.inner_text()
+        camera.click()
+        assert camera.get_attribute('aria-pressed') == 'false', 'full view can be restored'
         assert not errors,errors
-        print(f'{width}x{height}: entered mine PASS',flush=True)
+        print(f'{width}x{height}: entered mine, switched camera twice PASS',flush=True)
         context.close()
     browser.close()

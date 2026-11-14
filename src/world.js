@@ -118,7 +118,8 @@ export class World{
   if(this.stage===0){
    if(player && this.upgradeStation){
     const next=Math.min(MAX_VEHICLE_LEVEL,player.level+1);
-    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next,bladeLevel:player.bladeLevel},t,.47);
+    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next,bladeLevel:player.bladeLevel,
+      speedLevel:player.speedLevel,steeringLevel:player.steeringLevel,coinLevel:player.coinLevel},t,.47);
     // Animated golden deposit slot on the rim of the payment area.
     renderer.add('box',19,.33+Math.sin(t*3)*.04,-12.05,7.7,.06,1.6,[1,.81,.08,3]);
    }

@@ -5,6 +5,7 @@ import {headingBasis} from './heading.js';
 import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
 import {EconomyTelemetry} from './telemetry.js';
 import {insideTrigger,enteredTrigger,crossedGatePlane} from './triggers.js';
+import {advanceTrackOdometer} from './vehicleRig.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -24,7 +25,11 @@ export class Simulation{
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
   this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
-  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
+  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,
+   level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level,
+   speedLevel:this.tracks.speed.level,steeringLevel:this.tracks.steering.level,
+   coinLevel:this.tracks.coin.level,trackLeft:0,trackRight:0,travelDistance:0,
+   bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
   this.coinsSpent={vehicle:0,gate:0};
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
@@ -118,6 +123,10 @@ export class Simulation{
    this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
    this.player.level=this.stage?Math.max(2,this.level):this.level;
    this.player.bladeLevel=this.tracks.blade.level;
+   this.player.speedLevel=this.tracks.speed.level;
+   this.player.steeringLevel=this.tracks.steering.level;
+   this.player.coinLevel=this.tracks.coin.level;
+   if(result.upgrades)this.player.upgradeFlashAt=this.elapsed;
    this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
    if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:coinCredit(this.tracks),nextCost:result.remaining});
   }
@@ -176,7 +185,7 @@ export class Simulation{
  update(dt,dirX,dirZ,world){
   dt=clamp(dt,0,.044);if(!dt)return;
   this.elapsed+=dt;
-  const p=this.player,previous={x:p.x,z:p.z};
+  const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
   if(goal>.1){
@@ -205,6 +214,10 @@ export class Simulation{
   for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  // Visual odometer observes actual resolved movement, never drives the physics.
+  advanceTrackOdometer(p,previous);
+  const impact=Math.min(.085,Math.max(0,this.granular.lastPairs||0)*.004);
+  p.bladeBounce=(p.bladeBounce||0)*Math.exp(-dt*9)+impact*(1-Math.exp(-dt*9));
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
   this.physics.active=this.granular.lastActive;
   this.physics.sleeping=this.granular.lastSleeping||0;

@@ -66,6 +66,14 @@
  border-radius:9px;background:#591f1b;color:#ffe5dc!important;line-height:1.6}
 .startup-issue[hidden]{display:none}
 
+/* v0.6.4: optional close-up framing; kept clear of mobile touch joystick. */
+#cameraModeButton{position:absolute;top:115px;right:12px;z-index:6;
+ padding:7px 10px;border:1px solid #f2d69d88;border-radius:9px;
+ background:#31251bcc;color:#ffe5ad;font-size:11px;font-weight:800;
+ pointer-events:auto;touch-action:manipulation}
+#cameraModeButton[aria-pressed="true"]{background:#e3ad51;color:#31210d}
+@media(max-width:390px){#cameraModeButton{top:110px;right:8px;font-size:10px;padding:6px 8px}}
+
 </style>
 </head>
 <body>
@@ -78,9 +86,10 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.3.2</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.4</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
+    <button type="button" id="cameraModeButton" aria-pressed="false" title="切换矿场跟随视角和铲车特写镜头">镜头：全景</button>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
     <section id="telemetryPanel" hidden aria-label="经济与性能监控">
       <div class="telemetry-heading">局内数据 <small>F3 / 点击数据收起</small></div>
@@ -130,15 +139,16 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.3.2</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.4</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p>四座倍数门现在都从 <b>×2</b> 开始。把金币推到门前的黑金色投放台，每座门可以分别升级，最高 <b>×20</b>。蓝球经过粉碎轮后，一颗可得到三枚真实金币。</p>
+        <p>v0.6.4：底盘、车速、转向、铲斗宽度、金币价值五条路线都对应可见的车辆改装部件。履带随真实行驶和转向循环运动，铲斗碰撞后有微小减震反馈；点击右侧「镜头：全景」可切换跟随视角与近距离特写。<b>本版不是对未提供的广告镜头逐帧复刻。</b></p>
         <p>点右上角的「<b>改装</b>」切换底盘、车速、转向、铲斗宽度或金币价值，再到紫色车辆升级台投入金币。<b>需要把金币从站台外推进投币区域，不能只把铲车开到预放金币旁。</b>金币从上方飞过不算投币。升值后的金币可以抵扣更多升级金额，但仍然只有一枚实物。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.3.2：修复离线打包时模块常量重名导致整份 JS 无法执行、进入矿场按钮无响应的故障；加入独立模块作用域、真实浏览器启动与打包脚本语法验证。v0.6.3.1 的支付、回收和图形恢复修复继续保留。保留 v0.6.3 的动态空间索引、独立模型与 GPU 缓存优化。v0.6.2 的粉碎轮严格 1→3、火花反馈、岩石碰撞继续保留。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
+        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.4：加入行驶与转向驱动的真实履带节距动画、车辆五路线升级部件、轻量铲斗接触反馈、升级闪光和可切换镜头。v0.6.3.2 的离线构建隔离与手机启动修复继续保留，v0.6.3.1 的触发器及图形恢复修复也继续保留。保留 v0.6.3 的动态空间索引、独立模型与 GPU 缓存优化。v0.6.2 的粉碎轮严格 1→3、火花反馈、岩石碰撞继续保留。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
       </div>
     </section>
   </div>
@@ -202,6 +212,65 @@ function screenStickToWorld(x,y){
 return {headingBasis,modelYaw,screenStickToWorld};
 })();
 
+// --- vehicleRig.js (isolated) ---
+const __m_vehicleRig = (()=>{
+'use strict';
+
+/** Pure, deterministic tracked-chassis visual kinematics.
+ * This module does not affect vehicle collision geometry or game economy.
+ * Both the scene preview and the live vehicle use the same rig calculations.
+ */
+const TRACK_RADIUS=0.43;
+const TRACK_HALF_STRAIGHT=1.034;
+const TRACK_LINKS=26;
+const TRACK_LENGTH=4*TRACK_HALF_STRAIGHT+2*Math.PI*TRACK_RADIUS;
+function trackLinkPose(distance,index,count=TRACK_LINKS){
+ const n=Math.max(1,Math.floor(count)),r=TRACK_RADIUS,a=TRACK_HALF_STRAIGHT;
+ const length=4*a+2*Math.PI*r;
+ const u=((distance+index*length/n)%length+length)%length;
+ if(u<2*a)return {z:-a+u,y:-r,pitch:0};
+ if(u<2*a+Math.PI*r){
+  const angle=(u-2*a)/r;
+  return {z:a+r*Math.sin(angle),y:-r*Math.cos(angle),pitch:-angle};
+ }
+ if(u<4*a+Math.PI*r)return {z:a-(u-2*a-Math.PI*r),y:r,pitch:-Math.PI};
+ const angle=(u-4*a-Math.PI*r)/r;
+ return {z:-a-r*Math.sin(angle),y:r*Math.cos(angle),pitch:-Math.PI-angle};
+}
+/** Integrate actual ground movement and yaw, allowing stationary turning to
+ * move the two belts in opposite directions. Missing visual fields are fine
+ * for older tests and restored progress (vehicle visual state is ephemeral).
+ */
+function advanceTrackOdometer(player,previous){
+ const dx=player.x-previous.x,dz=player.z-previous.z;
+ const fx=Math.sin(player.yaw),fz=-Math.cos(player.yaw);
+ const travel=dx*fx+dz*fz;
+ const yawDelta=Math.atan2(Math.sin(player.yaw-previous.yaw),Math.cos(player.yaw-previous.yaw));
+ const radius=.99*(1+Math.min(4,Math.max(0,player.level||0))*.055);
+ const left=travel+yawDelta*radius,right=travel-yawDelta*radius;
+ player.trackLeft=(player.trackLeft||0)+left;
+ player.trackRight=(player.trackRight||0)+right;
+ player.travelDistance=(player.travelDistance||0)+Math.abs(travel);
+ return {left,right,travel,yawDelta};
+}
+function vehicleVisualStyle(player){
+ const bounded=v=>Math.max(0,Math.min(4,Math.floor(Number.isFinite(v)?v:0)));
+ const level=bounded(player.level),blade=bounded(player.bladeLevel);
+ return {
+  level,blade,speed:bounded(player.speedLevel),steering:bounded(player.steeringLevel),
+  coin:bounded(player.coinLevel),
+  scale:1+level*.055,
+  bladeScale:1+blade*.17,
+  trackWidth:.77+level*.045,
+  armour:level>=2,
+  canopy:level>=3,
+  reinforced:level>=4
+ };
+}
+
+return {TRACK_RADIUS,TRACK_HALF_STRAIGHT,TRACK_LINKS,TRACK_LENGTH,trackLinkPose,advanceTrackOdometer,vehicleVisualStyle};
+})();
+
 // --- cameraZoom.js (isolated) ---
 const __m_cameraZoom = (()=>{
 'use strict';
@@ -219,7 +288,22 @@ function pinchZoom(startZoom,startDistance,currentDistance){
 }
 function pointerDistance(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
-return {ZOOM_MIN,ZOOM_MAX,wheelZoom,pinchZoom,pointerDistance};
+/** Camera stays on the same azimuth so touch/WASD direction is unchanged.
+ * Only framing and zoom differ; temporary upgrade emphasis is visual-only.
+ */
+function cameraFraming(aspect,zoom=1,mode='follow',upgradePulse=0){
+ const a=Number.isFinite(aspect)&&aspect>0?aspect:1;
+ const userZoom=clamp(Number.isFinite(zoom)?zoom:1,ZOOM_MIN,ZOOM_MAX);
+ const close=mode==='close',pulse=clamp(upgradePulse,0,1);
+ const base=a<.7?40.5:a<1.1?35:32;
+ return {
+  vertical:base*userZoom*(close?.76:1)*(1-.085*pulse),
+  forwardOffset:close?1.85:1.25,
+  mode:close?'close':'follow'
+ };
+}
+
+return {ZOOM_MIN,ZOOM_MAX,wheelZoom,pinchZoom,pointerDistance,cameraFraming};
 })();
 
 // --- economy.js (isolated) ---
@@ -581,6 +665,8 @@ const {lookAt: lookAt} = __m_math;
 const {project: project} = __m_math;
 const {QUALITY_LEVELS: QUALITY_LEVELS} = __m_quality;
 const {headingBasis: headingBasis} = __m_heading;
+const {cameraFraming: cameraFraming} = __m_cameraZoom;
+
 
 
 
@@ -724,13 +810,14 @@ class Renderer{
    this.batch.set(name,{data:new Float32Array(20*32),count:0});
    this.transparent.set(name,{data:new Float32Array(20*16),count:0});
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0};
   this.w=0;this.h=0;this.vp=null;
   this.quality=QUALITY_LEVELS.high;this.qualityName='high';
   this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
   gl.clearColor(.51,.35,.26,1);
  }
+ pulseUpgrade(){this.camera.focusPulse=1;}
  setQuality(name){
   if(!Object.hasOwn(QUALITY_LEVELS,name))return false;
   if(this.qualityName===name)return false;
@@ -749,11 +836,13 @@ class Renderer{
  begin(t,player,dt){
   this.resize();
   const follow=Math.min(1,dt*3.4);
+  this.camera.focusPulse=Math.max(0,(this.camera.focusPulse||0)-Math.max(0,dt)*1.45);
+  const frame=cameraFraming(this.aspect,this.camera.zoom,this.camera.mode,this.camera.focusPulse);
   const {fx,fz}=headingBasis(player.yaw);
-  this.camera.x+=(player.x+fx*1.25-this.camera.x)*follow;
-  this.camera.z+=(player.z+fz*1.25-this.camera.z)*follow;
+  this.camera.x+=(player.x+fx*frame.forwardOffset-this.camera.x)*follow;
+  this.camera.z+=(player.z+fz*frame.forwardOffset-this.camera.z)*follow;
   const cx=this.camera.x,cz=this.camera.z-1.8;
-  const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
+  const vertical=frame.vertical;
   const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
   const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
   this.vp=mat4Mul(proj,view);
@@ -1334,6 +1423,10 @@ const {flashIntensity: flashIntensity} = __m_flash;
 const {particleHalfHeight: particleHalfHeight} = __m_granular;
 const {headingBasis: headingBasis} = __m_heading;
 const {modelYaw: modelYaw} = __m_heading;
+const {TRACK_LINKS: TRACK_LINKS} = __m_vehicleRig;
+const {trackLinkPose: trackLinkPose} = __m_vehicleRig;
+const {vehicleVisualStyle: vehicleVisualStyle} = __m_vehicleRig;
+
 
 
 
@@ -1344,10 +1437,10 @@ const RUBBER=[.105,.121,.121,5],RUBBER_EDGE=[.18,.21,.21,5];
 const STEEL=[.37,.42,.41,4],STEEL_LIGHT=[.66,.69,.65,4];
 const YELLOW=[1.0,.69,.065,4],YELLOW_LIT=[1,.81,.17,4],YELLOW_DARK=[.75,.44,.037,4];
 function renderVehicle(renderer,player,t,baseY=0){
- const {x,z,yaw,level}=player;
- const advanced=level>=2,upgraded=level>=1;
- const size=1+Math.min(4,level)*.055;
- const bladeScale=1+.17*Math.min(4,player.bladeLevel||0);
+ const {x,z,yaw}=player,visual=vehicleVisualStyle(player);
+ const level=visual.level,advanced=level>=2,upgraded=level>=1;
+ const size=visual.scale,bladeScale=visual.bladeScale;
+ const bladeLift=Math.min(.07,Math.max(0,player.bladeBounce||0));
  const blade=level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
  const bladeEdge=level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
  const hood=level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
@@ -1359,24 +1452,52 @@ function renderVehicle(renderer,player,t,baseY=0){
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
  function bladePart(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
-  part(mesh,lx*bladeScale,ly,lz,sx*bladeScale,sy,sz,color,a,p,roll,opacity);
+  // Blade motion follows contact damping, less than 7 cm from collision shell.
+  part(mesh,lx*bladeScale,ly+bladeLift,lz,sx*bladeScale,sy,sz,color,a,p,roll,opacity);
  }
  // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
  for(const side of [-1,1]){
   const xx=side*.99;
-  part('track',xx,.55,.49,.77,1.03,1.10,RUBBER);
+  part('track',xx,.55,.49,visual.trackWidth,1.03,1.10,RUBBER);
   part('track',xx,.57,.49,.46,.70,.86,RUBBER_EDGE);
-  for(const zz of [-.55,.48,1.43]){
+  const beltDistance=side<0?(player.trackLeft||0):(player.trackRight||0);
+  // Each shoe travels the same rounded-belt loop; not a moving texture.
+  // The bottom branch advances opposite to forward chassis motion.
+  for(let j=0;j<TRACK_LINKS;j++){
+   const link=trackLinkPose(beltDistance,j);
+   part('box',xx,.55+link.y,.49+link.z,visual.trackWidth+.07,.12,.19,
+    j%4===0?RUBBER_EDGE:RUBBER,0,link.pitch);
+  }
+  for(const [wheelIndex,zz] of [-.55,.48,1.43].entries()){
    part('cylinder',side*1.395,.55,zz,.68,.27,.68,[.87,.61,.10,4],0,0,Math.PI/2);
    part('cylinder',side*1.54,.55,zz,.31,.28,.31,STEEL,0,0,Math.PI/2);
+   const rotation=beltDistance/.43+wheelIndex*.45;
+   part('sphere',side*1.72,.55+Math.sin(rotation)*.16,zz+Math.cos(rotation)*.16,
+    .095,.095,.095,YELLOW_LIT);
   }
-  // Offset rubber shoes around each track. These are visible individually in close shots.
-  for(let j=-6;j<=6;j++){
-   const tz=.48+j*.204;
-   part('box',side*.99,.124,tz,.81,.115,.125,RUBBER_EDGE);
-   part('box',side*.99,.981,tz,.81,.08,.125,RUBBER);
+  part('box',side*.94,.89,.54,.68,.125,2.25,[.25,.28,.27,5]);
+ }
+ // Chassis armour grows by level; independent movement upgrades add their
+ // own mechanically legible parts rather than recolouring the same mesh.
+ if(level>=1){
+  for(const side of [-1,1])part('box',side*1.22,1.03,.36,.13,.30,2.40,YELLOW_DARK);
+ }
+ if(level>=2){
+  part('box',0,1.36,1.06,1.55,.14,1.47,STEEL_LIGHT);
+  for(const side of [-1,1])part('box',side*1.25,1.04,1.10,.16,.38,1.35,hood);
+ }
+ if(level>=3){
+  for(const side of [-1,1]){
+   part('box',side*.72,2.37,1.08,.13,1.23,.13,STEEL);
+   part('box',side*.72,2.38,-.08,.13,1.20,.13,STEEL);
   }
-  part('box',side*.94,.88,.54,.68,.125,2.25,[.25,.28,.27,5]);
+  part('box',0,2.97,.52,1.75,.15,1.6,hood);
+ }
+ if(level>=4){
+  for(const side of [-1,1]){
+   part('box',side*1.28,1.50,-.60,.22,.23,1.54,bladeEdge);
+   part('sphere',side*1.31,1.56,-1.31,.27,.27,.27,YELLOW_LIT);
+  }
  }
  // Articulated chassis, engine bonnet, and sloped front cover.
  part('box',0,.88,.65,1.73,.64,2.45,hood);
@@ -1413,6 +1534,28 @@ function renderVehicle(renderer,player,t,baseY=0){
   part('cylinder',side*1.07,1.10,-1.89,.12,.82,.14,STEEL_LIGHT,0,.35,Math.PI/2);
   part('sphere',side*1.12,1.00,-2.17,.22,.22,.22,[.36,.40,.41,4]);
  }
+ // Every non-chassis track now changes the machine silhouette as it upgrades.
+ for(let tier=0;tier<visual.speed;tier++){
+  const rear=1.12+tier*.30;
+  part('box',0,1.88,rear,1.24,.085,.10,STEEL_LIGHT);
+  part('box',0,1.97,rear,.90,.085,.09,RUBBER);
+ }
+ if(visual.speed>=2){
+  part('cylinder',-.64,1.93,1.12,.24,1.05,.24,STEEL);
+  part('cylinder',-.64,2.47,1.12,.33,.10,.33,RUBBER);
+ }
+ for(let tier=0;tier<visual.steering;tier++){
+  const sign=tier%2?-1:1,front=-.76-Math.floor(tier/2)*.39;
+  part('cylinder',sign*1.29,.95,front,.16,.38,.16,STEEL_LIGHT);
+  part('sphere',sign*1.29,1.16,front,.23,.23,.23,YELLOW_LIT);
+ }
+ if(visual.coin){
+  // Visible gold-valuing module; each tier adds a coin-shaped collector.
+  for(let tier=0;tier<visual.coin;tier++){
+   const row=tier%2,depth=Math.floor(tier/2);
+   part('coin',-.35+row*.70,2.01+depth*.14,1.71,.38,.22,.38,[1,.76,.09,7]);
+  }
+ }
  // v0.2: actual concave bucket shell, with dedicated sideplates, bolted upper rim
  // and a sharp scraper lip. Its silhouette is modelled in 3D and is visible at any yaw.
  bladePart('scoop',0,0,0,1,1,1,blade);
@@ -1436,6 +1579,24 @@ function renderVehicle(renderer,player,t,baseY=0){
  if(level>=4){
   part('box',0,1.48,-.8,1.9,.22,1.1,[.92,.68,.15,4]);
   for(const side of [-1,1])part('box',side*2.02,1.03,-1.62,.24,1.45,.21,bladeEdge);
+ }
+ // Physical scraper teeth become denser on the blade upgrade route.
+ if(visual.blade>0){
+  const teeth=4+visual.blade*2;
+  for(let i=0;i<teeth;i++){
+   const u=teeth===1?0:i/(teeth-1),lx=(u-.5)*3.72;
+   bladePart('box',lx,.105,-2.94,.095,.11,.25,STEEL_LIGHT);
+  }
+ }
+ const upgradeAge=t-(player.upgradeFlashAt??-50);
+ if(upgradeAge>=0&&upgradeAge<1.05){
+  const strength=1-upgradeAge/1.05;
+  for(const side of [-1,1]){
+   part('sphere',side*1.40,1.95,-1.37,.19+strength*.28,.19+strength*.28,
+    .19+strength*.28,[1,.93,.40,4]);
+  }
+  part('sphere',0,2.91,.55,.16+strength*.4,.16+strength*.4,
+   .16+strength*.4,[1,.95,.54,4]);
  }
 }
 
@@ -1625,7 +1786,8 @@ class World{
   if(this.stage===0){
    if(player && this.upgradeStation){
     const next=Math.min(MAX_VEHICLE_LEVEL,player.level+1);
-    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next,bladeLevel:player.bladeLevel},t,.47);
+    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next,bladeLevel:player.bladeLevel,
+      speedLevel:player.speedLevel,steeringLevel:player.steeringLevel,coinLevel:player.coinLevel},t,.47);
     // Animated golden deposit slot on the rim of the payment area.
     renderer.add('box',19,.33+Math.sin(t*3)*.04,-12.05,7.7,.06,1.6,[1,.81,.08,3]);
    }
@@ -1683,6 +1845,8 @@ const {EconomyTelemetry: EconomyTelemetry} = __m_telemetry;
 const {insideTrigger: insideTrigger} = __m_triggers;
 const {enteredTrigger: enteredTrigger} = __m_triggers;
 const {crossedGatePlane: crossedGatePlane} = __m_triggers;
+const {advanceTrackOdometer: advanceTrackOdometer} = __m_vehicleRig;
+
 
 
 
@@ -1708,7 +1872,11 @@ class Simulation{
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
   this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
-  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
+  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,
+   level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level,
+   speedLevel:this.tracks.speed.level,steeringLevel:this.tracks.steering.level,
+   coinLevel:this.tracks.coin.level,trackLeft:0,trackRight:0,travelDistance:0,
+   bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
   this.coinsSpent={vehicle:0,gate:0};
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
@@ -1802,6 +1970,10 @@ class Simulation{
    this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
    this.player.level=this.stage?Math.max(2,this.level):this.level;
    this.player.bladeLevel=this.tracks.blade.level;
+   this.player.speedLevel=this.tracks.speed.level;
+   this.player.steeringLevel=this.tracks.steering.level;
+   this.player.coinLevel=this.tracks.coin.level;
+   if(result.upgrades)this.player.upgradeFlashAt=this.elapsed;
    this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
    if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:coinCredit(this.tracks),nextCost:result.remaining});
   }
@@ -1860,7 +2032,7 @@ class Simulation{
  update(dt,dirX,dirZ,world){
   dt=clamp(dt,0,.044);if(!dt)return;
   this.elapsed+=dt;
-  const p=this.player,previous={x:p.x,z:p.z};
+  const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
   if(goal>.1){
@@ -1889,6 +2061,10 @@ class Simulation{
   for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  // Visual odometer observes actual resolved movement, never drives the physics.
+  advanceTrackOdometer(p,previous);
+  const impact=Math.min(.085,Math.max(0,this.granular.lastPairs||0)*.004);
+  p.bladeBounce=(p.bladeBounce||0)*Math.exp(-dt*9)+impact*(1-Math.exp(-dt*9));
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
   this.physics.active=this.granular.lastActive;
   this.physics.sleeping=this.granular.lastSleeping||0;
@@ -2048,6 +2224,7 @@ const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-ga
 const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
 const pauseButton=document.getElementById('pauseButton');
 const playButton=document.getElementById('playButton');
+const cameraModeButton=document.getElementById('cameraModeButton');
 const startupIssue=document.getElementById('startupIssue');
 const sceneButton=document.getElementById('sceneButton');
 const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=document.getElementById('upgradePicker');
@@ -2166,7 +2343,7 @@ function handleEvents(){
  }
  sim.events.length=0;
  if(paid){saveProgress();if(!upgrades.length)beep(360+sim.deposit%100*3,.06,.026);}
- if(upgrades.length){const item=upgrades.at(-1);toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
+ if(upgrades.length){const item=upgrades.at(-1);renderer?.pulseUpgrade();toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('倍增已受资源上限限制：请把金币投入升级台或使用计数带回收',2.8);
  else if(crusherBlocked)toast('粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
@@ -2280,6 +2457,16 @@ function moveTouch(point){
 }
 function endJoystick(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';}
 function setZoom(zoom){if(!renderer)return;renderer.camera.zoom=zoom;updateUI();}
+function updateCameraModeButton(){
+ const close=renderer?.camera.mode==='close';
+ cameraModeButton.textContent=close?'镜头：特写':'镜头：全景';
+ cameraModeButton.setAttribute('aria-pressed',String(close));
+}
+cameraModeButton.addEventListener('click',()=>{
+ if(!renderer)return;
+ renderer.camera.mode=renderer.camera.mode==='close'?'follow':'close';
+ updateCameraModeButton();
+});
 canvas.addEventListener('wheel',e=>{if(renderer){setZoom(wheelZoom(renderer.camera.zoom,e.deltaY));e.preventDefault();}},{passive:false});
 canvas.addEventListener('pointerdown',e=>{
  if(paused||graphicsLost||e.button>0)return;
@@ -2343,6 +2530,7 @@ function enterMine(){
    renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
   }
   startRenderLoop();
+  updateCameraModeButton();
   startupIssue.hidden=true;
   playButton.textContent='进入矿场';
   hideMenu();
@@ -2376,6 +2564,7 @@ canvas.addEventListener('webglcontextrestored',()=>{
   next.setQuality(qualityController.mode);
   if(previous)Object.assign(next.camera,previous);
   renderer=next;
+  updateCameraModeButton();
   graphicsLost=false;
   graphicsStatus.hidden=true;
   frameSamples=0;frameSeconds=0;measuredFps=0;
@@ -2394,6 +2583,7 @@ try{
  renderer.setQuality(qualityController.mode);
  renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
  startRenderLoop();
+ updateCameraModeButton();
 }catch(error){showStartupIssue(error);}
 
 return {};

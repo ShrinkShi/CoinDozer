@@ -2,6 +2,7 @@ import {GEOMETRY} from './geometry.js';
 import {composeInto, mat4Mul, ortho, lookAt, project} from './math.js';
 import {QUALITY_LEVELS} from './quality.js';
 import {headingBasis} from './heading.js';
+import {cameraFraming} from './cameraZoom.js';
 const VERT=`
 precision highp float;
 attribute vec3 aPosition;
@@ -141,13 +142,14 @@ export class Renderer{
    this.batch.set(name,{data:new Float32Array(20*32),count:0});
    this.transparent.set(name,{data:new Float32Array(20*16),count:0});
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0};
   this.w=0;this.h=0;this.vp=null;
   this.quality=QUALITY_LEVELS.high;this.qualityName='high';
   this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
   gl.clearColor(.51,.35,.26,1);
  }
+ pulseUpgrade(){this.camera.focusPulse=1;}
  setQuality(name){
   if(!Object.hasOwn(QUALITY_LEVELS,name))return false;
   if(this.qualityName===name)return false;
@@ -166,11 +168,13 @@ export class Renderer{
  begin(t,player,dt){
   this.resize();
   const follow=Math.min(1,dt*3.4);
+  this.camera.focusPulse=Math.max(0,(this.camera.focusPulse||0)-Math.max(0,dt)*1.45);
+  const frame=cameraFraming(this.aspect,this.camera.zoom,this.camera.mode,this.camera.focusPulse);
   const {fx,fz}=headingBasis(player.yaw);
-  this.camera.x+=(player.x+fx*1.25-this.camera.x)*follow;
-  this.camera.z+=(player.z+fz*1.25-this.camera.z)*follow;
+  this.camera.x+=(player.x+fx*frame.forwardOffset-this.camera.x)*follow;
+  this.camera.z+=(player.z+fz*frame.forwardOffset-this.camera.z)*follow;
   const cx=this.camera.x,cz=this.camera.z-1.8;
-  const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
+  const vertical=frame.vertical;
   const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
   const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
   this.vp=mat4Mul(proj,view);
