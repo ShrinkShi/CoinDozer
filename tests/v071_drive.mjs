@@ -28,6 +28,10 @@ assert.ok(crushed,'same ore must reach the north grinder without developer telep
 assert.ok(ore.kind==='gold','the original ore body becomes an independent coin');
 assert.ok(s.resources.filter(r=>!r.dead&&r.kind==='gold').length>=3,
  'physically delivered ore generates real output coins');
-assert.equal(s.telemetry.totals.goldProduced,3);
+assert.ok(s.crushed>=1,'physically delivered ore was actually processed');
+assert.equal(s.telemetry.totals.goldProduced,3*s.crushed,
+ 'every processed ore, including the real gate clone, yields exactly three distinct coins');
+assert.ok(s.telemetry.totals.goldProduced>=6,
+ 'ore ×2 should generate at least six gold coins, not three');
 assert.equal(s.telemetry.totals.recycled,0);
 console.log('v0.7.1 natural vehicle-driven ore -> gate -> bridge -> grinder -> three coins PASS');
