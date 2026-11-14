@@ -5,8 +5,8 @@ import {UPGRADE_COSTS,MAX_VEHICLE_LEVEL,applyUpgradePayment} from '../src/econom
 import {wheelZoom,pinchZoom,ZOOM_MIN,ZOOM_MAX} from '../src/cameraZoom.js';
 
 const world=new World(0);
-assert.deepEqual(world.gates.map(g=>g.multiplier),[2,3,5,10]);
-assert.equal(new World(1).gates[0].multiplier,5);
+assert.deepEqual(world.gates.map(g=>g.multiplier),[2,2,2,2]);
+assert.equal(new World(1).gates[0].multiplier,2);
 const make=(kind,x,z)=>({kind,x,z,y:0,vx:0,vy:0,vz:-10,dead:false,passedGates:0,cooldown:0,spin:0,angle:0});
 const noParticles=(sim)=>{sim.granular.step=()=>{};};
 for(const gate of world.gates){

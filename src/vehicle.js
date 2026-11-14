@@ -11,6 +11,7 @@ export function renderVehicle(renderer,player,t,baseY=0){
  const {x,z,yaw,level}=player;
  const advanced=level>=2,upgraded=level>=1;
  const size=1+Math.min(4,level)*.055;
+ const bladeScale=1+.17*Math.min(4,player.bladeLevel||0);
  const blade=level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
  const bladeEdge=level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
  const hood=level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
@@ -21,6 +22,9 @@ export function renderVehicle(renderer,player,t,baseY=0){
   renderer.add(mesh,xx,ly*size+baseY,zz,sx*size,sy*size,sz*size,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
+ function bladePart(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
+  part(mesh,lx*bladeScale,ly,lz,sx*bladeScale,sy,sz,color,a,p,roll,opacity);
+ }
  // Real extruded rounded caterpillar belt rather than two dark rectangular blocks.
  for(const side of [-1,1]){
   const xx=side*.99;
@@ -75,16 +79,16 @@ export function renderVehicle(renderer,player,t,baseY=0){
  }
  // v0.2: actual concave bucket shell, with dedicated sideplates, bolted upper rim
  // and a sharp scraper lip. Its silhouette is modelled in 3D and is visible at any yaw.
- part('scoop',0,0,0,1,1,1,blade);
+ bladePart('scoop',0,0,0,1,1,1,blade);
  for(const side of [-1,1]){
-  part('cheek',side*1.97,0,0,.23,1,1,bladeEdge);
-  part('box',side*1.96,.22,-2.56,.28,.17,.72,blade);
-  part('cylinder',side*1.99,1.23,-1.63,.19,.25,.19,STEEL_LIGHT,0,0,Math.PI/2);
+  bladePart('cheek',side*1.97,0,0,.23,1,1,bladeEdge);
+  bladePart('box',side*1.96,.22,-2.56,.28,.17,.72,blade);
+  bladePart('cylinder',side*1.99,1.23,-1.63,.19,.25,.19,STEEL_LIGHT,0,0,Math.PI/2);
  }
- part('box',0,1.40,-1.72,4.03,.13,.22,YELLOW_LIT);
- part('box',0,.17,-2.79,4.02,.075,.30,STEEL_LIGHT);
- part('box',0,.14,-2.94,3.94,.040,.11,bladeEdge);
- for(const side of [-1,1])part('box',side*1.45,1.43,-1.72,.12,.10,.27,STEEL);
+ bladePart('box',0,1.40,-1.72,4.03,.13,.22,YELLOW_LIT);
+ bladePart('box',0,.17,-2.79,4.02,.075,.30,STEEL_LIGHT);
+ bladePart('box',0,.14,-2.94,3.94,.040,.11,bladeEdge);
+ for(const side of [-1,1])bladePart('box',side*1.45,1.43,-1.72,.12,.10,.27,STEEL);
  if(level>=3){
   part('box',0,2.03,1.36,2.08,.13,1.00,bladeEdge);
   part('box',0,2.15,1.19,1.55,.16,.2,STEEL_LIGHT);

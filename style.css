@@ -3,3 +3,18 @@
 .resource-counter,.zoom-counter{position:absolute;top:82px;z-index:4;pointer-events:none;background:#2e2114aa;color:#f9ebd5;font-size:11px;font-weight:800;padding:6px 9px;border-radius:9px;letter-spacing:.03em;text-shadow:0 1px 2px #000a}
 .resource-counter{left:12px}.zoom-counter{right:12px}
 @media(max-width:390px){.resource-counter,.zoom-counter{top:79px;font-size:10px;padding:5px 7px}}
+
+/* v0.6 progression selector: only chooses a station target; never buys on tap. */
+#upgradeButton{pointer-events:auto;border:1px solid #ffe6a66a;border-radius:10px;background:#665027bc;color:#ffe4a3;padding:9px 11px;font-size:12px;font-weight:900;white-space:nowrap}
+#upgradeButton[aria-expanded="true"]{background:#eabb56;color:#392511}
+#upgradePicker{position:absolute;z-index:7;right:10px;top:74px;width:min(430px,calc(100vw - 20px));padding:13px;background:#251a16f2;border:1px solid #ffe0a251;border-radius:15px;box-shadow:0 6px 30px #09040385;pointer-events:auto;max-height:52dvh;overflow:auto}
+#upgradePicker[hidden]{display:none}
+.picker-title{color:#ffdf9f;font-size:14px;font-weight:900;margin-bottom:10px}.picker-title small{display:block;color:#d3c3b5;font-size:11px;margin-top:4px;font-weight:400}
+.track-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.track-option{border:1px solid #ffffff29;border-radius:10px;text-align:left;color:#f8e8cb;background:#49332c;min-height:67px;padding:9px 10px;pointer-events:auto}
+.track-option[aria-pressed="true"]{outline:2px solid #eac45c;background:#675124;border-color:#eac45c}
+.track-option:disabled{opacity:.68}
+.track-option strong{display:block;font-size:13px;margin-bottom:3px}.track-option small{font-size:10px;color:#e6d4c1;line-height:1.35}
+.picker-footnote{font-size:11px;color:#d2c0a7;margin:10px 0 0;line-height:1.5}
+.world-label.gate-cost{font-size:clamp(12px,2.9vw,19px);color:#fff3ad;background:#1e1722dc;border:1px solid #f9cc57a8;border-radius:7px;padding:4px 7px;text-shadow:0 1px 2px black}
+@media(max-width:540px){#topbar{gap:6px;padding-left:8px;padding-right:8px}.brand{font-size:11px}.stats{gap:5px}.stats span{font-size:9px}.stats strong{font-size:12px}#upgradeButton{font-size:10px;padding:9px 7px}#pauseButton{flex-shrink:0}#upgradePicker{top:70px;max-height:43dvh}.track-option{min-height:58px}.world-label.gate-cost{font-size:11px;padding:3px 4px}}

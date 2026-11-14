@@ -5,7 +5,7 @@ export const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 export class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.sites={};this.gates=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
+ constructor(stage=0){this.stage=stage;this.static=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
  addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
@@ -24,10 +24,16 @@ export class World{
  for(let k=0;k<16;k++){let x=-23.6+k*.70,z=-14.5-(x+17)*.24;this.add('box',x,.39,z,.64,.22,9.45,k%3?[.91,.58,.29]:[.97,.66,.35],-.24);this.add('box',x,.51,z-4.53,.62,.06,.18,[.41,.22,.105],-.24)}
  this.add('box',-18.2,.16,-14.2,11,.12,9,PALETTE.bridgeSide,-.24);
  // The lavender ×10 fabric gate, orange posts with purple heads and violet cloud.
- this.sites.gates=[];
- for(const [id,factor,x] of [[0,2,-8.4],[1,3,-2.8],[2,5,2.8],[3,10,8.4]]){
+ this.sites.gates=[];this.sites.gateCosts=[];
+ for(const [id,factor,x] of [[0,2,-8.4],[1,2,-2.8],[2,2,2.8],[3,2,8.4]]){
   const gate={id,x,z:3.1,half:2.18,multiplier:factor};
   this.gates.push(gate);this.frameGate(gate);
+  const pad={id,x,z:-4.65,vehicleRadius:4.6,depositHalfX:1.45,depositHalfZ:.75};
+  this.gateStations.push(pad);
+  this.add('box',x,.16,-4.65,3.35,.24,1.95,[.95,.64,.07]);
+  this.add('box',x,.31,-4.65,2.95,.12,1.45,PALETTE.black);
+  for(const side of [-1,1])this.add('box',x+side*1.61,.35,-4.65,.12,.22,1.8,PALETTE.mint);
+  this.sites.gateCosts.push({id,x,y:.52,z:-4.65});
  }
  // Purple uprights and orange brush/rotating hazard, next to the gold pile.
  this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};
@@ -70,8 +76,8 @@ export class World{
   this.sites.gates.push({id,x,y:1.85,z:z-.15,multiplier});
  }
  makeBonus(){this.add('box',0,-.92,0,68,1.8,64,[.25,.27,.28]);this.add('box',0,-.05,0,66,.2,61,[.43,.44,.41]);this.borderRocks(true);
- this.gates.push({id:4,x:-9,z:-8,half:5.1,multiplier:5});
- this.sites.gates=[{id:4,x:-9,y:1.6,z:-8,multiplier:5}];
+ this.gates.push({id:4,x:-9,z:-8,half:5.1,multiplier:2});
+ this.sites.gates=[{id:4,x:-9,y:1.6,z:-8,multiplier:2}];
  // Later quick-cut of the advertisement: long golden ingots, baby-blue steel blade and pink cave stones.
  for(const x of [-14.1,-3.9]){this.add('box',x,.13,-8,1.25,.32,1.25,PALETTE.purple);this.add('box',x,1.95,-8,1.1,3.7,1.05,[.99,.62,.31]);this.add('box',x,3.95,-8,1.38,.83,1.38,PALETTE.purpleCap)}
  this.add('box',-9,1.8,-8,10.5,3.2,.12,PALETTE.glass,0,0,0,.40);
@@ -88,7 +94,7 @@ export class World{
   if(this.stage===0){
    if(player && this.upgradeStation){
     const next=Math.min(MAX_VEHICLE_LEVEL,player.level+1);
-    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next},t,.47);
+    renderVehicle(renderer,{x:19,z:-20.3,yaw:Math.PI,level:next,bladeLevel:player.bladeLevel},t,.47);
     // Animated golden deposit slot on the rim of the payment area.
     renderer.add('box',19,.33+Math.sin(t*3)*.04,-12.05,7.7,.06,1.6,[1,.81,.08,3]);
    }

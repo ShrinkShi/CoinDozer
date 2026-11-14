@@ -10,15 +10,25 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.5.1</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>升级还差 <strong id="left">30</strong></span></div><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.0</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
+    <section id="upgradePicker" aria-label="选择铲车升级路线" hidden>
+      <div class="picker-title">选择升级目标 <small>选中后把金币推入紫色载具升级台</small></div>
+      <div id="trackButtons" class="track-buttons"></div>
+      <p class="picker-footnote">每枚实体金币抵扣 <b id="pickerCoinValue">1</b> 金额。数字门需把金币送进门前对应的黑金色小站台。</p>
+    </section>
     <div id="worldLabels" aria-hidden="true">
       <div id="label-gate-0" class="world-label gate">×2</div>
       <div id="label-gate-1" class="world-label gate">×3</div>
       <div id="label-gate-2" class="world-label gate">×5</div>
       <div id="label-gate-3" class="world-label gate">×10</div>
-      <div id="label-gate-4" class="world-label gate">×5</div>
+      <div id="label-gate-4" class="world-label gate">×2</div>
+      <div id="label-gatecost-0" class="world-label gate-cost">还需 12</div>
+      <div id="label-gatecost-1" class="world-label gate-cost">还需 12</div>
+      <div id="label-gatecost-2" class="world-label gate-cost">还需 12</div>
+      <div id="label-gatecost-3" class="world-label gate-cost">还需 12</div>
+
       <div id="label-cost" class="world-label cost">30</div>
       <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
       <div id="label-score" class="world-label lane">0</div>
@@ -28,13 +38,14 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.5.1</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.0</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
-        <p>选择 <b>×2、×3、×5、×10</b> 门，亲眼看矿石真正增加。把蓝球推进右侧的橙色粉碎轮，每颗变成 3 枚金币，再将金币推入右上方的紫色升级站；车辆靠近站台时自动逐枚投入金币，站上的新车就是你的下一次升级。</p>
+        <p>四座倍数门现在都从 <b>×2</b> 开始。把金币推到门前的黑金色投放台，每座门可以分别升级，最高 <b>×20</b>。蓝球经过粉碎轮后，一颗可得到三枚真实金币。</p>
+        <p>点右上角的「<b>改装</b>」切换底盘、车速、转向、铲斗宽度或金币价值，再到紫色车辆升级台投入金币。升值后的金币可以抵扣更多升级金额，但仍然只有一枚实物。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">v0.5.1：双向倍数门，每次倍增都创建真实独立实体，不使用视觉聚合；场景上限 6500，达到上限会阻止继续倍增。颗粒碰撞采用邻近求解和远处休眠，以适配浏览器。所有素材由程序建模，不依赖后端或外部美术资源。</p>
+        <p class="footnote">v0.6.0：所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
       </div>
     </section>
   </div>

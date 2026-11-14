@@ -32,7 +32,7 @@ with sync_playwright() as p:
   const initialTotal=1;
   sim.update(.044,0,0,world);
   const multiplyTotal=sim.resources.filter(r=>!r.dead).length;
-  const multiplied=!!(r.passedGates&(1<<2)) && multiplyTotal===5;
+  const multiplied=!!(r.passedGates&(1<<2)) && multiplyTotal===2;
   sim.player.x=19;sim.player.z=-12;
   let coin={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
   sim.resources.push(coin);
@@ -40,7 +40,7 @@ with sync_playwright() as p:
   const before=sim.remaining;
   sim.update(.022,0,0,world);
   const deducted=before===30&&sim.remaining===29;
-  sim.deposit=29;sim.remaining=1;
+  sim.tracks.chassis.deposited=29;sim.deposit=29;sim.remaining=1;
   const another={kind:'gold',x:19,z:-12,y:0,vx:0,vy:0,vz:0,cooldown:0,spin:0,dead:false};
   sim.resources.push(another);
   another.x=19;another.z=-12;another.vx=0;another.vz=0;
@@ -59,7 +59,7 @@ with sync_playwright() as p:
  assert page.locator('#sceneButton').inner_text().endswith('粉晶岩洞')
  page.locator('#playButton').click()
  page.wait_for_timeout(350)
- assert '×5' in page.locator('.world-label:visible').all_text_contents()
+ assert '×2' in page.locator('.world-label:visible').all_text_contents()
  assert not errors,errors
  print('All UI + physics smoke tests passed.')
  browser.close()

@@ -133,7 +133,7 @@ export class GranularSolver {
       if(driving){
         const dx=p.x-player.x,dz=p.z-player.z;
         const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
-        const bucketWidth=SCOOP_HALF_WIDTH*(1+Math.min(4,player.level)*.055);
+        const bucketWidth=SCOOP_HALF_WIDTH*(1+Math.min(4,player.level)*.055)*(1+.17*Math.min(4,player.bladeLevel||0));
         const centre=p.y+p._halfHeight;
         if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
           const contact=nearestScoopContact(ahead,centre);

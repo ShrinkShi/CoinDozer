@@ -2,7 +2,7 @@ import {clamp,TAU} from './math.js';
 import {createResourceLayout} from './world.js';
 import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
-import {MAX_RESOURCES, UPGRADE_COSTS,MAX_VEHICLE_LEVEL,remainingCost,applyUpgradePayment} from './economy.js';
+import {MAX_RESOURCES,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -13,19 +13,18 @@ export class Simulation{
   this.stage=stage;
   this.resources=createResourceLayout(stage);
   this.elapsed=0;this.lastGate=-20;
-  const currentLevel=clamp(progress.level||0,0,MAX_VEHICLE_LEVEL)|0;
-  // Preserve coins already paid before a price reduction. Carry over any excess
-  // across the new lower upgrade tiers instead of resetting customer progress.
-  const migrated=applyUpgradePayment({level:currentLevel,deposited:0},Math.floor(clamp(progress.deposited||0,0,200000)));
-  this.level=migrated.level;this.deposit=migrated.deposited;
-  this.totalDeposited=progress.totalDeposited||0;
-  this.remaining=remainingCost(this.level,this.deposit);
+  const loaded=newProgress(progress);
+  this.tracks=loaded.tracks;this.gateTracks=loaded.gates;this.selectedUpgrade=loaded.selected;
+  this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
+  this.totalDeposited=loaded.totalDeposited;
+  this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
   this.processed=0;this.crushed=0;this.multipliedValue=0;this.gateHits=0;
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
   this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.activeCount=this.resources.length;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
-  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level};
+  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
   this._crowdedNotified=-50;
+  this.coinsSpent={vehicle:0,gate:0};
  }
  setStage(stage){Object.assign(this,new Simulation(stage))}
  emit(type,data={}){this.events.push({type,...data})}
@@ -61,17 +60,33 @@ export class Simulation{
   this.emit('crush',{x:r.x,z:r.z,coins:3});
   return true;
  }
- /** One real coin is consumed to contribute exactly 1 to a station's current tier. */
- payCoin(r){
-  if(this.level>=MAX_VEHICLE_LEVEL)return false;
-  r.dead=true;this.deposit++;this.totalDeposited++;
-  this.remaining=remainingCost(this.level,this.deposit);
-  this.emit('deposit',{remaining:this.remaining,level:this.level,x:r.x,z:r.z});
-  if(this.remaining===0){
-   this.level++;this.player.level=this.level;this.deposit=0;
-   this.remaining=remainingCost(this.level,this.deposit);
+ /** Only a real, visible coin may pay a physical station. */
+ selectUpgrade(key){if(!TRACK_KEYS.includes(key))return false;this.selectedUpgrade=key;return true;}
+ payCoin(r,trackKey=this.selectedUpgrade,station='vehicle',gateId=-1){
+  if(r.dead||r.kind!=='gold')return false;
+  let progress,costs;
+  if(station==='gate'){
+   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.gateTracks.length)return false;
+   progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else{
+   if(!TRACK_KEYS.includes(trackKey))return false;
+   progress=this.tracks[trackKey];costs=TRACK_COSTS[trackKey];
+  }
+  if(progress.level>=costs.length)return false;
+  const value=coinCredit(this.tracks),result=applyCredit(progress,value,costs);
+  progress.level=result.level;progress.deposited=result.deposited;
+  r.dead=true;this.totalDeposited++;this.coinsSpent[station]++;
+  if(station==='gate'){
+   this.emit('deposit',{station:'gate',id:gateId,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
+   if(result.upgrades)this.emit('gateUpgrade',{id:gateId,factor:gateFactor(progress),level:result.level});
+  }else{
+   this.emit('deposit',{station:'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
+   this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
+   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
+   this.player.level=this.stage?Math.max(2,this.level):this.level;
+   this.player.bladeLevel=this.tracks.blade.level;
    this.won=this.level===MAX_VEHICLE_LEVEL;
-   this.emit('upgrade',{level:this.level,nextCost:this.remaining});
+   if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:coinCredit(this.tracks),nextCost:result.remaining});
   }
   return true;
  }
@@ -79,7 +94,7 @@ export class Simulation{
   * after leaving the portal and returning for a deliberate new crossing.
   */
  multiply(original,gate,direction=-1){
-  const factor=gate.multiplier;
+  const factor=gateFactor(this.gateTracks[gate.id]??{level:0});
   if(!Number.isInteger(factor)||factor<2||factor>20)throw Error('Invalid multiplier');
   const created=factor-1;
   const alive=this._liveGateCount ?? this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
@@ -129,11 +144,12 @@ export class Simulation{
   if(goal>.1){
    const target=Math.atan2(dirX,-dirZ);
    const delta=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
-   p.yaw+=clamp(delta,-dt*7.5,dt*7.5);
+   const turn=vehicleTurnRate(this.tracks);
+   p.yaw+=clamp(delta,-dt*turn,dt*turn);
    const error=Math.atan2(Math.sin(target-p.yaw),Math.cos(target-p.yaw));
    alignment=Math.max(0,Math.cos(error));
   }
-  const speed=[5.55,5.95,6.4,6.9,7.4][Math.min(4,p.level)];
+  const speed=vehicleSpeed(this.tracks,p.level);
   const desiredV=goal>.08?speed*strength*alignment:0;
   p.speed+=(desiredV-p.speed)*Math.min(1,dt*(goal>.08?8.8:12));
   if(goal>.1&&alignment<.001)p.speed=0;
@@ -156,6 +172,7 @@ export class Simulation{
   let crushedThisFrame=0,depositedThisFrame=0;
   const station=world.upgradeStation;
   const playerAtStation=station && this.stage===0 && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
+  const gatePads=world.gateStations||[];
   for(const r of this.resources){
    if(r.dead)continue;
    count++;
@@ -182,9 +199,19 @@ export class Simulation{
      // Gold leaves the teeth instead of being destroyed a second time.
      r.vx=Math.max(r.vx||0,1.25);
     }
-    if(station&&playerAtStation&&r.kind==='gold'&&
-      Math.abs(r.x-station.x)<station.depositHalfX&&Math.abs(r.z-station.z)<station.depositHalfZ){
+    if(r.kind==='gold'){
+     let paid=false;
+     for(const pad of gatePads){
+      if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
+         Math.abs(r.x-pad.x)<pad.depositHalfX && Math.abs(r.z-pad.z)<pad.depositHalfZ){
+       if(this.payCoin(r,null,'gate',pad.id)){paid=true;depositedThisFrame++;}
+       break;
+      }
+     }
+     if(!paid&&station&&playerAtStation&&
+        Math.abs(r.x-station.x)<station.depositHalfX&&Math.abs(r.z-station.z)<station.depositHalfZ){
        if(this.payCoin(r))depositedThisFrame++;
+     }
     }
     if(r.x>-16.5&&r.x<-10.5&&r.z<-13&&r.z>-27&&r.kind!=='pearl'){
      r.dead=true;this.processed++;this.emit('process',{value:this.processed});
