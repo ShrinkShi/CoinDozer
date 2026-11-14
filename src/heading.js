@@ -11,7 +11,8 @@ export function modelYaw(yaw){return -yaw;}
 /** Screen-aligned stick translation for the fixed world camera.
  * Camera eye-target horizontal offset is (17, 30.3) world units.
  */
-export function screenStickToWorld(x,y){
+export function screenStickToWorld(x,y,reverse=false){
  const length=Math.hypot(17,30.3);
- return {x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
+ const v={x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
+ return reverse?{x:-v.x,z:-v.z}:v;
 }

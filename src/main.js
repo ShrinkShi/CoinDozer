@@ -112,7 +112,7 @@ function loadScene(s,preserve=false){
  if(stage===0&&sim.selectedUpgrade==='coin')sim.selectUpgrade('chassis');
  effects.length=0;lastImpact=null;crushPopup.style.display='none';
  frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
- if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
+ if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;}
  if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks);
  sceneButton.disabled=stage===0;
  sceneButton.textContent=stage===0?
@@ -255,7 +255,7 @@ function inputVector(){
  if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
  if(drag.id!==null&&!pinchLocked){x+=drag.x;y+=drag.y;}
  const len=Math.hypot(x,y);if(len>1){x/=len;y/=len;}
- return screenStickToWorld(x,y);
+ return screenStickToWorld(x,y,stage===0);
 }
 function drawEffects(){
  for(let i=effects.length-1;i>=0;i--){
@@ -390,7 +390,7 @@ function enterMine(){
   if(!renderer){
    renderer=new Renderer(canvas);
    renderer.setQuality(qualityController.mode);
-   renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+   renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;
   }
   startRenderLoop();
   updateCameraModeButton();
@@ -447,7 +447,7 @@ try{
  loadScene(loadProgress().stage===1?1:0,true);
  renderer=new Renderer(canvas);
  renderer.setQuality(qualityController.mode);
- renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+ renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;
  startRenderLoop();
  updateCameraModeButton();
 }catch(error){showStartupIssue(error);}

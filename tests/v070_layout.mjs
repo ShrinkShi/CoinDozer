@@ -5,12 +5,16 @@ import {LONG_MAP,MAIN_BRIDGE_WIDTHS,mainBridgeWidth} from '../src/mapLayout.js';
 import {constrainToTerrain,configureTerrain} from '../src/terrain.js';
 import {INFRA_COSTS,TRACK_COSTS,crusherYield,newProgress,gateFactor} from '../src/economy.js';
 import {sceneRules} from '../src/sceneRules.js';
+import {screenStickToWorld} from '../src/heading.js';
 
 const particle=(kind,x=0,z=0,y=0)=>({
  kind,x,z,y,vx:0,vy:0,vz:0,spin:0,angle:0,cooldown:0,passedGates:0,dead:false
 });
 const stage=new World(0);
 assert.equal(sceneRules(0).name,'冰河矿场');
+const north=screenStickToWorld(0,-1,true),south=screenStickToWorld(0,-1,false);
+assert.ok(north.z>0&&south.z<0,'camera orientation keeps W / upward joystick going toward north');
+assert.ok(Math.abs(north.x+south.x)<1e-9,'reverse map camera rotates controls by 180 degrees');
 assert.equal(sceneRules(1).name,'冰雪矿区');
 assert.deepEqual(stage.bounds,LONG_MAP.bounds);
 assert.equal(stage.gates.length,1,'exactly one ore multiplier');

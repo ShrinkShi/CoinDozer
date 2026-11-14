@@ -9,7 +9,7 @@ needle='try{\n loadScene(loadProgress().stage===1?1:0,true);'
 assert needle in html
 html=html.replace(needle,
     'window.__v070={get sim(){return sim},get world(){return world},'
-    'get stage(){return stage},saveProgress,handleEvents,loadScene};\n'+needle)
+    'get stage(){return stage},get renderer(){return renderer},saveProgress,handleEvents,loadScene};\n'+needle)
 args=['--no-sandbox','--disable-dev-shm-usage','--ignore-gpu-blocklist',
       '--enable-webgl','--use-gl=angle','--use-angle=swiftshader',
       '--enable-unsafe-swiftshader']
@@ -26,6 +26,7 @@ with sync_playwright() as p:
     page.goto('http://coindozer.test/',wait_until='load')
     page.wait_for_function('window.__v070 && window.__v070.sim')
     assert page.locator('#stageBadge').inner_text()=='冰河矿场'
+    assert page.evaluate('window.__v070.renderer.camera.mapFacing') == -1
     assert page.locator('#sceneButton').is_disabled(),'must not bypass paid bridge from menu'
     initial=page.evaluate("""() => {
       const x=window.__v070;return {gateCount:x.world.gates.length,
@@ -86,6 +87,7 @@ with sync_playwright() as p:
     }""")
     assert transit=={'stage':1,'unlocked':1},transit
     assert page.locator('#stageBadge').inner_text()=='冰雪矿区'
+    assert page.evaluate('window.__v070.renderer.camera.mapFacing') == 1
     assert not page.locator('#sceneButton').is_disabled(),'return trip is available'
     page.locator('#pauseButton').click()
     page.locator('#sceneButton').click()

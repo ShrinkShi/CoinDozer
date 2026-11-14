@@ -142,7 +142,7 @@ export class Renderer{
    this.batch.set(name,{data:new Float32Array(20*32),count:0});
    this.transparent.set(name,{data:new Float32Array(20*16),count:0});
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0};
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0,mapFacing:1};
   this.w=0;this.h=0;this.vp=null;
   this.quality=QUALITY_LEVELS.high;this.qualityName='high';
   this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
@@ -173,10 +173,11 @@ export class Renderer{
   const {fx,fz}=headingBasis(player.yaw);
   this.camera.x+=(player.x+fx*frame.forwardOffset-this.camera.x)*follow;
   this.camera.z+=(player.z+fz*frame.forwardOffset-this.camera.z)*follow;
-  const cx=this.camera.x,cz=this.camera.z-1.8;
+  const facing=this.camera.mapFacing===-1?-1:1;
+  const cx=this.camera.x,cz=this.camera.z-1.8*facing;
   const vertical=frame.vertical;
   const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
-  const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
+  const view=lookAt([cx+17*facing,29,cz+27*facing],[cx,0,cz-3.3*facing]);
   this.vp=mat4Mul(proj,view);
   const gl=this.gl;
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);

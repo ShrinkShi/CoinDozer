@@ -228,9 +228,10 @@ function modelYaw(yaw){return -yaw;}
 /** Screen-aligned stick translation for the fixed world camera.
  * Camera eye-target horizontal offset is (17, 30.3) world units.
  */
-function screenStickToWorld(x,y){
+function screenStickToWorld(x,y,reverse=false){
  const length=Math.hypot(17,30.3);
- return {x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
+ const v={x:(30.3*x+17*y)/length,z:(-17*x+30.3*y)/length};
+ return reverse?{x:-v.x,z:-v.z}:v;
 }
 
 return {headingBasis,modelYaw,screenStickToWorld};
@@ -928,7 +929,7 @@ class Renderer{
    this.batch.set(name,{data:new Float32Array(20*32),count:0});
    this.transparent.set(name,{data:new Float32Array(20*16),count:0});
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0};
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1,mode:'follow',focusPulse:0,mapFacing:1};
   this.w=0;this.h=0;this.vp=null;
   this.quality=QUALITY_LEVELS.high;this.qualityName='high';
   this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
@@ -959,10 +960,11 @@ class Renderer{
   const {fx,fz}=headingBasis(player.yaw);
   this.camera.x+=(player.x+fx*frame.forwardOffset-this.camera.x)*follow;
   this.camera.z+=(player.z+fz*frame.forwardOffset-this.camera.z)*follow;
-  const cx=this.camera.x,cz=this.camera.z-1.8;
+  const facing=this.camera.mapFacing===-1?-1:1;
+  const cx=this.camera.x,cz=this.camera.z-1.8*facing;
   const vertical=frame.vertical;
   const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
-  const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
+  const view=lookAt([cx+17*facing,29,cz+27*facing],[cx,0,cz-3.3*facing]);
   this.vp=mat4Mul(proj,view);
   const gl=this.gl;
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
@@ -2688,7 +2690,7 @@ function loadScene(s,preserve=false){
  if(stage===0&&sim.selectedUpgrade==='coin')sim.selectUpgrade('chassis');
  effects.length=0;lastImpact=null;crushPopup.style.display='none';
  frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
- if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
+ if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;}
  if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks);
  sceneButton.disabled=stage===0;
  sceneButton.textContent=stage===0?
@@ -2831,7 +2833,7 @@ function inputVector(){
  if(keys.has('KeyD')||keys.has('ArrowRight'))x++;
  if(drag.id!==null&&!pinchLocked){x+=drag.x;y+=drag.y;}
  const len=Math.hypot(x,y);if(len>1){x/=len;y/=len;}
- return screenStickToWorld(x,y);
+ return screenStickToWorld(x,y,stage===0);
 }
 function drawEffects(){
  for(let i=effects.length-1;i>=0;i--){
@@ -2966,7 +2968,7 @@ function enterMine(){
   if(!renderer){
    renderer=new Renderer(canvas);
    renderer.setQuality(qualityController.mode);
-   renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+   renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;
   }
   startRenderLoop();
   updateCameraModeButton();
@@ -3023,7 +3025,7 @@ try{
  loadScene(loadProgress().stage===1?1:0,true);
  renderer=new Renderer(canvas);
  renderer.setQuality(qualityController.mode);
- renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+ renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;
  startRenderLoop();
  updateCameraModeButton();
 }catch(error){showStartupIssue(error);}
