@@ -4,6 +4,7 @@ import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
 import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
 import {EconomyTelemetry} from './telemetry.js';
+import {insideTrigger,enteredTrigger,crossedGatePlane} from './triggers.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -21,7 +22,7 @@ export class Simulation{
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
   this.processed=0;this.crushed=0;this.multipliedValue=0;this.gateHits=0;
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
-  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.activeCount=this.resources.length;
+  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
   this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level};
   this._crowdedNotified=-50;
@@ -30,13 +31,25 @@ export class Simulation{
  }
  setStage(stage){Object.assign(this,new Simulation(stage))}
  emit(type,data={}){this.events.push({type,...data})}
+ countLiving(){return this.resources.reduce((n,r)=>n+(!r.dead?1:0),0);}
+ /** Reserve all children before changing the source object. Freed slots are
+  * usable later in the same frame; no coin or ore is partially converted. */
+ hasCapacity(extra){
+  const live=this._liveGateCount??this.countLiving();
+  return live+this.queuedAdd.length+extra<=MAX_RESOURCES;
+ }
+ markDead(r){
+  if(r.dead)return false;
+  r.dead=true;
+  if(this._liveGateCount!==null)this._liveGateCount--;
+  return true;
+ }
  /** Atomic 1 ore -> 3 independent coins. If two additional slots are not
   * available, retain the ore and nudge it back to the entry lane.
   */
  crush(r,crusher){
   if(r.dead||r.kind!=='blue'||this.elapsed<(r._crushBlockUntil||0))return false;
-  const alive=this._liveGateCount ?? this.resources.reduce((n,p)=>n+(p.dead?0:1),0);
-  if(alive+this.queuedAdd.length+2>MAX_RESOURCES){
+  if(!this.hasCapacity(2)){
    r.x=crusher.x-crusher.halfWidth-.57;
    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
    r._crushBlockUntil=this.elapsed+.65;
@@ -92,7 +105,7 @@ export class Simulation{
   const value=coinCredit(this.tracks);
   const result=applyCredit(progress,value,costs);
   progress.level=result.level;progress.deposited=result.deposited;
-  r.dead=true;this.totalDeposited++;this.coinsSpent[station]++;
+  this.markDead(r);this.totalDeposited++;this.coinsSpent[station]++;
   this.telemetry.record('goldPaid',1,this.elapsed);
   this.telemetry.record('creditsPaid',result.spent,this.elapsed);
   if(station==='gate'){
@@ -117,8 +130,7 @@ export class Simulation{
   const factor=gateFactor(this.gateTracks[gate.id]??{level:0});
   if(!Number.isInteger(factor)||factor<2||factor>20)throw Error('Invalid multiplier');
   const created=factor-1;
-  const alive=this._liveGateCount ?? this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
-  if(alive+this.queuedAdd.length+created>MAX_RESOURCES){
+  if(!this.hasCapacity(created)){
    const incoming=direction<0?1:-1;
    original.z=gate.z+incoming*.46;
    original.vz=incoming*Math.max(.3,Math.abs(original.vz||0)*.6);
@@ -190,7 +202,7 @@ export class Simulation{
    }
   }
   // Store positions before the 3D granular solver for reliable portal crossings.
-  for(const r of this.resources)if(!r.dead){r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
+  for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
@@ -198,32 +210,27 @@ export class Simulation{
   this.physics.sleeping=this.granular.lastSleeping||0;
   this.physics.scheduled=this.granular.lastScheduled||0;
   this.physics.deferred=this.granular.activity?.dropped||0;
-  let count=0;
-  this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
+  this._liveGateCount=this.countLiving();
   let crushedThisFrame=0,depositedThisFrame=0;
   const station=world.upgradeStation;
   const playerAtStation=station && this.stage===0 && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
   const gatePads=world.gateStations||[];
   for(const r of this.resources){
    if(r.dead)continue;
-   count++;
    // Both directions count. A particle can traverse a portal again after
    // clearing it, but tiny plane jitter and newly spawned copies cannot chain.
    for(const gate of world.gates){
-    const from=r._frameZ,to=r.z;
+    const from=r._frameZ;
     if((r._gateBlockUntil||0)>this.elapsed)continue;
     if(r._lastGate===gate.id &&
       (this.elapsed<(r._gateRearmAt||0) || Math.abs(from-gate.z)<.82))continue;
-    const direction=Math.sign(to-from);
-    if(!direction || Math.abs(to-from)<.02)continue;
-    if((from-gate.z)*(to-gate.z)<0 && Math.abs(r.x-gate.x)<gate.half-.25){
-     if(this.multiply(r,gate,direction))break;
-    }
+    const direction=crossedGatePlane(r,gate);
+    if(direction&&this.multiply(r,gate,direction))break;
    }
    if(this.stage===0){
     const crusher=world.crusher;
     // The visible rotating teeth span the bar between these columns.
-    const inside=(Math.abs(r.x-crusher.x)<crusher.halfWidth && Math.abs(r.z-crusher.z)<crusher.halfDepth && r.y<2.1);
+    const inside=insideTrigger(r,crusher.trigger);
     if(inside && r.kind==='blue'){
      if(this.crush(r,crusher))crushedThisFrame++;
     }else if(inside && r.kind==='gold'){
@@ -236,18 +243,20 @@ export class Simulation{
      // only one pad in a frame. Vehicle must remain nearby to enable payment.
      for(const pad of gatePads){
       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
-         Math.abs(r.x-pad.x)<pad.depositHalfX && Math.abs(r.z-pad.z)<pad.depositHalfZ){
-       if(this.payCoin(r,null,'gate',pad.id)){paid=true;depositedThisFrame++;}
+         insideTrigger(r,pad.trigger)){
+       if(enteredTrigger(r,pad.trigger)&&this.payCoin(r,null,'gate',pad.id)){
+        paid=true;depositedThisFrame++;
+       }
        break;
       }
      }
-     if(!paid&&station&&playerAtStation&&
-        Math.abs(r.x-station.x)<station.depositHalfX&&Math.abs(r.z-station.z)<station.depositHalfZ){
+     if(!paid&&!r.dead&&station&&playerAtStation&&
+        enteredTrigger(r,station.trigger)){
        if(this.payCoin(r))depositedThisFrame++;
      }
     }
-    if(r.x>-16.5&&r.x<-10.5&&r.z<-13&&r.z>-27&&r.kind!=='pearl'){
-     r.dead=true;this.processed++;
+    if(!r.dead&&r.kind!=='pearl'&&insideTrigger(r,world.recycler?.trigger)){
+     this.markDead(r);this.processed++;
      this.telemetry.record('recycled',1,this.elapsed);
      this.emit('process',{value:this.processed});
     }
@@ -259,9 +268,10 @@ export class Simulation{
   // Clear consumed slots before next gate multiplication. Never remove live objects.
   if(depositedThisFrame || this.resources.length>MAX_RESOURCES*.75 || this.elapsed%1<dt)
    this.resources=this.resources.filter(r=>!r.dead);
-  this.activeCount=this.resources.length;
   this._liveGateCount=null;
-  this.physics.objects=this.activeCount;
+  this.liveCount=this.countLiving();
+  this.activeCount=this.liveCount;
+  this.physics.objects=this.liveCount;
   this.restock+=dt;
   if(this.restock>=SUPPLY.interval){
    this.restock%=SUPPLY.interval;
@@ -299,7 +309,8 @@ export class Simulation{
    if(gold<SUPPLY.goldBelow)newGold=spawn('gold',14.6,5.5,Math.min(SUPPLY.goldBatch,SUPPLY.goldBelow-gold),3.6);
    if(blue<SUPPLY.oreBelow)newBlue=spawn('blue',4.5,9.0,Math.min(SUPPLY.oreBatch,SUPPLY.oreBelow-blue),3.2);
   }else if(living.length<150)newGold=spawn('ingot',0,2,Math.min(90,150-living.length),4);
-  this.activeCount=this.resources.length;
+  this.liveCount=this.countLiving();
+  this.activeCount=this.liveCount;
   if(newGold||newBlue)this.emit('restock',{gold:newGold,blue:newBlue});
   return {gold:newGold,blue:newBlue};
  }

@@ -9,6 +9,8 @@ import {wheelZoom,pinchZoom,pointerDistance} from './cameraZoom.js';
 import {AdaptiveQuality,QUALITY_NAMES} from './quality.js';
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
+const graphicsStatus=document.getElementById('graphicsStatus');
+const graphicsMessage=document.getElementById('graphicsMessage');
 const toastElement=document.getElementById('toast');
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
 const gateCostLabels=Array.from({length:4},(_,id)=>document.getElementById('label-gatecost-'+id));
@@ -61,6 +63,7 @@ for(const key of TRACK_KEYS){const b=document.createElement('button');b.classNam
  b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
 upgradeButton.addEventListener('click',()=>{upgradePicker.hidden=!upgradePicker.hidden;upgradeButton.setAttribute('aria-expanded',String(!upgradePicker.hidden));updateUI();});
 let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=null,notifUntil=0;
+let graphicsLost=false;
 const drag={id:null,x:0,y:0,originX:0,originY:0};
 const pointers=new Map();let pinch=null,pinchLocked=false;
 const effects=[];
@@ -91,11 +94,19 @@ function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
  effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
- sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
+ sceneButton.textContent='切换预览场景：'+(stage===0?'粉晶岩洞':'熔岩矿场');updateUI();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
+function unlockAudio(){
+ try{
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio)return;
+  sound=sound||new Audio();
+  if(sound.state==='suspended')sound.resume().catch(()=>{});
+ }catch(error){console.info('Audio unavailable; gameplay remains usable',error);}
+}
 function beep(freq=530,length=.1,vol=.045){try{
- sound=sound||new(window.AudioContext||window.webkitAudioContext)();if(sound.state==='suspended')sound.resume();
+ if(!sound||sound.state!=='running')return;
  let oscillator=sound.createOscillator(),gain=sound.createGain();oscillator.type='triangle';
  oscillator.frequency.setValueAtTime(freq,sound.currentTime);
  oscillator.frequency.exponentialRampToValueAtTime(freq*.72,sound.currentTime+length);
@@ -206,7 +217,7 @@ function drawEffects(){
 function drawFrame(t){
  const rawDt=(t-last)/1000||.016;
  const dt=Math.min(rawDt,.046);last=t;clocks+=dt;
- if(!paused && rawDt>0 && rawDt<2){
+ if(!paused && !graphicsLost && rawDt>0 && rawDt<2){
   frameSeconds+=rawDt;frameSamples++;
   if(frameSeconds>=.65){
    measuredFps=frameSamples/frameSeconds;
@@ -214,7 +225,7 @@ function drawFrame(t){
    frameSamples=0;frameSeconds=0;
   }
  }
- if(renderer){
+ if(renderer&&!graphicsLost){
   if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
   renderer.begin(clocks,sim.player,dt);
   world.render(renderer,clocks,sim.player);
@@ -230,7 +241,7 @@ function drawFrame(t){
 }
 function resetInput(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';pointers.clear();pinch=null;pinchLocked=false;}
 function showMenu(){paused=true;menu.classList.add('visible');upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');playButton.textContent='继续驾驶';resetInput();updateUI();}
-function hideMenu(){paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
+function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
 function moveTouch(point){
  const dx=point.x-drag.originX,dy=point.y-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);
  drag.x=dx/max/mag;drag.y=dy/max/mag;
@@ -240,7 +251,7 @@ function endJoystick(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none
 function setZoom(zoom){if(!renderer)return;renderer.camera.zoom=zoom;updateUI();}
 canvas.addEventListener('wheel',e=>{if(renderer){setZoom(wheelZoom(renderer.camera.zoom,e.deltaY));e.preventDefault();}},{passive:false});
 canvas.addEventListener('pointerdown',e=>{
- if(paused||e.button>0)return;
+ if(paused||graphicsLost||e.button>0)return;
  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
  try{canvas.setPointerCapture(e.pointerId);}catch(_){}
  if(pointers.size>=2){
@@ -286,5 +297,38 @@ document.getElementById('resetButton').addEventListener('click',()=>{
  try{localStorage.removeItem('coindozer-progress-v06');localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
  loadScene(stage,false);toast('游戏进度已重置');
 });
+/** Recreate all GPU programs, buffers and instancing extension handles on the
+ * restored context; keep the same Simulation and camera instead of reloading.
+ */
+function graphicsNotice(message){
+ graphicsMessage.textContent=message;
+ graphicsStatus.hidden=false;
+}
+canvas.addEventListener('webglcontextlost',event=>{
+ event.preventDefault(); // required for the browser to attempt restoration
+ graphicsLost=true;
+ saveProgress();
+ resetInput();
+ graphicsNotice('图形上下文已丢失，游戏计算已暂停。正在尝试恢复；若无法恢复，请点击刷新。');
+});
+canvas.addEventListener('webglcontextrestored',()=>{
+ try{
+  const previous=renderer?.camera?{...renderer.camera}:null;
+  const next=new Renderer(canvas);
+  next.setQuality(qualityController.mode);
+  if(previous)Object.assign(next.camera,previous);
+  renderer=next;
+  graphicsLost=false;
+  graphicsStatus.hidden=true;
+  frameSamples=0;frameSeconds=0;measuredFps=0;
+  last=0;
+  toast('图形设备已恢复，游戏进度已保留',2.4);
+ }catch(error){
+  graphicsLost=true;
+  console.error('WebGL context restore failed',error);
+  graphicsNotice('图形恢复失败：'+error.message+'。请点击刷新页面。');
+ }
+});
+document.getElementById('graphicsRefresh').addEventListener('click',()=>location.reload());
 try{renderer=new Renderer(canvas);renderer.setQuality(qualityController.mode);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
 catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}

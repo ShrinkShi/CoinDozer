@@ -5,7 +5,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist/index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.6.3' in html
+assert 'VIDEO REPLICA · 0.6.3.1' in html
 needle='try{renderer=new Renderer(canvas);'
 assert needle in html
 html=html.replace(needle,'window.__v061={get sim(){return sim},get renderer(){return renderer},get world(){return world},updateUI};\n'+needle)
@@ -20,7 +20,7 @@ with sync_playwright() as p:
   page.locator('#telemetryToggle').click()
   assert page.locator('#telemetryPanel').is_visible()
   assert page.locator('#metricEntities').inner_text()!='--'
-  assert '0.6.3' in page.locator('.ver').inner_text()
+  assert '0.6.3.1' in page.locator('.ver').inner_text()
   result=page.evaluate('''() => {
    const {sim,world}=window.__v061;
    sim.resources=[];sim.elapsed=30;

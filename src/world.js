@@ -1,11 +1,12 @@
 import {rnd,clamp,TAU} from './math.js';
 import {renderVehicle} from './vehicle.js';
 import {MAX_VEHICLE_LEVEL,SUPPLY} from './economy.js';
+import {boxTrigger} from './triggers.js';
 export const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 export class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
+ constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.recycler=null;this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
  addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.obstacles.push({type:'circle',x,z,radius:r*.79,height:r*1.3});this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
@@ -26,11 +27,13 @@ export class World{
  // The lavender ×10 fabric gate, orange posts with purple heads and violet cloud.
  this.sites.gates=[];this.sites.gateCosts=[];
  for(const [id,factor,x] of [[0,2,-8.4],[1,2,-2.8],[2,2,2.8],[3,2,8.4]]){
-  const gate={id,x,z:3.1,half:2.18,multiplier:factor};
+  const gate={id,x,z:3.1,half:2.18,apertureHalf:1.93,multiplier:factor};
   this.gates.push(gate);this.frameGate(gate);
   // A separate gold-feed plate for EVERY gate. Physical coins are consumed
   // only when the vehicle pushes them onto this plate while in range.
-  const pad={id,x,z:-4.65,vehicleRadius:4.6,depositHalfX:1.45,depositHalfZ:.75};
+  const trigger=boxTrigger(x,-4.65,1.45,.72,.32);
+  const pad={id,x,z:-4.65,vehicleRadius:4.6,trigger,
+   depositHalfX:trigger.halfX,depositHalfZ:trigger.halfZ};
   this.gateStations.push(pad);
   this.add('box',x,.16,-4.65,3.35,.24,1.95,[.95,.64,.07]);
   this.add('box',x,.31,-4.65,2.95,.12,1.45,PALETTE.black);
@@ -38,7 +41,8 @@ export class World{
   this.sites.gateCosts.push({id,x,y:.52,z:-4.65});
  }
  // Purple uprights and orange brush/rotating hazard, next to the gold pile.
- this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};
+ this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12,
+  trigger:boxTrigger(12,7.2,2.65,1.12,2.1)};
  // Tapered steel rails have matching visible meshes and solid footprints.
  const guide=(x1,z1,x2,z2)=>{
   const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz);
@@ -50,7 +54,10 @@ export class World{
  for(let x of [9.6,14.4]){this.add('cylinder',x,1.9,7.2,.69,3.8,.69,PALETTE.purpleCap);this.add('sphere',x,3.91,7.2,1.04,1.05,1.04,PALETTE.purpleCap);this.add('box',x,.18,7.2,1.1,.34,1.18,PALETTE.purple)}
  this.add('box',12,3.55,7.2,5.25,.44,.65,PALETTE.purple);
  // Black counting strip with fluorescent yellow rim and large white counter.
- this.add('box',-13.6,.15,-20.6,6.6,.23,18,[1,.80,.05]);this.add('box',-13.6,.25,-20.6,6,.14,17.5,PALETTE.black);
+ this.recycler={trigger:boxTrigger(-13.6,-20.6,3,8.75,.34)};
+ this.add('box',this.recycler.trigger.x,.15,this.recycler.trigger.z,6.6,.23,18,[1,.80,.05]);
+ this.add('box',this.recycler.trigger.x,.25,this.recycler.trigger.z,
+  this.recycler.trigger.halfX*2,.14,this.recycler.trigger.halfZ*2,PALETTE.black);
  this.sites.counter={x:-13.6,y:.54,z:-17.3};
  // Transparent pink storage box near the count strip. Internal pearls are modeled as resources.
  this.add('box',-20.1,.33,-26,7.2,.32,6.1,[.53,.33,.51]);
@@ -61,7 +68,10 @@ export class World{
  for(let z of [-29,-23]){this.add('box',-20.05,5.2,z,7.2,.12,.10,PALETTE.white)}
  // Purple ramp and cyan translucent UPGRADE board; rigid white bulldozer statue.
  this.sites.upgrade={x:19,y:0,z:-18};
- this.upgradeStation={x:19,z:-12.05,vehicleRadius:6.5,depositHalfX:4.1,depositHalfZ:1.3,previewX:19,previewZ:-20.3};
+ const upgradeTrigger=boxTrigger(19,-12.05,4.1,1.2,.34);
+ this.upgradeStation={x:19,z:-12.05,vehicleRadius:6.5,
+  trigger:upgradeTrigger,depositHalfX:upgradeTrigger.halfX,depositHalfZ:upgradeTrigger.halfZ,
+  previewX:19,previewZ:-20.3};
  this.add('box',19,.12,-19,10.6,.25,10.5,PALETTE.purple);
  this.add('box',19,.28,-20,9.0,.25,7.5,[.36,.12,.56]);
  this.add('box',19.1,2.8,-24.65,10.4,5.2,.15,PALETTE.mint,0,0,0,.55);
@@ -130,7 +140,7 @@ export function createResourceLayout(stage=0){let rng=seeded(stage?434:725),rand
  if(stage===0){pile('blue',0,-1.5,335,7.0,.55);pile('blue',5.7,7.1,75,4,.25);pile('blue',-17,-8.0,45,2.6,.1);
   // Starter cache is one short drive from spawn. No invisible starter wallet.
   pile('gold',2.0,6.2,SUPPLY.starterCoins,2.0,.12);
-  pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-7.6,90,3.4,.28);pile('gold',-1,-17.7,30,4.5,.08);
+  pile('gold',17.2,4.0,540,5.4,1.25);pile('gold',7.4,-9.1,90,3.0,.28);pile('gold',-1,-17.7,30,4.5,.08);
   pile('pearl',-20.2,-26.1,18,2.3,.5);
  }else{pile('ingot',-13,-5,52,4.5,.4);pile('ingot',0,1.7,45,3,.1);pile('pearl',14,-17,22,3,.5)}
  return items;
