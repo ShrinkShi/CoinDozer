@@ -149,7 +149,7 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  assert.ok(before>0);
 }
 {
- const s=make(0),coin=ore('gold',lava.upgradeStation.x,lava.upgradeStation.z+2);
+ const s=make(0),coin=ore('gold',lava.upgradeStation.x,lava.upgradeStation.z+lava.upgradeStation.trigger.halfZ+.5);
  s.resources=[coin];s.player.x=lava.upgradeStation.x;s.player.z=lava.upgradeStation.z;
  s.granular.step=()=>{coin.z=lava.upgradeStation.z;};
  s.update(.016,0,0,lava);

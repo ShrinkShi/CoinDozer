@@ -55,7 +55,7 @@ for(const direction of [-1,1]){
  assert.equal(sim.totalDeposited,0);
 }
 {
- const station=world.upgradeStation,c=particle('gold',station.x,station.z+2);
+ const station=world.upgradeStation,c=particle('gold',station.x,station.z+station.trigger.halfZ+.5);
  const sim=make(c);sim.player.x=station.x;sim.player.z=station.z;
  sim.granular.step=()=>{c.z=station.z;};
  sim.update(.016,0,0,world);
