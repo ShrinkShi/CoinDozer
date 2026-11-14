@@ -18,6 +18,7 @@ const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-ga
 const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
 const pauseButton=document.getElementById('pauseButton');
 const playButton=document.getElementById('playButton');
+const startupIssue=document.getElementById('startupIssue');
 const sceneButton=document.getElementById('sceneButton');
 const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=document.getElementById('upgradePicker');
 const trackButtons=document.getElementById('trackButtons');
@@ -63,7 +64,7 @@ for(const key of TRACK_KEYS){const b=document.createElement('button');b.classNam
  b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
 upgradeButton.addEventListener('click',()=>{upgradePicker.hidden=!upgradePicker.hidden;upgradeButton.setAttribute('aria-expanded',String(!upgradePicker.hidden));updateUI();});
 let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=null,notifUntil=0;
-let graphicsLost=false;
+let graphicsLost=false,renderLoopStarted=false;
 const drag={id:null,x:0,y:0,originX:0,originY:0};
 const pointers=new Map();let pinch=null,pinchLocked=false;
 const effects=[];
@@ -290,7 +291,34 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('blur',()=>{keys.clear();resetInput();});
-playButton.addEventListener('click',hideMenu);pauseButton.addEventListener('click',showMenu);
+function startRenderLoop(){
+ if(renderLoopStarted)return;
+ renderLoopStarted=true;
+ requestAnimationFrame(drawFrame);
+}
+function showStartupIssue(error){
+ console.error('Game graphics startup failed',error);
+ startupIssue.textContent='无法初始化图形：'+(error?.message||String(error))
+  +'。请尝试 Chrome 或 Edge；若浏览器禁止 WebGL，请开启硬件加速或切换浏览器。';
+ startupIssue.hidden=false;
+ playButton.textContent='重新尝试进入矿场';
+ playButton.disabled=false;
+}
+function enterMine(){
+ try{
+  if(!sim||!world)loadScene(0,true);
+  if(!renderer){
+   renderer=new Renderer(canvas);
+   renderer.setQuality(qualityController.mode);
+   renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+  }
+  startRenderLoop();
+  startupIssue.hidden=true;
+  playButton.textContent='进入矿场';
+  hideMenu();
+ }catch(error){showStartupIssue(error);}
+}
+playButton.addEventListener('click',enterMine);pauseButton.addEventListener('click',showMenu);
 sceneButton.addEventListener('click',()=>{saveProgress();loadScene(stage===0?1:0,true);toast('场景已切换',2);});
 document.getElementById('resetButton').addEventListener('click',()=>{
  if(!confirm('清除升级进度并重置当前场景？'))return;
@@ -330,5 +358,10 @@ canvas.addEventListener('webglcontextrestored',()=>{
  }
 });
 document.getElementById('graphicsRefresh').addEventListener('click',()=>location.reload());
-try{renderer=new Renderer(canvas);renderer.setQuality(qualityController.mode);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
-catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}
+try{
+ loadScene(0,true);
+ renderer=new Renderer(canvas);
+ renderer.setQuality(qualityController.mode);
+ renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
+ startRenderLoop();
+}catch(error){showStartupIssue(error);}
