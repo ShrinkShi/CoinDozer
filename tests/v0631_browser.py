@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT=Path(__file__).resolve().parents[1]
 html=(ROOT/'dist/index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.6.3.1' in html
+assert 'VIDEO REPLICA · 0.6.3.2' in html
 marker='try{renderer=new Renderer(canvas);'
 assert marker in html
 html=html.replace(marker,

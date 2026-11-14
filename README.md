@@ -1,8 +1,18 @@
 # CoinDozer / 铲斗矿场
 
-基于用户提供的竖屏广告视频重建的**纯前端 3D 游戏**。当前版本 **v0.6.3.1**，仍属于逐步还原中的可玩原型，模型与物理并非原游戏资源或原游戏代码。
+基于用户提供的竖屏广告视频重建的**纯前端 3D 游戏**。当前版本 **v0.6.3.2**，仍属于逐步还原中的可玩原型，模型与物理并非原游戏资源或原游戏代码。
 
 **在线试玩：** https://shrinkshi.github.io/CoinDozer/
+
+## v0.6.3.2 移动端启动阻断修复（2026-11-14）
+
+- 问题根因：原离线打包器移除 ESM import/export 后，直接将全部源文件放入同一个 JavaScript 函数作用域。`src/collisions.js` 和 `src/activity.js` 都声明了 `const CELL`，以及同名 `key`，从而使最终发布网页在 JS **解析阶段**报 `SyntaxError: Identifier 'CELL' has already been declared`。整份游戏脚本都没有执行，所以“进入矿场”按钮根本没有绑定事件。
+- 解决方法：`build.py` 按真实依赖顺序为每个源模块生成独立作用域与明确的命名导出/导入绑定，彻底消除不同模块局部名称之间的全局冲突；依然只使用 Python 标准库，没有引入 npm 或 CDN。
+- 新增 `tests/v0632_bundle_syntax.mjs`：以 Node `vm.Script` **解析实际产出的单文件 JS**，而不是只检查 `src/main.js`。CI 与 Pages 每次部署之前运行；另以 Playwright Chromium 模拟手机触摸点击「进入矿场」，断言说明弹窗关闭且无 JS 异常。
+- 原有图形失败的错误提示移动到按钮旁，按钮保留重试能力；不再在菜单最底部显示错误并直接禁用按钮。若设备没有 WebGL，仍需要兼容浏览器，不能承诺所有设备都支持 3D。
+- `coindozer-progress-v06` 存档、金币真实独立、6500 个资源上限、经济计算与操控手感均不变。
+
+验证：`python build.py && node tests/v0632_bundle_syntax.mjs`；PR 另运行浏览器级启动测试。
 
 ## v0.6.3.1 稳定性修复与触发器重构（2026-11-14）
 

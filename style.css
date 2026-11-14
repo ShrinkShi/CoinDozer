@@ -52,3 +52,8 @@
 .graphics-recovery-panel p{line-height:1.6;font-size:13px}
 #graphicsRefresh{padding:10px 20px;border-radius:8px;border:0;background:#fbc251;
  color:#32220c;font-weight:800;pointer-events:auto}
+
+/* v0.6.3.2: never make graphics startup errors look like dead buttons. */
+.startup-issue{display:block;margin:-9px 0 16px!important;padding:10px 12px;border:1px solid #ffb6a388;
+ border-radius:9px;background:#591f1b;color:#ffe5dc!important;line-height:1.6}
+.startup-issue[hidden]{display:none}
