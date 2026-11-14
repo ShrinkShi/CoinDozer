@@ -143,7 +143,7 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  assert.equal(s.telemetry.totals.restockedOre,stock.ore);
  const before=s.countLiving();
  s.resources=Array.from({length:MAX_RESOURCES},()=>ore('ingot'));
- assert.equal(s.replenishResources().currency,0,'full map pauses supply without deletes');
+ assert.equal(s.replenishResources().gold,0,'full map pauses supply without deletes');
  assert.equal(s.countLiving(),MAX_RESOURCES);
  assert.ok(before>0);
 }
