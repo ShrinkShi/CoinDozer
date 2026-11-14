@@ -35,7 +35,7 @@
 #telemetryPanel{position:absolute;top:152px;left:12px;z-index:6;width:min(308px,calc(100vw - 24px));
  max-height:calc(100dvh - 188px);overflow:auto;border:1px solid #f4d08c67;
  border-radius:14px;background:#211916ed;box-shadow:0 10px 30px #140b088a;
- padding:12px;pointer-events:none}
+ padding:12px;pointer-events:auto;touch-action:pan-y;overscroll-behavior:contain}
 #telemetryPanel[hidden]{display:none}
 .telemetry-heading{font-size:14px;font-weight:900;color:#ffe2a6;margin-bottom:10px}
 .telemetry-heading small{font-size:10px;color:#c3b1a1;font-weight:400;float:right}
@@ -55,7 +55,7 @@
 <body>
   <canvas id="scene" aria-label="3D 推土机游戏画面"></canvas>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.2</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.6.3</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>金币价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
@@ -65,6 +65,12 @@
         <span>FPS</span><strong id="metricFps">--</strong>
         <span>实体 / 计算活跃</span><strong id="metricEntities">--</strong>
         <span>物理接触对</span><strong id="metricContacts">--</strong>
+        <span>当前可见资源</span><strong id="metricVisible">--</strong>
+        <span>休眠 / 未调度</span><strong id="metricSleeping">--</strong>
+        <span>活跃预算溢出</span><strong id="metricDeferred">--</strong>
+        <span>自动画质</span><strong id="metricQuality">--</strong>
+        <span>渲染实例 / 绘制批次</span><strong id="metricDraws">--</strong>
+        <span>GPU 实例上传量 / 帧</span><strong id="metricUpload">--</strong>
         <span>产金 / 分钟估算</span><strong id="metricGoldRate">0</strong>
         <span>产金价值 / 分钟</span><strong id="metricValueRate">0</strong>
         <span>投入金额 / 分钟</span><strong id="metricPaidRate">0</strong>
@@ -101,14 +107,14 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.2</div>
+        <div class="eyebrow">基于广告视频的场景复刻 · PHYSICAL COINS / REAL MULTIPLIERS · v0.6.3</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p>四座倍数门现在都从 <b>×2</b> 开始。把金币推到门前的黑金色投放台，每座门可以分别升级，最高 <b>×20</b>。蓝球经过粉碎轮后，一颗可得到三枚真实金币。</p>
         <p>点右上角的「<b>改装</b>」切换底盘、车速、转向、铲斗宽度或金币价值，再到紫色车辆升级台投入金币。升值后的金币可以抵扣更多升级金额，但仍然只有一枚实物。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <div class="menuActions"><button id="sceneButton">切换预览场景：熔岩矿场</button><button id="resetButton">清除记录</button></div>
-        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.2：矿石碰到粉碎轮严格变成三枚独立金币，出口出现火花与数值反馈；岩石和导向栏具有实体碰撞。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
+        <p class="footnote">地图黑黄计数带会回收进入其中的资源（不返还升级金额）；资源接近上限时暂缓补货。点击「数据」查看帧率和产金率。<br>v0.6.3：每帧一次活动筛选并复用物理子步结果、动态空间索引、可视范围剔除、远距独立低面数模型、GPU 实例缓存和自动画质；不会聚合或删除金币。v0.6.2 的粉碎轮严格 1→3、火花反馈、岩石碰撞继续保留。入门资源靠近出生点，每 15 秒按缺口补充资源；所有倍数门双向生效，实际物体独立倍增；四门分别升级至最高 ×20。升级项费用和进度独立保存。单场景最多 6500 个实物，达到上限停止增殖，不会进行数字聚合。本项目为纯前端静态网站。</p>
       </div>
     </section>
   </div>
@@ -130,6 +136,16 @@ function compose(x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){const a=Math.cos(yaw),b=Ma
  return [ (a*e+b*d*f)*sx,(c*f)*sx,(-b*e+a*d*f)*sx,0,(-a*f+b*d*e)*sy,(c*e)*sy,(b*f+a*d*e)*sy,0,(b*c)*sz,(-d)*sz,(a*c)*sz,0,x,y,z,1 ];}
 function project(vp,x,y,z,w,h){let p=[x,y,z,1],q=[0,0,0,0];for(let row=0;row<4;row++)q[row]=vp[row]*p[0]+vp[row+4]*p[1]+vp[row+8]*p[2]+vp[row+12]*p[3];if(q[3]<=0)return null;const nx=q[0]/q[3],ny=q[1]/q[3];return {x:(nx+1)*w/2,y:(1-ny)*h/2,visible:Math.abs(nx)<1.25&&Math.abs(ny)<1.25};}
 function formatNum(n){return Math.max(0,Math.floor(n)).toLocaleString('en-US')}
+
+/** Column-major affine matrix directly into a reusable instance buffer. */
+function composeInto(out,i,x,y,z,sx,sy,sz,yaw=0,pitch=0,roll=0){
+ const a=Math.cos(yaw),b=Math.sin(yaw),c=Math.cos(pitch),d=Math.sin(pitch),e=Math.cos(roll),f=Math.sin(roll);
+ out[i]=(a*e+b*d*f)*sx;out[i+1]=c*f*sx;out[i+2]=(-b*e+a*d*f)*sx;out[i+3]=0;
+ out[i+4]=(-a*f+b*d*e)*sy;out[i+5]=c*e*sy;out[i+6]=(b*f+a*d*e)*sy;out[i+7]=0;
+ out[i+8]=b*c*sz;out[i+9]=-d*sz;out[i+10]=a*c*sz;out[i+11]=0;
+ out[i+12]=x;out[i+13]=y;out[i+14]=z;out[i+15]=1;
+ return out;
+}
 
 // --- heading.js ---
 /** Vehicle and input heading conventions used by every gameplay subsystem.
@@ -440,9 +456,43 @@ function stampedCoin(){
  return o;
 }
 function shadow(){let o=empty();for(let i=0;i<32;i++){let a=i*Math.PI/16,b=(i+1)*Math.PI/16;addFace(o,[[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5]])}return o}
-const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+const GEOMETRY={box:box(),sphere:smoothSphere(),rock:ico(),boulder:rockChunk(),cylinder:prism(14),coin:stampedCoin(),coinLite:prism(12),sphereLite:ico(),cone:prism(8,0,1),scoop:shell(),cheek:cheek(),track:track(),river:groundRibbon(),shadow:shadow()};
+
+// --- quality.js ---
+/**
+ * Visual quality only: does not change the number, value, state or physics of
+ * any resource. FPS is a noisy signal, so use dwell time and cooldown.
+ */
+const QUALITY_LEVELS=Object.freeze({
+ high:Object.freeze({dpr:1.75,detailDistance:22,shadowDistance:23,decorationStep:1,effectSparks:4}),
+ balanced:Object.freeze({dpr:1.35,detailDistance:16,shadowDistance:15,decorationStep:2,effectSparks:2}),
+ low:Object.freeze({dpr:1.0,detailDistance:11,shadowDistance:0,decorationStep:3,effectSparks:1})
+});
+const QUALITY_NAMES=Object.freeze({high:'高',balanced:'均衡',low:'省电'});
+const ORDER=['low','balanced','high'];
+class AdaptiveQuality{
+ constructor(mobile=false){
+  this.mobile=Boolean(mobile);
+  this.mode=this.mobile?'balanced':'high';
+  this.lowFor=0;this.highFor=0;this.cooldown=0;
+ }
+ sample(fps,seconds){
+  if(!Number.isFinite(fps)||fps<=0||!Number.isFinite(seconds)||seconds<=0)return false;
+  const dt=Math.min(seconds,2);
+  if(this.cooldown>0){this.cooldown=Math.max(0,this.cooldown-dt);this.lowFor=0;this.highFor=0;return false;}
+  this.lowFor=fps<28?this.lowFor+dt:0;
+  this.highFor=fps>54?this.highFor+dt:0;
+  let next=this.mode;
+  if(this.lowFor>=3.3)next=ORDER[Math.max(0,ORDER.indexOf(this.mode)-1)];
+  else if(this.highFor>=13)next=ORDER[Math.min(this.mobile?1:2,ORDER.indexOf(this.mode)+1)];
+  if(next===this.mode)return false;
+  this.mode=next;this.lowFor=0;this.highFor=0;this.cooldown=7;
+  return true;
+ }
+}
 
 // --- renderer.js ---
+
 
 
 
@@ -542,65 +592,150 @@ void main(){
  gl_FragColor=vec4(color,alpha);
 }`;
 const compile=(gl,kind,src)=>{const o=gl.createShader(kind);gl.shaderSource(o,src);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
+/**
+ * v0.6.3: persistent CPU-side typed instance storage + geometrically growing
+ * GPU allocations. The former version allocated arrays and gl.bufferData for
+ * every instance batch each frame, producing avoidable GC / driver churn.
+ */
 class Renderer{
  constructor(canvas){
   this.canvas=canvas;
-  this.gl=canvas.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'})||canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});
+  this.gl=canvas.getContext('webgl2',{alpha:false,antialias:true,powerPreference:'high-performance'})||
+    canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});
   if(!this.gl)throw new Error('当前浏览器不支持 WebGL。请改用 Chrome、Edge 或支持 WebGL 的浏览器。');
   const gl=this.gl;
-  this.instanced=gl.vertexAttribDivisor?{divisor:(a,b)=>gl.vertexAttribDivisor(a,b),draw:(...args)=>gl.drawElementsInstanced(...args)}:null;
-  if(!this.instanced){let extension=gl.getExtension('ANGLE_instanced_arrays');if(extension)this.instanced={divisor:(a,b)=>extension.vertexAttribDivisorANGLE(a,b),draw:(...args)=>extension.drawElementsInstancedANGLE(...args)}}
-  if(!this.instanced)throw new Error('当前设备不支持实例化渲染（ANGLE_instanced_arrays）。');
-  const prog=gl.createProgram();gl.attachShader(prog,compile(gl,gl.VERTEX_SHADER,VERT));gl.attachShader(prog,compile(gl,gl.FRAGMENT_SHADER,FRAG));gl.linkProgram(prog);
-  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));this.program=prog;gl.useProgram(prog);
-  this.a={pos:gl.getAttribLocation(prog,'aPosition'),nor:gl.getAttribLocation(prog,'aNormal'),m:[0,1,2,3].map(i=>gl.getAttribLocation(prog,'aM'+i)),tint:gl.getAttribLocation(prog,'aTint')};
-  this.u={vp:gl.getUniformLocation(prog,'uVP'),time:gl.getUniformLocation(prog,'uTime')};
-  this.meshes={};for(const [key,g] of Object.entries(GEOMETRY)){
-   let item={count:g.indices.length};item.v=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.v);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.vertices),gl.STATIC_DRAW);
-   item.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.n);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.normals),gl.STATIC_DRAW);
-   item.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,item.i);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(g.indices),gl.STATIC_DRAW);
-   item.inst=gl.createBuffer();this.meshes[key]=item;
+  this.instanced=gl.vertexAttribDivisor?
+   {divisor:(a,b)=>gl.vertexAttribDivisor(a,b),draw:(...args)=>gl.drawElementsInstanced(...args)}:null;
+  if(!this.instanced){
+   const ext=gl.getExtension('ANGLE_instanced_arrays');
+   if(ext)this.instanced={divisor:(a,b)=>ext.vertexAttribDivisorANGLE(a,b),
+    draw:(...args)=>ext.drawElementsInstancedANGLE(...args)};
   }
-  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};this.batch=new Map();this.transparent=new Map();this.w=0;this.h=0;this.vp=null;
-  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(.51,.35,.26,1);
+  if(!this.instanced)throw new Error('当前设备不支持实例化渲染（ANGLE_instanced_arrays）。');
+  const prog=gl.createProgram();
+  gl.attachShader(prog,compile(gl,gl.VERTEX_SHADER,VERT));
+  gl.attachShader(prog,compile(gl,gl.FRAGMENT_SHADER,FRAG));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+  this.program=prog;gl.useProgram(prog);
+  this.a={pos:gl.getAttribLocation(prog,'aPosition'),nor:gl.getAttribLocation(prog,'aNormal'),
+   m:[0,1,2,3].map(i=>gl.getAttribLocation(prog,'aM'+i)),tint:gl.getAttribLocation(prog,'aTint')};
+  this.u={vp:gl.getUniformLocation(prog,'uVP'),time:gl.getUniformLocation(prog,'uTime')};
+  this.meshes={};
+  this.batch=new Map();this.transparent=new Map();
+  for(const [name,g] of Object.entries(GEOMETRY)){
+   const item={count:g.indices.length,instCapacity:0};
+   item.v=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.v);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.vertices),gl.STATIC_DRAW);
+   item.n=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,item.n);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.normals),gl.STATIC_DRAW);
+   item.i=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,item.i);
+   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(g.indices),gl.STATIC_DRAW);
+   item.inst=gl.createBuffer();this.meshes[name]=item;
+   this.batch.set(name,{data:new Float32Array(20*32),count:0});
+   this.transparent.set(name,{data:new Float32Array(20*16),count:0});
+  }
+  this.camera={x:0,z:3,targetX:0,targetZ:0,zoom:1};
+  this.w=0;this.h=0;this.vp=null;
+  this.quality=QUALITY_LEVELS.high;this.qualityName='high';
+  this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
+  gl.clearColor(.51,.35,.26,1);
  }
- resize(){const dpr=Math.min(window.devicePixelRatio||1,innerWidth<650?1.5:1.8),w=Math.round(this.canvas.clientWidth*dpr),h=Math.round(this.canvas.clientHeight*dpr);if(w!==this.canvas.width||h!==this.canvas.height){this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h)}this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.aspect=w/h;}
+ setQuality(name){
+  if(!Object.hasOwn(QUALITY_LEVELS,name))return false;
+  if(this.qualityName===name)return false;
+  this.qualityName=name;this.quality=QUALITY_LEVELS[name];
+  return true;
+ }
+ resize(){
+  const dpr=Math.min(window.devicePixelRatio||1,this.quality.dpr);
+  const w=Math.max(1,Math.round(this.canvas.clientWidth*dpr));
+  const h=Math.max(1,Math.round(this.canvas.clientHeight*dpr));
+  if(w!==this.canvas.width||h!==this.canvas.height){
+   this.canvas.width=w;this.canvas.height=h;this.gl.viewport(0,0,w,h);
+  }
+  this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.aspect=w/h;
+ }
  begin(t,player,dt){
- this.resize();
- // Ad footage uses a fixed-quarter-view camera. Keep the azimuth fixed while
- // gently leading the player's forward direction; never spin with the chassis.
- const follow=Math.min(1,dt*3.4);
- const {fx,fz}=headingBasis(player.yaw);
- const headingX=fx*1.25,headingZ=fz*1.25;
- this.camera.x+=(player.x+headingX-this.camera.x)*follow;
- this.camera.z+=(player.z+headingZ-this.camera.z)*follow;
- const cx=this.camera.x,cz=this.camera.z-1.8;
- const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
- const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
- const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
- this.vp=mat4Mul(proj,view);
- const gl=this.gl;
- gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- gl.useProgram(this.program);
- gl.uniformMatrix4fv(this.u.vp,false,this.vp);
- gl.uniform1f(this.u.time,t);
- this.batch.clear();this.transparent.clear();
+  this.resize();
+  const follow=Math.min(1,dt*3.4);
+  const {fx,fz}=headingBasis(player.yaw);
+  this.camera.x+=(player.x+fx*1.25-this.camera.x)*follow;
+  this.camera.z+=(player.z+fz*1.25-this.camera.z)*follow;
+  const cx=this.camera.x,cz=this.camera.z-1.8;
+  const vertical=(this.aspect<.7?40.5:this.aspect<1.1?35:32)*this.camera.zoom;
+  const proj=ortho(-vertical*this.aspect*.5,vertical*this.aspect*.5,-vertical*.5,vertical*.5,.1,170);
+  const view=lookAt([cx+17,29,cz+27],[cx,0,cz-3.3]);
+  this.vp=mat4Mul(proj,view);
+  const gl=this.gl;
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);
+  gl.uniformMatrix4fv(this.u.vp,false,this.vp);gl.uniform1f(this.u.time,t);
+  for(const pack of this.batch.values())pack.count=0;
+  for(const pack of this.transparent.values())pack.count=0;
+  this.drawCalls=0;this.drawnInstances=0;this.uploadedBytes=0;
  }
- // All scales, angles, and positions are in world units. c=[r,g,b], opacity<1 for translucent mesh; c[3]=2 lava, 3 emissive.
+ /** Conservative orthographic clip test for an individual collectible. */
+ visible(x,y,z,margin=.16){
+  const m=this.vp;if(!m)return true;
+  const w=m[3]*x+m[7]*y+m[11]*z+m[15];
+  if(w<=0)return false;
+  const sx=(m[0]*x+m[4]*y+m[8]*z+m[12])/w;
+  const sy=(m[1]*x+m[5]*y+m[9]*z+m[13])/w;
+  return Math.abs(sx)<1+margin&&Math.abs(sy)<1+margin;
+ }
  add(kind,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){
   if(Math.abs(x-this.camera.x)>55||Math.abs(z-this.camera.z)>59)return;
-  let mat=compose(x,y,z,sx,sy,sz,yaw,pitch,roll);let tag=opacity!==1?opacity:(c[3]||1);
-  let map=(opacity<1||c[3]===8)?this.transparent:this.batch;if(!map.has(kind))map.set(kind,[]);map.get(kind).push(...mat,c[0],c[1],c[2],tag);
+  const map=(opacity<1||c[3]===8)?this.transparent:this.batch;
+  const pack=map.get(kind);
+  if(!pack)throw Error('Unknown mesh: '+kind);
+  const i=pack.count*20;
+  if(i+20>pack.data.length){
+   const next=new Float32Array(Math.max(i+20,pack.data.length*2));
+   next.set(pack.data);pack.data=next;
+  }
+  composeInto(pack.data,i,x,y,z,sx,sy,sz,yaw,pitch,roll);
+  pack.data[i+16]=c[0];pack.data[i+17]=c[1];pack.data[i+18]=c[2];
+  pack.data[i+19]=opacity!==1?opacity:(c[3]||1);
+  pack.count++;
  }
- end(){let gl=this.gl;gl.disable(gl.BLEND);gl.depthMask(true);this._draw(this.batch);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);this._draw(this.transparent);gl.depthMask(true);gl.disable(gl.BLEND)}
- _draw(batches){let gl=this.gl;for(const [kind,data] of batches){if(!data.length)continue;let m=this.meshes[kind],itemCount=data.length/20;
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.v);gl.enableVertexAttribArray(this.a.pos);gl.vertexAttribPointer(this.a.pos,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.pos,0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.n);gl.enableVertexAttribArray(this.a.nor);gl.vertexAttribPointer(this.a.nor,3,gl.FLOAT,false,0,0);this.instanced.divisor(this.a.nor,0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,m.inst);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);
-  for(let i=0;i<4;i++){let loc=this.a.m[i];gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,4,gl.FLOAT,false,80,i*16);this.instanced.divisor(loc,1)}
-  gl.enableVertexAttribArray(this.a.tint);gl.vertexAttribPointer(this.a.tint,4,gl.FLOAT,false,80,64);this.instanced.divisor(this.a.tint,1);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.i);this.instanced.draw(gl.TRIANGLES,m.count,gl.UNSIGNED_SHORT,0,itemCount);
- }}
+ end(){
+  const gl=this.gl;gl.disable(gl.BLEND);gl.depthMask(true);this._draw(this.batch);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);this._draw(this.transparent);gl.depthMask(true);gl.disable(gl.BLEND);
+ }
+ _draw(batches){
+  const gl=this.gl;
+  for(const [kind,pack] of batches){
+   if(!pack.count)continue;
+   const mesh=this.meshes[kind],n=pack.count*20,bytes=n*4;
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.v);
+   gl.enableVertexAttribArray(this.a.pos);
+   gl.vertexAttribPointer(this.a.pos,3,gl.FLOAT,false,0,0);
+   this.instanced.divisor(this.a.pos,0);
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.n);
+   gl.enableVertexAttribArray(this.a.nor);
+   gl.vertexAttribPointer(this.a.nor,3,gl.FLOAT,false,0,0);
+   this.instanced.divisor(this.a.nor,0);
+   gl.bindBuffer(gl.ARRAY_BUFFER,mesh.inst);
+   if(bytes>mesh.instCapacity){
+    mesh.instCapacity=Math.max(2560,mesh.instCapacity*2,bytes);
+    gl.bufferData(gl.ARRAY_BUFFER,mesh.instCapacity,gl.DYNAMIC_DRAW);
+   }
+   gl.bufferSubData(gl.ARRAY_BUFFER,0,pack.data.subarray(0,n));
+   this.uploadedBytes+=bytes;
+   for(let i=0;i<4;i++){
+    const loc=this.a.m[i];gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc,4,gl.FLOAT,false,80,i*16);this.instanced.divisor(loc,1);
+   }
+   gl.enableVertexAttribArray(this.a.tint);
+   gl.vertexAttribPointer(this.a.tint,4,gl.FLOAT,false,80,64);
+   this.instanced.divisor(this.a.tint,1);
+   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.i);
+   this.instanced.draw(gl.TRIANGLES,mesh.count,gl.UNSIGNED_SHORT,0,pack.count);
+   this.drawCalls++;this.drawnInstances+=pack.count;
+  }
+ }
  screen(x,y,z){return project(this.vp,x,y,z,this.w,this.h)}
 }
 
@@ -720,14 +855,15 @@ class World{
     renderer.add('box',19,.33+Math.sin(t*3)*.04,-12.05,7.7,.06,1.6,[1,.81,.08,3]);
    }
    // Soft animated volcanic mist, well below collectible height so it does not occlude play.
-   for(let i=0;i<17;i++){const x=-31+i*1.68,z=-14.2+(x+17)*-.24+Math.sin(i*3.17)*1.7;
+   const cosmeticStep=renderer.quality?.decorationStep||1;
+   for(let i=0;i<17;i+=cosmeticStep){const x=-31+i*1.68,z=-14.2+(x+17)*-.24+Math.sin(i*3.17)*1.7;
     const rise=(t*.45+i*.31)%2.8;
     renderer.add('sphere',x,.32+rise*.47,z,1.5+rise*.40,.49+rise*.18,1.2+rise*.50,[.86,.69,.59],0,0,0,.095*(1.-rise/3.1));
    }
    let c=this.crusher;
    for(let n=0;n<3;n++){
     let x=c.x+(n-1)*1.4;renderer.add('cylinder',x,1.52,c.z,.58,2.95,.58,[.75,.20,.07]);
-    for(let row=0;row<9;row++)for(let k=0;k<8;k++){let a=k/8*TAU+t*3*(n%2?1:-1)+row*.33;renderer.add('cone',x+Math.cos(a)*.55,.47+row*.27,c.z+Math.sin(a)*.55,.35,.50,.38,[1,.37,.10],a,0,.55)}
+    for(let row=0;row<9;row+=cosmeticStep)for(let k=0;k<8;k+=cosmeticStep){let a=k/8*TAU+t*3*(n%2?1:-1)+row*.33;renderer.add('cone',x+Math.cos(a)*.55,.47+row*.27,c.z+Math.sin(a)*.55,.35,.50,.38,[1,.37,.10],a,0,.55)}
    }
   }}
 }
@@ -806,6 +942,97 @@ class StaticCollisionField{
  }
 }
 
+// --- activity.js ---
+/**
+ * Reusable 2D broadphase for scheduling independent granular bodies.
+ * It is rebuilt ONCE per simulation frame, not once per physics substep.
+ * Every sleeping body remains a physical object, rendered and eligible for
+ * gates, upgrades and later wake-up. No object merging or disappearance.
+ */
+const CELL=2.5;
+const ACTIVE_BUDGET=850;
+const NEAR_RADIUS2=13.5*13.5;
+const WAKE_RADIUS2=19*19;
+const key=(x,z)=>x*1024+z;
+class ParticleActivity{
+ constructor(budget=ACTIVE_BUDGET){
+  this.budget=budget;
+  this.cells=new Map();
+  this.candidates=[];
+  this.active=[];
+  this.priorities=new Float32Array(0);
+  this.mark=new Uint32Array(0);
+  this.generation=0;
+  this.sleeping=0;
+  this.dropped=0;
+ }
+ select(resources,player){
+  const n=resources.length;
+  if(this.priorities.length<n){
+   const size=Math.max(128,n,this.priorities.length*2);
+   this.priorities=new Float32Array(size);
+   this.mark=new Uint32Array(size);
+   this.generation=0;
+  }
+  if(++this.generation===0xffffffff){this.mark.fill(0);this.generation=1;}
+  for(const bucket of this.cells.values())bucket.length=0;
+  const candidates=this.candidates;candidates.length=0;
+  const stamp=this.generation,mark=this.mark,priority=this.priorities;
+  const add=(i,score)=>{
+   if(mark[i]===stamp)return;
+   mark[i]=stamp;priority[i]=score;candidates.push(i);
+  };
+  let living=0;
+  for(let i=0;i<n;i++){
+   const p=resources[i];if(p.dead)continue;
+   living++;
+   const cx=Math.floor(p.x/CELL),cz=Math.floor(p.z/CELL),k=key(cx,cz);
+   let bucket=this.cells.get(k);
+   if(!bucket){bucket=[];this.cells.set(k,bucket);}
+   bucket.push(i);
+   const dx=p.x-player.x,dz=p.z-player.z,d2=dx*dx+dz*dz;
+   const motion=Math.abs(p.vx||0)+Math.abs(p.vz||0)+Math.abs(p.vy||0);
+   // Never sleep an airborne or moving particle even if it is far away.
+   if(motion>.30||(p.y||0)>.025)add(i,d2-motion*6);
+  }
+  // Wake resting grains near the shovel using nearby spatial cells.
+  const cx=Math.floor(player.x/CELL),cz=Math.floor(player.z/CELL);
+  const range=Math.ceil(Math.sqrt(WAKE_RADIUS2)/CELL);
+  for(let x=cx-range;x<=cx+range;x++)for(let z=cz-range;z<=cz+range;z++){
+   const bucket=this.cells.get(key(x,z));if(!bucket)continue;
+   for(const i of bucket){
+    const p=resources[i],dx=p.x-player.x,dz=p.z-player.z,d2=dx*dx+dz*dz;
+    if(d2<NEAR_RADIUS2)add(i,d2-2000);
+   }
+  }
+  // A moving resource wakes nearby settled bodies so it cannot tunnel
+  // directly through a static pile when the vehicle is farther away.
+  const movingCount=candidates.length;
+  for(let m=0;m<movingCount&&m<1500;m++){
+   const p=resources[candidates[m]];
+   const motion=Math.abs(p.vx||0)+Math.abs(p.vz||0)+Math.abs(p.vy||0);
+   if(motion<.30)continue;
+   const bx=Math.floor(p.x/CELL),bz=Math.floor(p.z/CELL);
+   for(let x=bx-1;x<=bx+1;x++)for(let z=bz-1;z<=bz+1;z++){
+    const bucket=this.cells.get(key(x,z));if(!bucket)continue;
+    for(const i of bucket){
+     const q=resources[i],dx=q.x-p.x,dz=q.z-p.z;
+     if(dx*dx+dz*dz<1.3*1.3)add(i,(q.x-player.x)**2+(q.z-player.z)**2-1000);
+    }
+   }
+  }
+  if(candidates.length>this.budget){
+   candidates.sort((a,b)=>priority[a]-priority[b]);
+  }
+  this.active.length=0;
+  const take=Math.min(this.budget,candidates.length);
+  for(let i=0;i<take;i++)this.active.push(candidates[i]);
+  this.sleeping=living-this.active.length;
+  this.dropped=Math.max(0,candidates.length-take);
+  return this.active;
+ }
+}
+
 // --- granular.js ---
 /**
  * A compact 2.5D granular dynamics solver for the original advert's visible
@@ -817,6 +1044,7 @@ class StaticCollisionField{
  * body dynamics (there is no angular collision or friction cone solver).
  * No dependencies, no allocations proportional to particle count squared.
  */
+
 
 
 
@@ -884,6 +1112,9 @@ class GranularSolver {
     this.lastActive=0;
     this.grid = new Map();
     this.moving = [];
+    this.activity=new ParticleActivity();
+    this.contactCounts=new Uint8Array(0);
+    this.lastSleeping=0;this.lastScheduled=0;
     this.obstacleWorld=null;this.obstacleField=null;this.obstacleContacts=0;
   }
 
@@ -893,6 +1124,9 @@ class GranularSolver {
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
+    const scheduled=this.activity.select(resources,player);
+    this.lastSleeping=this.activity.sleeping;
+    this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
     const passes = Math.max(1, Math.min(3, Math.ceil(dt / .019)));
     const h = dt / passes;
@@ -908,31 +1142,13 @@ class GranularSolver {
     const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);
     const driving=player.speed>.18 && travel>0;
     const displacement=driving?Math.min(.38,travel*1.5):0;
-    const nowMoving=[];
+    const nowMoving=this.moving;nowMoving.length=0;
     let simulated=0;
-    // The scene can contain 6,500 distinct coins. On low-end phones we
-    // schedule granular contacts for the nearest 850 at a time; all other
-    // coins remain individual and visible, and wake as the shovel approaches.
-    // This is a contact-solver budget, NOT a visual or logical aggregation.
-    let active=null;
-    if(resources.length>1250){
-      const nearby=[];
-      for(let i=0;i<resources.length;i++){
-        const r=resources[i];if(r.dead)continue;
-        const d=(r.x-player.x)**2+(r.z-player.z)**2;
-        const motion=Math.abs(r.vx||0)+Math.abs(r.vz||0)+Math.abs(r.vy||0);
-        if(d<19*19||motion>.45)nearby.push({i,priority:d-motion*4});
-      }
-      nearby.sort((a,b)=>a.priority-b.priority);
-      active=new Set(nearby.slice(0,850).map(r=>r.i));
-    }
-    for(let i=0;i<resources.length;i++){
-      if(active&&!active.has(i))continue;
+    // v0.6.3: active indices were selected ONCE in step(), shared by all
+    // substeps. Distant settled particles are omitted from numerical integration
+    // but remain independent, visible, and eligible for wake-up.
+    for(const i of this.activity.active){
       const p=resources[i];if(p.dead)continue;
-      // Far, settled resources remain individually rendered, but sleep until
-      // the machine approaches. No particles are merged or omitted visually.
-      const distant=(p.x-player.x)**2+(p.z-player.z)**2>12.7**2;
-      if(distant && Math.abs(p.vx||0)+Math.abs(p.vy||0)+Math.abs(p.vz||0)<.28)continue;
       simulated++;
       const shape=S(p.kind),onGround=p.y<.012;
       p.vy=Number.isFinite(p.vy)?p.vy:0;
@@ -1009,10 +1225,13 @@ class GranularSolver {
     // displace a particle across a bucket border. Each neighbour pair is unique.
     const iterations=nowMoving.length>730?1:nowMoving.length>350?2:3;
     this.lastActive=simulated;
-    const contactCounts=new Uint8Array(resources.length);
+    if(this.contactCounts.length<resources.length)
+      this.contactCounts=new Uint8Array(Math.max(resources.length,this.contactCounts.length*2,128));
+    const contactCounts=this.contactCounts;
     for(let iteration=0;iteration<iterations;iteration++){
       contactCounts.fill(0);
-      const grid=this.grid;grid.clear();
+      const grid=this.grid;
+      for(const bucket of grid.values())bucket.length=0;
       for(const i of nowMoving){
         const p=resources[i],key=(Math.floor(p.x/HORIZONTAL_BUCKET))+','+Math.floor(p.z/HORIZONTAL_BUCKET);
         let cells=grid.get(key);if(!cells){cells=[];grid.set(key,cells)}cells.push(i);
@@ -1285,6 +1504,9 @@ class Simulation{
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
   this.physics.active=this.granular.lastActive;
+  this.physics.sleeping=this.granular.lastSleeping||0;
+  this.physics.scheduled=this.granular.lastScheduled||0;
+  this.physics.deferred=this.granular.activity?.dropped||0;
   let count=0;
   this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
   let crushedThisFrame=0,depositedThisFrame=0;
@@ -1501,47 +1723,58 @@ function renderVehicle(renderer,player,t,baseY=0){
 function renderTreads(renderer,treads,stage){
  const c=stage?[.19,.21,.20,5]:[.29,.19,.14,5];
  for(const q of treads){
+  if(typeof renderer.visible==='function'&&!renderer.visible(q.x,.1,q.z,.09))continue;
   renderer.add('box',q.x,.071,q.z,.22,.021,.155,c,modelYaw(q.a)+.15);
   renderer.add('box',q.x-Math.sin(q.a)*.11,.071,q.z+Math.cos(q.a)*.11,.17,.022,.07,c,modelYaw(q.a)-.24);
  }
 }
-function renderResources(renderer,resources,time,cam){let count=0;
+/**
+ * Culls by the actual orthographic clip volume, not a fixed giant rectangle.
+ * Every visible resource is still one independent coin/ore mesh; distant
+ * assets may use fewer triangles, never a combined count or impostor pile.
+ */
+function renderResources(renderer,resources,time,cam){
+ let drawn=0;
+ const quality=renderer.quality||{detailDistance:22,shadowDistance:23};
+ const detail2=quality.detailDistance**2,shadow2=quality.shadowDistance**2;
  for(const p of resources){
-  if(p.dead||Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
-  const y=.12+p.y,spin=p.spin||0;
-  // Spawn-only white flare: fast ignition, much slower decay.
+  if(p.dead)continue;
+  const dy=p.y||0;
+  if(typeof renderer.visible==='function'){
+   if(!renderer.visible(p.x,dy+.45,p.z,.16))continue;
+  }else if(Math.abs(p.x-cam.x)>38||Math.abs(p.z-cam.z)>46)continue;
+  const d2=(p.x-cam.x)**2+(p.z-cam.z)**2,near=d2<=detail2;
+  const y=.12+dy,spin=p.spin||0;
   const flash=p.flashStartedAt===undefined?0:flashIntensity(time-p.flashStartedAt);
-
-  if(p.kind!=='pearl')renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
+  if(p.kind!=='pearl'&&d2<=shadow2)
+   renderer.add('shadow',p.x,.079,p.z,p.kind==='gold'?.83:.94,1,p.kind==='gold'?.83:.94,[0,0,0,8]);
   switch(p.kind){
-   case 'blue':{
-    // A single shaded ball with view-independent shell markings. Avoid four
-    // overlapping meshes per orb, which is expensive on mobile GPUs.
-    renderer.add('sphere',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9+flash*.25],spin*.22,spin*.32,spin*.19);
+   case 'blue':
+    renderer.add(near?'sphere':'sphereLite',p.x,y+.27,p.z,.68,.68,.68,[.046,.49,.94,9+flash*.25],spin*.22,spin*.32,spin*.19);
     break;
-   }
    case 'gold':{
-    // One stamped coin mesh, including raised rim and face marks, rotating as
-    // a rigid-looking body. The centre follows the solver's tilt-aware support.
     const half=particleHalfHeight(p);
-    renderer.add('coin',p.x,p.y+.052+half,p.z,.70,.70,.70,
+    renderer.add(near?'coin':'coinLite',p.x,dy+.052+half,p.z,.70,near?.70:.40,.70,
       [1,.73,.024,7+flash*.25],p.angle||0,p.tiltX||0,p.tiltZ||0);
     break;
    }
    case 'pearl':
-    renderer.add('sphere',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
-    renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);break;
+    renderer.add(near?'sphere':'sphereLite',p.x,y+.39,p.z,.87,.88,.86,[.99+flash*.01,.71+flash*.29,.81+flash*.19,4]);
+    if(near)renderer.add('sphere',p.x-.18,y+.66,p.z-.15,.22,.17,.22,[1,.96,.95,4]);
+    break;
    case 'ingot':
     renderer.add('box',p.x,y+.27,p.z,.49,.34,1.32,[.99,.73,.15,7+flash*.25],spin);
-    renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7+flash*.25],spin);break;
-   default:renderer.add('sphere',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
+    if(near)renderer.add('box',p.x,y+.46,p.z,.39,.08,1.16,[1,.86,.25,7+flash*.25],spin);
+    break;
+   default:renderer.add(near?'sphere':'sphereLite',p.x,y+.4,p.z,.86,.85,.86,[.23,.88,.52,4]);break;
   }
-  count++;
+  drawn++;
  }
- return count;
+ return drawn;
 }
 
 // --- main.js ---
+
 
 
 
@@ -1563,7 +1796,10 @@ const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=docum
 const trackButtons=document.getElementById('trackButtons');
 const telemetryToggle=document.getElementById('telemetryToggle');
 const telemetryPanel=document.getElementById('telemetryPanel');
-let measuredFps=0,frameSeconds=0,frameSamples=0;
+const qualityController=new AdaptiveQuality(
+ typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches
+);
+let measuredFps=0,frameSeconds=0,frameSamples=0,visibleResources=0;
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
  telemetryPanel.hidden=!open;
@@ -1578,6 +1814,12 @@ function updateTelemetry(){
  set('metricFps',measuredFps?Math.round(measuredFps):'--');
  set('metricEntities',`${formatNum(sim.activeCount)} / ${Math.min(sim.activeCount,sim.physics.active||0)}`);
  set('metricContacts',formatNum(sim.physics.contacts||0));
+ set('metricVisible',formatNum(visibleResources));
+ set('metricSleeping',formatNum(sim.physics.sleeping||0));
+ set('metricDeferred',formatNum(sim.physics.deferred||0));
+ set('metricQuality',QUALITY_NAMES[renderer?.qualityName||qualityController.mode]);
+ set('metricDraws',`${formatNum(renderer?.drawnInstances||0)} / ${formatNum(renderer?.drawCalls||0)}`);
+ set('metricUpload',`${Math.round((renderer?.uploadedBytes||0)/1024)} KiB`);
  set('metricGoldRate',formatNum(Math.round(snapshot.producedGoldPerMinute)));
  set('metricValueRate',formatNum(Math.round(snapshot.producedCreditsPerMinute)));
  set('metricPaidRate',formatNum(Math.round(snapshot.paidCreditsPerMinute)));
@@ -1588,7 +1830,7 @@ function updateTelemetry(){
  const busy=sim.activeCount>=MAX_RESOURCES*.86;
  document.getElementById('metricStatus').textContent=busy?
  '资源拥挤：补货已暂缓。把金币推入升级站，或用计数带回收。':
- '仅统计本次游玩；产金不含免费补货，前60秒的分钟数值为折算速率。';
+ '仅统计本次游玩；画质按实测帧率缓慢调整，不减少实体数或改变物理。';
 }
 for(const key of TRACK_KEYS){const b=document.createElement('button');b.className='track-option';b.dataset.track=key;b.type='button';trackButtons.append(b);
  b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
@@ -1622,7 +1864,7 @@ function saveProgress(){
 }
 function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
- effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;
+ effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
  sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
 }
@@ -1714,7 +1956,7 @@ function drawEffects(){
   if(age>(e.type==='crush' ? 0.56 : 0.68)){effects.splice(i,1);continue;}
   if(e.type==='crush'){
    // Four brief sparks per collision, capped to 35 impact events.
-   for(let j=0;j<4;j++){
+   for(let j=0;j<(renderer.quality?.effectSparks||4);j++){
     const a=j*Math.PI*.5+e.x*.13,dist=age*(2.2+j*.26);
     renderer.add('sphere',e.x+Math.cos(a)*dist,.55+age*2.1-j*.035,
       e.z+Math.sin(a)*dist,.105,.105,.105,j%2?[1,.86,.33,3]:[1,.43,.08,3]);
@@ -1741,14 +1983,18 @@ function drawFrame(t){
  const dt=Math.min(rawDt,.046);last=t;clocks+=dt;
  if(!paused && rawDt>0 && rawDt<2){
   frameSeconds+=rawDt;frameSamples++;
-  if(frameSeconds>=.65){measuredFps=frameSamples/frameSeconds;frameSamples=0;frameSeconds=0;}
+  if(frameSeconds>=.65){
+   measuredFps=frameSamples/frameSeconds;
+   if(qualityController.sample(measuredFps,frameSeconds))renderer?.setQuality(qualityController.mode);
+   frameSamples=0;frameSeconds=0;
+  }
  }
  if(renderer){
   if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
   renderer.begin(clocks,sim.player,dt);
   world.render(renderer,clocks,sim.player);
   renderTreads(renderer,sim.treads,stage);
-  renderResources(renderer,sim.resources,sim.elapsed,renderer.camera);
+  visibleResources=renderResources(renderer,sim.resources,sim.elapsed,renderer.camera);
   renderVehicle(renderer,sim.player,clocks);
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
@@ -1815,7 +2061,7 @@ document.getElementById('resetButton').addEventListener('click',()=>{
  try{localStorage.removeItem('coindozer-progress-v06');localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
  loadScene(stage,false);toast('游戏进度已重置');
 });
-try{renderer=new Renderer(canvas);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
+try{renderer=new Renderer(canvas);renderer.setQuality(qualityController.mode);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
 catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}
 
 })();

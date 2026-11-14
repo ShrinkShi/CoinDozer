@@ -23,6 +23,7 @@ jobs:
           enablement: true
       - name: Run deterministic economy & controls regressions
         run: |
+          node --check src/main.js
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
           node tests/v061_economy.mjs

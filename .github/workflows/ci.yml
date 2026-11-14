@@ -11,6 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Gameplay regression suite
         run: |
+          node --check src/main.js
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
           node tests/v061_economy.mjs
