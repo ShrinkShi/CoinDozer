@@ -10,6 +10,7 @@ assert.equal(scripts.length,1,'offline bundle should contain one inline game scr
 const js=scripts[0][1];
 assert.ok(js.includes('__m_activity'), 'activity module is bundled');
 assert.ok(js.includes('__m_collisions'), 'collision module is bundled');
+assert.ok(js.includes('__m_vehicleRig'), 'v0.6.4 vehicle rig is bundled with independent scope');
 assert.ok(!html.includes('src="./src/main.js"'), 'no external module script');
 assert.doesNotThrow(()=>new Script(js,{filename:'dist/index.html'}));
 console.log('v0.6.3.2: built offline JavaScript syntax / independent module lexical scopes PASS');

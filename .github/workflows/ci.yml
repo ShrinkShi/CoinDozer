@@ -14,6 +14,7 @@ jobs:
           node --check src/main.js
           node --check src/triggers.js
           node tests/v0631_triggers.mjs
+          node tests/v064_vehicle.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -26,7 +27,7 @@ jobs:
           python build.py
           node tests/v0632_bundle_syntax.mjs
           git diff --exit-code -- dist/index.html
-          grep -q 'VIDEO REPLICA · 0.6.3.2' dist/index.html
+          grep -q 'VIDEO REPLICA · 0.6.4' dist/index.html
 
   browser-smoke:
     runs-on: ubuntu-24.04

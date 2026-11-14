@@ -18,6 +18,7 @@ const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-ga
 const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade'),lane:document.getElementById('label-score')};
 const pauseButton=document.getElementById('pauseButton');
 const playButton=document.getElementById('playButton');
+const cameraModeButton=document.getElementById('cameraModeButton');
 const startupIssue=document.getElementById('startupIssue');
 const sceneButton=document.getElementById('sceneButton');
 const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=document.getElementById('upgradePicker');
@@ -136,7 +137,7 @@ function handleEvents(){
  }
  sim.events.length=0;
  if(paid){saveProgress();if(!upgrades.length)beep(360+sim.deposit%100*3,.06,.026);}
- if(upgrades.length){const item=upgrades.at(-1);toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
+ if(upgrades.length){const item=upgrades.at(-1);renderer?.pulseUpgrade();toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('倍增已受资源上限限制：请把金币投入升级台或使用计数带回收',2.8);
  else if(crusherBlocked)toast('粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
@@ -250,6 +251,16 @@ function moveTouch(point){
 }
 function endJoystick(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';}
 function setZoom(zoom){if(!renderer)return;renderer.camera.zoom=zoom;updateUI();}
+function updateCameraModeButton(){
+ const close=renderer?.camera.mode==='close';
+ cameraModeButton.textContent=close?'镜头：特写':'镜头：全景';
+ cameraModeButton.setAttribute('aria-pressed',String(close));
+}
+cameraModeButton.addEventListener('click',()=>{
+ if(!renderer)return;
+ renderer.camera.mode=renderer.camera.mode==='close'?'follow':'close';
+ updateCameraModeButton();
+});
 canvas.addEventListener('wheel',e=>{if(renderer){setZoom(wheelZoom(renderer.camera.zoom,e.deltaY));e.preventDefault();}},{passive:false});
 canvas.addEventListener('pointerdown',e=>{
  if(paused||graphicsLost||e.button>0)return;
@@ -313,6 +324,7 @@ function enterMine(){
    renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
   }
   startRenderLoop();
+  updateCameraModeButton();
   startupIssue.hidden=true;
   playButton.textContent='进入矿场';
   hideMenu();
@@ -346,6 +358,7 @@ canvas.addEventListener('webglcontextrestored',()=>{
   next.setQuality(qualityController.mode);
   if(previous)Object.assign(next.camera,previous);
   renderer=next;
+  updateCameraModeButton();
   graphicsLost=false;
   graphicsStatus.hidden=true;
   frameSamples=0;frameSeconds=0;measuredFps=0;
@@ -364,4 +377,5 @@ try{
  renderer.setQuality(qualityController.mode);
  renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;
  startRenderLoop();
+ updateCameraModeButton();
 }catch(error){showStartupIssue(error);}

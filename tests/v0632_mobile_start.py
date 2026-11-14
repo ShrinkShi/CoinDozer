@@ -44,7 +44,15 @@ with sync_playwright() as p:
         page.wait_for_timeout(400)
         assert not page.locator('#menu').evaluate('(el)=>el.classList.contains("visible")'),(
             f'click did not close menu; errors={errors!r}')
+        camera=page.locator('#cameraModeButton')
+        assert camera.is_visible(), 'camera framing control should remain visible'
+        assert camera.get_attribute('aria-pressed') == 'false'
+        camera.click()
+        assert camera.get_attribute('aria-pressed') == 'true', 'close-up toggle works'
+        assert '特写' in camera.inner_text()
+        camera.click()
+        assert camera.get_attribute('aria-pressed') == 'false', 'full view can be restored'
         assert not errors,errors
-        print(f'{width}x{height}: entered mine PASS',flush=True)
+        print(f'{width}x{height}: entered mine, switched camera twice PASS',flush=True)
         context.close()
     browser.close()
