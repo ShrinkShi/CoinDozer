@@ -21,6 +21,11 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Test gameplay and controls
+        run: |
+          node tests/v06_progression.mjs
+          node tests/v041_controls.mjs
+          node tests/v051_mechanics.mjs
       - name: Build bundled offline site
         run: python build.py
       - uses: actions/upload-pages-artifact@v3
