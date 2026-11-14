@@ -7,6 +7,7 @@ import {screenStickToWorld} from './heading.js';
 import {MAX_VEHICLE_LEVEL,TRACK_KEYS,TRACK_LABELS,TRACK_COSTS,GATE_COSTS,gateFactor,coinCredit,trackRemaining} from './economy.js';
 import {wheelZoom,pinchZoom,pointerDistance} from './cameraZoom.js';
 import {AdaptiveQuality,QUALITY_NAMES} from './quality.js';
+import {sceneRules,paymentValue} from './sceneRules.js';
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
 const graphicsStatus=document.getElementById('graphicsStatus');
@@ -25,6 +26,8 @@ const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=docum
 const trackButtons=document.getElementById('trackButtons');
 const telemetryToggle=document.getElementById('telemetryToggle');
 const telemetryPanel=document.getElementById('telemetryPanel');
+const stageBadge=document.getElementById('stageBadge');
+const stageInfo=document.getElementById('stageInfo');
 const qualityController=new AdaptiveQuality(
  typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches
 );
@@ -86,17 +89,31 @@ function loadProgress(){
  return {};
 }
 function saveProgress(){
- if(stage!==0)return;
- try{localStorage.setItem('coindozer-progress-v06',JSON.stringify({
-  tracks:sim.tracks,gates:sim.gateTracks,selected:sim.selectedUpgrade,
-  totalDeposited:sim.totalDeposited
- }));}catch(e){console.warn('Could not save progress',e);}
+ if(!sim)return;
+ try{
+  // Keep legacy lava gates under 'gates'; cave gates have an independent key.
+  const previous=loadProgress();
+  const progress={
+   tracks:sim.tracks,
+   gates:stage===0?sim.gateTracks:previous.gates,
+   caveGates:stage===1?sim.gateTracks:previous.caveGates,
+   selected:sim.selectedUpgrade,totalDeposited:sim.totalDeposited,stage
+  };
+  localStorage.setItem('coindozer-progress-v06',JSON.stringify(progress));
+ }catch(e){console.warn('Could not save progress',e);}
 }
 function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
- effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
+ effects.length=0;lastImpact=null;crushPopup.style.display='none';
+ frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
- sceneButton.textContent='切换预览场景：'+(stage===0?'粉晶岩洞':'熔岩矿场');updateUI();
+ sceneButton.textContent='切换地图：'+sceneRules(stage===0?1:0).name;
+ stageBadge.textContent=sceneRules(stage).name;
+ document.title='铲斗矿场 · '+sceneRules(stage).name;
+ stageInfo.textContent=stage===0?
+  '熔岩矿场：把蓝色矿石推入粉碎轮，每颗产出3枚真实金币。金币过双向数字门，再推到投币台升级。':
+  '粉晶岩洞：将粉晶推入紫晶粉碎机，每颗生成3根独立金锭。金锭每根抵扣3倍金币金额；两座数字门分别升级，改装与第一关共用。';
+ updateUI();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
 function unlockAudio(){
@@ -140,18 +157,18 @@ function handleEvents(){
  if(upgrades.length){const item=upgrades.at(-1);renderer?.pulseUpgrade();toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('倍增已受资源上限限制：请把金币投入升级台或使用计数带回收',2.8);
- else if(crusherBlocked)toast('粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
+ else if(crusherBlocked)toast(stage?'粉晶粉碎机资源已满：保留粉晶等待空位':'粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
  else if(supplyPaused)toast('矿场资源较满，已暂停自动补货；不会删除现有实体',2.7);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
- else if(converted){lastImpact.coins=converted*3;toast('粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
+ else if(converted){lastImpact.coins=converted*3;toast(stage?'粉晶加工：'+converted+' 颗 → '+(converted*3)+' 根金锭':'粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
 }
 function updateUI(){
  if(!sim)return;
- document.getElementById('score').textContent=formatNum(stage?sim.multipliedValue:sim.crushed);
+ document.getElementById('score').textContent=formatNum(sim.crushed);
  const selected=sim.selectedUpgrade,track=sim.tracks[selected],costs=TRACK_COSTS[selected];
  const need=trackRemaining(track,costs);
- document.getElementById('left').textContent=stage?'预览':(track.level===costs.length?'已满级':formatNum(need));
- document.getElementById('coinValueStat').textContent='×'+coinCredit(sim.tracks);
+ document.getElementById('left').textContent=track.level===costs.length?'已满级':formatNum(need);
+ document.getElementById('coinValueStat').textContent='×'+paymentValue(stage,sim.tracks);
  labels.cost.textContent=track.level===costs.length?'MAX':formatNum(need);
  labels.upgrade.textContent=`${TRACK_LABELS[selected]} · Lv.${track.level}/${costs.length}`;
  for(const button of trackButtons.children){const key=button.dataset.track,record=sim.tracks[key],rates=TRACK_COSTS[key];
@@ -159,15 +176,15 @@ function updateUI(){
   button.setAttribute('aria-pressed',String(selected===key));
   button.innerHTML=`<strong>${TRACK_LABELS[key]} · Lv.${record.level}/${rates.length}</strong><small>${max?'已满级':`下一级需 ${formatNum(remain)} 金额`}</small>`;
  }
- document.getElementById('pickerCoinValue').textContent=coinCredit(sim.tracks);
+ document.getElementById('pickerCoinValue').textContent=paymentValue(stage,sim.tracks);
  labels.lane.textContent='回收 '+formatNum(sim.processed);
  const resourceCount=document.getElementById('resourceCount');
  resourceCount.textContent=`实体 ${formatNum(sim.activeCount)} / ${formatNum(MAX_RESOURCES)}`;
  resourceCount.classList.toggle('crowded',sim.activeCount>=MAX_RESOURCES*.86);
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
- document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'倍增值 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 滚轮及双指缩放':'初始金币在附近；通过粉碎轮生产金币，送进投币站升级';
+ document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已碎晶 ':'已粉碎 ';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 滚轮及双指缩放':stage?'推粉晶进入紫晶粉碎机，金锭过门并用于改装':'初始金币在附近；通过粉碎轮生产金币，送进投币站升级';
 }
 function positionLabels(){
  for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels])if(el)el.style.display='none';
@@ -176,7 +193,7 @@ function positionLabels(){
   if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px';}}
  for(const site of sites.gates||[]){const el=gateLabels[site.id];if(el){el.textContent='×'+(site.id<sim.gateTracks.length?gateFactor(sim.gateTracks[site.id]):2);place(el,site);}}
  for(const site of sites.gateCosts||[]){const el=gateCostLabels[site.id],record=sim.gateTracks[site.id];if(el&&record){el.textContent=record.level===GATE_COSTS.length?'MAX':`升门还差 ${trackRemaining(record,GATE_COSTS)}`;place(el,site);}}
- if(stage===0){place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter);}
+ place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);place(labels.lane,sites.counter);
 }
 function inputVector(){
  let x=0,y=0;
@@ -317,7 +334,7 @@ function showStartupIssue(error){
 }
 function enterMine(){
  try{
-  if(!sim||!world)loadScene(0,true);
+  if(!sim||!world)loadScene(loadProgress().stage===1?1:0,true);
   if(!renderer){
    renderer=new Renderer(canvas);
    renderer.setQuality(qualityController.mode);
@@ -331,7 +348,7 @@ function enterMine(){
  }catch(error){showStartupIssue(error);}
 }
 playButton.addEventListener('click',enterMine);pauseButton.addEventListener('click',showMenu);
-sceneButton.addEventListener('click',()=>{saveProgress();loadScene(stage===0?1:0,true);toast('场景已切换',2);});
+sceneButton.addEventListener('click',()=>{saveProgress();loadScene(stage===0?1:0,true);saveProgress();toast('已进入'+sceneRules(stage).name,2);});
 document.getElementById('resetButton').addEventListener('click',()=>{
  if(!confirm('清除升级进度并重置当前场景？'))return;
  try{localStorage.removeItem('coindozer-progress-v06');localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
@@ -372,7 +389,7 @@ canvas.addEventListener('webglcontextrestored',()=>{
 });
 document.getElementById('graphicsRefresh').addEventListener('click',()=>location.reload());
 try{
- loadScene(0,true);
+ loadScene(loadProgress().stage===1?1:0,true);
  renderer=new Renderer(canvas);
  renderer.setQuality(qualityController.mode);
  renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;

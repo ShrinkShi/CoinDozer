@@ -65,3 +65,9 @@
  pointer-events:auto;touch-action:manipulation}
 #cameraModeButton[aria-pressed="true"]{background:#e3ad51;color:#31210d}
 @media(max-width:390px){#cameraModeButton{top:110px;right:8px;font-size:10px;padding:6px 8px}}
+
+/* v0.6.5 second-stage marker, visually separate from zoom/joystick. */
+.stage-badge{position:absolute;right:12px;top:151px;z-index:4;pointer-events:none;
+ border:1px solid #d4a3d488;border-radius:8px;background:#312330c9;
+ padding:5px 8px;color:#ffefff;font-size:11px;font-weight:850}
+@media(max-width:390px){.stage-badge{top:145px;right:8px;font-size:10px}}

@@ -58,8 +58,11 @@ export function newProgress(raw={}){
   }else tracks[key]=makeTrack(raw.tracks?.[key]??{},TRACK_COSTS[key]);
  }
  const gates=Array.from({length:4},(_,i)=>makeTrack(raw.gates?.[i]??{},GATE_COSTS));
+ // Cave gate upgrades are saved separately from the four lava-field gates.
+ // Missing caveGates is valid for every legacy v0.6.x save.
+ const caveGates=Array.from({length:2},(_,i)=>makeTrack(raw.caveGates?.[i]??{},GATE_COSTS));
  const selected=TRACK_KEYS.includes(raw.selected)?raw.selected:'chassis';
- return {tracks,gates,selected,totalDeposited:nonnegative(raw.totalDeposited)};
+ return {tracks,gates,caveGates,selected,totalDeposited:nonnegative(raw.totalDeposited)};
 }
 export function trackRemaining(track,costs){return track.level<costs.length?Math.max(0,costs[track.level]-track.deposited):0;}
 export function gateFactor(track){return GATE_FACTORS[Math.min(track.level,GATE_FACTORS.length-1)];}

@@ -11,7 +11,7 @@ import re
 ROOT = Path(__file__).resolve().parent
 # Dependency order: modules may only import entries which appear above them.
 MODULES = [
-    'math.js','heading.js','vehicleRig.js','cameraZoom.js','economy.js','telemetry.js',
+    'math.js','heading.js','vehicleRig.js','cameraZoom.js','economy.js','sceneRules.js','telemetry.js',
     'flash.js','scoop.js','geometry.js','quality.js','renderer.js',
     'triggers.js','collisions.js','activity.js','granular.js','vehicle.js',
     'world.js','physics.js','main.js'

@@ -6,6 +6,7 @@ import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_CO
 import {EconomyTelemetry} from './telemetry.js';
 import {insideTrigger,enteredTrigger,crossedGatePlane} from './triggers.js';
 import {advanceTrackOdometer} from './vehicleRig.js';
+import {sceneRules,paymentValue,isStageCurrency} from './sceneRules.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -14,10 +15,11 @@ export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name
 export class Simulation{
  constructor(stage=0,progress={}){
   this.stage=stage;
+  this.rules=sceneRules(stage);
   this.resources=createResourceLayout(stage);
   this.elapsed=0;this.lastGate=-20;
   const loaded=newProgress(progress);
-  this.tracks=loaded.tracks;this.gateTracks=loaded.gates;this.selectedUpgrade=loaded.selected;
+  this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;this.selectedUpgrade=loaded.selected;
   this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
   this.totalDeposited=loaded.totalDeposited;
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
@@ -25,8 +27,8 @@ export class Simulation{
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
   this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
-  this.player={x:stage?2:0,z:stage?7:11,yaw:0,speed:0,
-   level:stage?Math.max(2,this.level):this.level,bladeLevel:this.tracks.blade.level,
+  this.player={x:stage?2:0,z:stage?12:11,yaw:0,speed:0,
+   level:this.level,bladeLevel:this.tracks.blade.level,
    speedLevel:this.tracks.speed.level,steeringLevel:this.tracks.steering.level,
    coinLevel:this.tracks.coin.level,trackLeft:0,trackRight:0,travelDistance:0,
    bladeBounce:0,upgradeFlashAt:-50};
@@ -34,7 +36,7 @@ export class Simulation{
   this.coinsSpent={vehicle:0,gate:0};
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
  }
- setStage(stage){Object.assign(this,new Simulation(stage))}
+ setStage(stage,progress={}){Object.assign(this,new Simulation(stage,progress))}
  emit(type,data={}){this.events.push({type,...data})}
  countLiving(){return this.resources.reduce((n,r)=>n+(!r.dead?1:0),0);}
  /** Reserve all children before changing the source object. Freed slots are
@@ -53,7 +55,7 @@ export class Simulation{
   * available, retain the ore and nudge it back to the entry lane.
   */
  crush(r,crusher){
-  if(r.dead||r.kind!=='blue'||this.elapsed<(r._crushBlockUntil||0))return false;
+  if(r.dead||r.kind!==this.rules.ore||this.elapsed<(r._crushBlockUntil||0))return false;
   if(!this.hasCapacity(2)){
    r.x=crusher.x-crusher.halfWidth-.57;
    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
@@ -68,7 +70,7 @@ export class Simulation{
   const impactZ=clamp(r.z,crusher.z-.78,crusher.z+.78);
   const outputX=crusher.x+1.05;
   // Reuse incoming body and create EXACTLY two independent objects.
-  r.kind='gold';r.passedGates=r.passedGates||0;
+  r.kind=this.rules.currency;r.passedGates=r.passedGates||0;
   r.x=outputX;r.z=impactZ;r.y=Math.max(0,r.y);
   r.vx=3.1+Math.min(1.6,Math.abs(r.vx||0)*.25);
   r.vz=(r.vz||0)*.28;r.vy=1.9;
@@ -88,7 +90,7 @@ export class Simulation{
   this.crushed++;this.processed++;
   this.telemetry.record('oreCrushed',1,this.elapsed);
   this.telemetry.record('goldProduced',3,this.elapsed);
-  this.telemetry.record('goldValueProduced',3*coinCredit(this.tracks),this.elapsed);
+  this.telemetry.record('goldValueProduced',3*paymentValue(this.stage,this.tracks),this.elapsed);
   this.emit('crush',{x:crusher.x+.5,z:impactZ,coins:3});
   return true;
  }
@@ -97,7 +99,7 @@ export class Simulation{
   */
  selectUpgrade(key){if(!TRACK_KEYS.includes(key))return false;this.selectedUpgrade=key;return true;}
  payCoin(r,trackKey=this.selectedUpgrade,station='vehicle',gateId=-1){
-  if(r.dead||r.kind!=='gold')return false;
+  if(r.dead||!isStageCurrency(this.stage,r.kind))return false;
   let progress,costs;
   if(station==='gate'){
    if(!Number.isInteger(gateId)||gateId<0||gateId>=this.gateTracks.length)return false;
@@ -107,7 +109,7 @@ export class Simulation{
    progress=this.tracks[trackKey];costs=TRACK_COSTS[trackKey];
   }
   if(progress.level>=costs.length)return false;
-  const value=coinCredit(this.tracks);
+  const value=paymentValue(this.stage,this.tracks);
   const result=applyCredit(progress,value,costs);
   progress.level=result.level;progress.deposited=result.deposited;
   this.markDead(r);this.totalDeposited++;this.coinsSpent[station]++;
@@ -121,14 +123,14 @@ export class Simulation{
    this.level=this.tracks.chassis.level;
    this.deposit=this.tracks.chassis.deposited;
    this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
-   this.player.level=this.stage?Math.max(2,this.level):this.level;
+   this.player.level=this.level;
    this.player.bladeLevel=this.tracks.blade.level;
    this.player.speedLevel=this.tracks.speed.level;
    this.player.steeringLevel=this.tracks.steering.level;
    this.player.coinLevel=this.tracks.coin.level;
    if(result.upgrades)this.player.upgradeFlashAt=this.elapsed;
    this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
-   if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:coinCredit(this.tracks),nextCost:result.remaining});
+   if(result.upgrades)this.emit('upgrade',{track:trackKey,level:result.level,value:paymentValue(this.stage,this.tracks),nextCost:result.remaining});
   }
   return true;
  }
@@ -173,9 +175,9 @@ export class Simulation{
    });
   }
   this.telemetry.record('gateClones',created,this.elapsed);
-  if(original.kind==='gold'){
+  if(isStageCurrency(this.stage,original.kind)){
    this.telemetry.record('goldProduced',created,this.elapsed);
-   this.telemetry.record('goldValueProduced',created*coinCredit(this.tracks),this.elapsed);
+   this.telemetry.record('goldValueProduced',created*paymentValue(this.stage,this.tracks),this.elapsed);
   }
   this.multipliedValue+=created;
   this.gateHits++;
@@ -226,7 +228,7 @@ export class Simulation{
   this._liveGateCount=this.countLiving();
   let crushedThisFrame=0,depositedThisFrame=0;
   const station=world.upgradeStation;
-  const playerAtStation=station && this.stage===0 && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
+  const playerAtStation=station && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
   const gatePads=world.gateStations||[];
   for(const r of this.resources){
    if(r.dead)continue;
@@ -240,17 +242,17 @@ export class Simulation{
     const direction=crossedGatePlane(r,gate);
     if(direction&&this.multiply(r,gate,direction))break;
    }
-   if(this.stage===0){
+   if(world.crusher?.trigger){
     const crusher=world.crusher;
     // The visible rotating teeth span the bar between these columns.
     const inside=insideTrigger(r,crusher.trigger);
-    if(inside && r.kind==='blue'){
+    if(inside && r.kind===this.rules.ore){
      if(this.crush(r,crusher))crushedThisFrame++;
-    }else if(inside && r.kind==='gold'){
+    }else if(inside && r.kind===this.rules.currency){
      // Gold leaves the teeth instead of being destroyed a second time.
      r.vx=Math.max(r.vx||0,1.25);
     }
-    if(r.kind==='gold'){
+    if(isStageCurrency(this.stage,r.kind)){
      let paid=false;
      // Gate pads have their own upgrade tracks; one physical coin enters
      // only one pad in a frame. Vehicle must remain nearby to enable payment.
@@ -268,7 +270,7 @@ export class Simulation{
        if(this.payCoin(r))depositedThisFrame++;
      }
     }
-    if(!r.dead&&r.kind!=='pearl'&&insideTrigger(r,world.recycler?.trigger)){
+    if(!r.dead&&(this.stage===1||r.kind!=='pearl')&&insideTrigger(r,world.recycler?.trigger)){
      this.markDead(r);this.processed++;
      this.telemetry.record('recycled',1,this.elapsed);
      this.emit('process',{value:this.processed});
@@ -302,29 +304,31 @@ export class Simulation{
    this.supplyPaused=true;return {gold:0,blue:0};
   }
   this.supplyPaused=false;
-  const gold=living.reduce((n,r)=>n+(r.kind==='gold'),0);
-  const blue=living.reduce((n,r)=>n+(r.kind==='blue'),0);
+  const currencyKind=this.rules.currency,oreKind=this.rules.ore;
+  const currency=living.reduce((n,r)=>n+(r.kind===currencyKind),0);
+  const ore=living.reduce((n,r)=>n+(r.kind===oreKind),0);
   let budget=Math.min(available,SUPPLY.holdAt-living.length);
-  const spawn=(kind,cx,cz,n,rad)=>{
+  const spawn=(kind,site,n)=>{
    const amount=Math.min(n,budget);
    for(let i=0;i<amount;i++){
-    const a=Math.random()*TAU,d=Math.sqrt(Math.random())*rad;
-    this.resources.push({kind,x:cx+Math.cos(a)*d,z:cz+Math.sin(a)*d,
+    const a=Math.random()*TAU,d=Math.sqrt(Math.random())*site.radius;
+    this.resources.push({kind,x:site.x+Math.cos(a)*d,z:site.z+Math.sin(a)*d,
      y:Math.random()*.14,vx:0,vy:0,vz:0,
      spin:Math.random()*TAU,angle:0,passedGates:0,cooldown:0,dead:false});
    }
    budget-=amount;
-   if(amount)this.telemetry.record(kind==='gold'?'restockedGold':'restockedOre',amount,this.elapsed);
+   if(amount)this.telemetry.record(kind===currencyKind?'restockedGold':'restockedOre',amount,this.elapsed);
    return amount;
   };
+  const currencySite=this.rules.currencySupply,oreSite=this.rules.oreSupply;
   let newGold=0,newBlue=0;
-  if(this.stage===0){
-   if(gold<SUPPLY.goldBelow)newGold=spawn('gold',14.6,5.5,Math.min(SUPPLY.goldBatch,SUPPLY.goldBelow-gold),3.6);
-   if(blue<SUPPLY.oreBelow)newBlue=spawn('blue',4.5,9.0,Math.min(SUPPLY.oreBatch,SUPPLY.oreBelow-blue),3.2);
-  }else if(living.length<150)newGold=spawn('ingot',0,2,Math.min(90,150-living.length),4);
+  if(currency<currencySite.below)
+   newGold=spawn(currencyKind,currencySite,Math.min(currencySite.batch,currencySite.below-currency));
+  if(ore<oreSite.below)
+   newBlue=spawn(oreKind,oreSite,Math.min(oreSite.batch,oreSite.below-ore));
   this.liveCount=this.countLiving();
   this.activeCount=this.liveCount;
   if(newGold||newBlue)this.emit('restock',{gold:newGold,blue:newBlue});
-  return {gold:newGold,blue:newBlue};
+  return {gold:newGold,blue:newBlue,currency:newGold,ore:newBlue};
  }
 }
