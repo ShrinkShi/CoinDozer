@@ -93,6 +93,25 @@
 @media(max-width:540px){.world-label.feature{font-size:10px;padding:3px 5px}
  .feature-status{font-size:10px}}
 
+/* v0.7.1: small engineering minimap. The surface is not a touch joystick:
+   only its single target-cycle button can intercept game controls. */
+.nav-hud{position:absolute;z-index:4;left:10px;top:164px;width:132px;
+ display:flex;flex-direction:column;align-items:stretch;gap:4px;
+ padding:5px;border-radius:10px;background:#18232dbb;
+ border:1px solid #e7f4ff68;color:#f7f6e5;font-size:10px;
+ box-shadow:0 2px 8px #1017245a;pointer-events:none}
+.nav-hud[hidden]{display:none!important}
+#navMap{width:120px;height:184px;display:block;border-radius:5px;pointer-events:none}
+#navCycle{font:inherit;border:1px solid #cbe3f5a5;border-radius:6px;
+ background:#283843e8;color:#fff8dc;padding:6px 3px;line-height:1.3;
+ pointer-events:auto;touch-action:manipulation}
+#navReadout{display:block;text-align:center;white-space:normal;
+ font-size:10px;line-height:1.25;color:#fbe99e;max-height:2.6em;overflow:hidden}
+@media(max-width:540px){.nav-hud{top:157px;left:7px;width:109px;
+ padding:4px;gap:3px}#navMap{width:99px;height:152px}
+ #navCycle{font-size:9px;padding:5px 1px}#navReadout{font-size:9px}}
+@media(max-height:620px){.nav-hud{top:137px}}
+
 </style>
 </head>
 <body>
@@ -105,10 +124,15 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.0</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.1</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
+    <aside id="navHud" class="nav-hud" aria-label="冰河矿场位置和行驶目标">
+      <canvas id="navMap" width="132" height="202" aria-hidden="true"></canvas>
+      <button id="navCycle" type="button" title="点击切换导航目标">导航：自动</button>
+      <span id="navReadout" aria-live="off">初始矿石</span>
+    </aside>
     <button type="button" id="cameraModeButton" aria-pressed="false" title="切换矿场跟随视角和铲车特写镜头">镜头：全景</button>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
     <section id="telemetryPanel" hidden aria-label="经济与性能监控">
@@ -163,11 +187,12 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.0</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.1</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
-        <p>v0.7.0 六类升级：①数字门倍数 ②粉碎门金币产量 ③铲车底盘、速度、转向、铲斗 ④主桥宽度 ⑤金币价值 ⑥通往下一关的桥（默认锁定）。<b>矿石不能直接支付升级；只允许实物金币在指定站台支付。</b></p>
+        <p>v0.7.1 六类升级：①数字门倍数 ②粉碎门金币产量 ③铲车底盘、速度、转向、铲斗 ④主桥宽度 ⑤金币价值 ⑥通往下一关的桥（默认锁定）。<b>矿石不能直接支付升级；只允许实物金币在指定站台支付。</b></p>
         <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
+        <p>v0.7.1：修复斜向穿越数字门、冰河高速穿越、粉碎机满载卡料和投币掠过漏判。画面左侧的工程俯视小地图可以查看铲车位置与通向目标的过桥路线，点击「导航」循环切换目标。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>
@@ -271,6 +296,127 @@ function mainBridgeWidth(tracks){
 function nextBridgeUnlocked(tracks){return (tracks?.exit?.level||0)>=1;}
 
 return {LONG_MAP,MAIN_BRIDGE_WIDTHS,mainBridgeWidth,nextBridgeUnlocked};
+})();
+
+// --- navigation.js (isolated) ---
+const __m_navigation = (()=>{
+'use strict';
+const {LONG_MAP: LONG_MAP} = __m_mapLayout;
+
+/** Navigational overlay only: no inventory, physics or production side effects.
+ * Coordinates come from the same long-map constants as the game colliders.
+ */
+const NAV_TARGETS=Object.freeze([
+ {id:'ore',label:'初始矿石',x:LONG_MAP.initialOre.x,z:LONG_MAP.initialOre.z},
+ {id:'gate',label:'矿石数字门',x:LONG_MAP.digitGate.x,z:LONG_MAP.digitGate.z},
+ {id:'bridge',label:'中央主桥',x:LONG_MAP.river1.bridgeX,z:LONG_MAP.river1.z},
+ {id:'crusher',label:'北岸粉碎门',x:LONG_MAP.crusher.x,z:LONG_MAP.crusher.z},
+ {id:'vehicle',label:'车辆升级',x:LONG_MAP.vehiclePad.x,z:LONG_MAP.vehiclePad.z},
+ {id:'gatePad',label:'数字门升级',x:LONG_MAP.digitGatePad.x,z:LONG_MAP.digitGatePad.z},
+ {id:'crusherPad',label:'粉碎门升级',x:LONG_MAP.crusherPad.x,z:LONG_MAP.crusherPad.z},
+ {id:'bridgePad',label:'主桥升级',x:LONG_MAP.bridgePad.x,z:LONG_MAP.bridgePad.z},
+ {id:'coinPad',label:'金币价值',x:LONG_MAP.coinValuePad.x,z:LONG_MAP.coinValuePad.z},
+ {id:'exitPad',label:'北端桥解锁',x:LONG_MAP.exitPad.x,z:LONG_MAP.exitPad.z},
+ {id:'exit',label:'冰雪关卡入口',x:LONG_MAP.entry.x,z:LONG_MAP.entry.z}
+]);
+function navigationGoal(sim,choice='auto'){
+ if(choice!=='auto'){
+  const selected=NAV_TARGETS.find(p=>p.id===choice);
+  if(selected)return selected;
+ }
+ if((sim?.tracks?.exit?.level||0)>0)return NAV_TARGETS.at(-1);
+ if((sim?.crushed||0)>0)return NAV_TARGETS.find(p=>p.id==='vehicle');
+ if((sim?.gateHits||0)>0)return NAV_TARGETS.find(p=>p.id==='crusher');
+ const id=(sim?.player?.z??-47)<-42?'ore':'gate';
+ return NAV_TARGETS.find(p=>p.id===id);
+}
+/** Topological path: a segment is never allowed to cut across ice.
+ * Player -> near bridge approach -> far bridge exit -> selected destination.
+ */
+function navigationPath(from,target,terrain){
+ const route=[{x:from.x,z:from.z}];
+ if(terrain?.rivers){
+  const forward=target.z>=from.z;
+  const rivers=[...terrain.rivers].sort((a,b)=>forward?a.zMin-b.zMin:b.zMin-a.zMin);
+  for(const r of rivers){
+   const south=r.zMin,north=r.zMax;
+   if(forward){
+    if(from.z>=north||target.z<=south)continue;
+    if(from.z<south)route.push({x:r.x,z:south-1.6});
+    if(target.z>north)route.push({x:r.x,z:north+1.6});
+    else route.push({x:r.x,z:(south+north)/2});
+   }else{
+    if(from.z<=south||target.z>=north)continue;
+    if(from.z>north)route.push({x:r.x,z:north+1.6});
+    if(target.z<south)route.push({x:r.x,z:south-1.6});
+    else route.push({x:r.x,z:(south+north)/2});
+   }
+  }
+ }
+ route.push({x:target.x,z:target.z});
+ return route;
+}
+function worldToMap(x,z,width,height){
+ const b=LONG_MAP.bounds,margin=6;
+ const scale=Math.min((width-2*margin)/(b.maxX-b.minX),(height-2*margin)/(b.maxZ-b.minZ));
+ return {x:width/2+(x-(b.minX+b.maxX)/2)*scale,
+  y:height/2-(z-(b.minZ+b.maxZ)/2)*scale};
+}
+function drawNavigation(ctx,sim,world,choice='auto'){
+ if(!ctx||!sim||!world||world.stage!==0)return null;
+ const canvas=ctx.canvas,w=canvas.width,h=canvas.height;
+ const p=sim.player;
+ // A manually selected next-level entrance cannot suggest crossing the
+ // northern river before the bridge has actually been paid for.
+ let target=navigationGoal(sim,choice);
+ if(target.id==='exit'&&!(sim.tracks.exit.level>0))
+  target=NAV_TARGETS.find(s=>s.id==='exitPad');
+ const path=navigationPath(p,target,world.terrain);
+ ctx.clearRect(0,0,w,h);
+ ctx.fillStyle='#162333';ctx.fillRect(0,0,w,h);
+ const baseA=worldToMap(LONG_MAP.bounds.minX,LONG_MAP.bounds.maxZ,w,h);
+ const baseB=worldToMap(LONG_MAP.bounds.maxX,LONG_MAP.bounds.minZ,w,h);
+ ctx.fillStyle='#b49a76';
+ ctx.fillRect(baseA.x,baseA.y,baseB.x-baseA.x,baseB.y-baseA.y);
+ for(const r of world.terrain?.rivers||[]){
+  const nw=worldToMap(LONG_MAP.bounds.minX,r.zMax,w,h);
+  const se=worldToMap(LONG_MAP.bounds.maxX,r.zMin,w,h);
+  ctx.fillStyle='#7cb6d1';ctx.fillRect(nw.x,nw.y,se.x-nw.x,se.y-nw.y);
+  if(r.width>0){
+   const a=worldToMap(r.x-r.width/2,r.zMax,w,h);
+   const b=worldToMap(r.x+r.width/2,r.zMin,w,h);
+   ctx.fillStyle='#e3c990';ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);
+  }
+ }
+ // Only a handful of small 2D markers. They do not stand in for resources.
+ for(const site of NAV_TARGETS){
+  const q=worldToMap(site.x,site.z,w,h);
+  ctx.beginPath();ctx.arc(q.x,q.y,site.id==='exit'?3:2,0,2*Math.PI);
+  ctx.fillStyle=site.id==='crusher'?'#f3a35c':site.id==='gate'?'#9e7cff':'#384d57';
+  ctx.fill();
+ }
+ ctx.beginPath();
+ path.forEach((site,i)=>{
+  const q=worldToMap(site.x,site.z,w,h);
+  if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);
+ });
+ ctx.strokeStyle='#fff5a8';ctx.lineWidth=1.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+ const dest=worldToMap(target.x,target.z,w,h);
+ ctx.beginPath();ctx.arc(dest.x,dest.y,5,0,2*Math.PI);
+ ctx.strokeStyle='#ffe66b';ctx.lineWidth=2;ctx.stroke();
+ const cursor=worldToMap(p.x,p.z,w,h);
+ // headingBasis: yaw=0 faces world -Z, yaw=PI faces +Z.
+ const angle=p.yaw||0;
+ const dx=Math.sin(angle),dy=Math.cos(angle);
+ ctx.beginPath();
+ ctx.moveTo(cursor.x+dx*6,cursor.y+dy*6);
+ ctx.lineTo(cursor.x-dy*3-dx*3,cursor.y+dx*3-dy*3);
+ ctx.lineTo(cursor.x+dy*3-dx*3,cursor.y-dx*3-dy*3);
+ ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
+ return {target,distance:Math.hypot(target.x-p.x,target.z-p.z),path};
+}
+
+return {NAV_TARGETS,navigationGoal,navigationPath,worldToMap,drawNavigation};
 })();
 
 // --- vehicleRig.js (isolated) ---
@@ -1076,11 +1222,47 @@ function crossedGatePlane(p,gate){
  const direction=from<gate.z&&to>=gate.z?1:from>gate.z&&to<=gate.z?-1:0;
  if(!direction)return 0;
  const aperture=gate.apertureHalf??(gate.half-.25);
- if(Math.abs(p.x-gate.x)>=aperture)return 0;
+ // Test X where the object actually crossed the plane. Checking only the
+ // ending X incorrectly misses diagonal crossings that exit beside a pillar,
+ // and accepts objects that crossed the plane outside the gate opening.
+ const t=(gate.z-from)/(to-from);
+ const previousX=Number.isFinite(p._frameX)?p._frameX:p.x;
+ const atPlaneX=previousX+(p.x-previousX)*t;
+ if(!Number.isFinite(atPlaneX)||Math.abs(atPlaneX-gate.x)>=aperture)return 0;
  return direction;
 }
 
-return {boxTrigger,insideTrigger,enteredTrigger,crossedGatePlane};
+/** Continuous outside-to-inside intersection against a finite-height payment
+ * pad. A fast coin may cross the entire pad in one physics frame. A coin
+ * already on the pad at frame start is not paid just because the truck arrived.
+ */
+function sweptEntryTrigger(p,box){
+ if(!box||!p||p.dead)return false;
+ const from={x:p._frameX??p.x,z:p._frameZ??p.z,y:p._frameY??p.y??0};
+ if(insideTrigger(from,box))return false;
+ if(insideTrigger(p,box))return true;
+ const to={x:p.x,z:p.z,y:p.y??0};
+ let entry=0,exit=1;
+ for(const [axis,low,high] of [
+  ['x',box.x-box.halfX,box.x+box.halfX],
+  ['z',box.z-box.halfZ,box.z+box.halfZ],
+  ['y',box.minBottomY,box.maxBottomY]]){
+  const start=from[axis],finish=to[axis];
+  if(!Number.isFinite(start)||!Number.isFinite(finish))return false;
+  const delta=finish-start;
+  if(Math.abs(delta)<1e-9){
+   if(start<low||start>high)return false;
+   continue;
+  }
+  const t0=(low-start)/delta,t1=(high-start)/delta;
+  entry=Math.max(entry,Math.min(t0,t1));
+  exit=Math.min(exit,Math.max(t0,t1));
+  if(entry>exit)return false;
+ }
+ return entry<=1&&exit>=0;
+}
+
+return {boxTrigger,insideTrigger,enteredTrigger,crossedGatePlane,sweptEntryTrigger};
 })();
 
 // --- collisions.js (isolated) ---
@@ -1286,28 +1468,65 @@ function configureTerrain(world,tracks){
  */
 function constrainToTerrain(p,previous,terrain,radius=.3){
  if(!terrain||!p||p.dead)return 0;
- const {bounds,rivers}=terrain;let contacts=0;
- const oldX=previous?.x??p.x,oldZ=previous?.z??p.z;
- const limit=(value,min,max)=>clamp(value,min,max);
- const x=limit(p.x,bounds.minX+radius,bounds.maxX-radius);
- const z=limit(p.z,bounds.minZ+radius,bounds.maxZ-radius);
+ const {bounds,rivers}=terrain;
+ const oldX=Number.isFinite(previous?.x)?previous.x:p.x;
+ const oldZ=Number.isFinite(previous?.z)?previous.z:p.z;
+ let contacts=0;
+ const x=clamp(p.x,bounds.minX+radius,bounds.maxX-radius);
+ const z=clamp(p.z,bounds.minZ+radius,bounds.maxZ-radius);
  if(x!==p.x||z!==p.z){p.x=x;p.z=z;contacts++;}
+ const EPS=.003;
  for(const r of rivers){
-  if(p.z<r.zMin-radius||p.z>r.zMax+radius)continue;
-  const edge=(r.width||0)*.5-radius-.04;
-  const insideBridge=edge>0&&Math.abs(p.x-r.x)<=edge;
-  if(insideBridge)continue;
-  // Already in the corridor: prevent lateral slipping off the bridge deck.
-  const startedInside=oldZ>=r.zMin-radius&&oldZ<=r.zMax+radius;
-  const oldOnBridge=edge>0&&Math.abs(oldX-r.x)<=edge;
-  if(startedInside&&oldOnBridge){
-   p.x=clamp(p.x,r.x-edge,r.x+edge);contacts++;
+  // A circular body's CENTER may enter the open bridge corridor only after
+  // subtracting its radius and a small safety margin from the deck width.
+  const south=r.zMin-radius,north=r.zMax+radius;
+  const half=(r.width||0)/2-radius-.04;
+  const onBridge=x=>half>0&&Math.abs(x-r.x)<=half;
+  const corridor=x=>clamp(x,r.x-half,r.x+half);
+  const wasSouth=oldZ<south,wasNorth=oldZ>north;
+  const nowSouth=p.z<south,nowNorth=p.z>north;
+  if((wasSouth&&nowSouth)||(wasNorth&&nowNorth))continue;
+  // True swept crossing: checking only final Z misses a body jumping from one
+  // bank to the other during a long frame or a large collision impulse.
+  if(wasSouth||wasNorth){
+   const bank=wasSouth?south:north;
+   const travelZ=p.z-oldZ;
+   if(Math.abs(travelZ)<1e-9)continue;
+   const atZ=z0=>oldX+(p.x-oldX)*(z0-oldZ)/travelZ;
+   const entersAt=atZ(bank);
+   const exitsOpposite=wasSouth?nowNorth:nowSouth;
+   const exitsAt=exitsOpposite?atZ(wasSouth?north:south):entersAt;
+   if(!onBridge(entersAt)||(exitsOpposite&&!onBridge(exitsAt))){
+    p.z=wasSouth?south-EPS:north+EPS;
+    contacts++;
+    continue;
+   }
+   if(!exitsOpposite&&!onBridge(p.x)){
+    p.x=corridor(p.x);contacts++;
+   }
    continue;
   }
-  // River bank is impermeable outside the bridge aperture.
-  const southern=oldZ<r.zMin+radius || (startedInside && oldZ<= (r.zMin+r.zMax)*.5);
-  p.z=southern?r.zMin-radius-.003:r.zMax+radius+.003;
-  contacts++;
+  // Started over a river, inside the legitimate bridge strip: a sideways
+  // impulse may not throw the vehicle or a particle into open water.
+  if(onBridge(oldX)){
+   const crossingOut=p.z<south||p.z>north;
+   if(crossingOut){
+    const edgeZ=p.z<south?south:north;
+    const t=(edgeZ-oldZ)/(p.z-oldZ||1);
+    const exitX=oldX+(p.x-oldX)*t;
+    if(!onBridge(exitX)){p.x=corridor(p.x);contacts++;}
+   }else if(!onBridge(p.x)){p.x=corridor(p.x);contacts++;}
+   continue;
+  }
+  // Corrupt/legacy states already above water without a supporting bridge
+  // should settle on their nearest bank, not tunnel to the opposite bank.
+  if(p.z>=south&&p.z<=north){
+   p.z=Math.abs(oldZ-south)<=Math.abs(oldZ-north)?south-EPS:north+EPS;
+   contacts++;
+  }else if((oldZ-south)*(p.z-south)<0||(oldZ-north)*(p.z-north)<0){
+   p.z=Math.abs(oldZ-south)<=Math.abs(oldZ-north)?south-EPS:north+EPS;
+   contacts++;
+  }
  }
  return contacts;
 }
@@ -1932,6 +2151,9 @@ class World{
   for(const x of [-7.25,7.25]){
    this.add('cylinder',x,2,c.z,.65,3.9,.65,PALETTE.purpleCap);
    this.add('sphere',x,4.05,c.z,.96,1,.96,PALETTE.purpleCap);
+   // The visible grinder support is solid. Keep the central 14-wide
+   // processing throat unobstructed for actual ore.
+   this.obstacles.push({type:'circle',x,z:c.z,radius:.60,height:3.9});
   }
   this.add('box',0,3.55,c.z,14.5,.4,.68,PALETTE.purple);
   const rail=(x1,z1,x2,z2)=>{
@@ -1973,6 +2195,9 @@ class World{
    this.add('box',px,.20,z,.89,.40,.91,cave?[.54,.81,.99,4]:PALETTE.purple);
    this.add('box',px,3.51,z,.97,.65,.94,cave?[.86,.96,1,4]:PALETTE.purpleCap);
    this.add('sphere',px,3.87,z,.78,.64,.76,cave?[.95,.99,1,4]:PALETTE.purpleCap);
+   // Register each drawn portal pillar as a static solid. Previously the
+   // vehicle could pass through the physical-looking side of a gate.
+   this.obstacles.push({type:'circle',x:px,z,radius:.39,height:3.4});
   }
   this.add('box',x,1.66,z,half*1.95,2.83,.085,cave?[.64,.88,1]:PALETTE.glass,0,0,0,.34);
   this.sites.gates.push({id,x,y:1.85,z:z-.15,multiplier});
@@ -2168,7 +2393,7 @@ const {vehicleSpeed: vehicleSpeed} = __m_economy;
 const {vehicleTurnRate: vehicleTurnRate} = __m_economy;
 const {EconomyTelemetry: EconomyTelemetry} = __m_telemetry;
 const {insideTrigger: insideTrigger} = __m_triggers;
-const {enteredTrigger: enteredTrigger} = __m_triggers;
+const {sweptEntryTrigger: sweptEntryTrigger} = __m_triggers;
 const {crossedGatePlane: crossedGatePlane} = __m_triggers;
 const {advanceTrackOdometer: advanceTrackOdometer} = __m_vehicleRig;
 const {sceneRules: sceneRules} = __m_sceneRules;
@@ -2240,8 +2465,17 @@ class Simulation{
   if(r.dead||r.kind!==this.rules.ore||this.elapsed<(r._crushBlockUntil||0))return false;
   const outputCount=this.stage===0?crusherYield(this.tracks):this.rules.yield;
   if(!this.hasCapacity(outputCount-1)){
-   r.x=crusher.x-crusher.halfWidth-.57;
-   r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
+   if(this.stage===0){
+    // The long map is fed from the southern bridge. Reject along the
+    // unobstructed intake lane rather than jamming against the side column.
+    r.x=clamp(r.x,crusher.x-crusher.halfWidth+.85,crusher.x+crusher.halfWidth-.85);
+    r.z=crusher.z-crusher.halfDepth-.57;
+    r.vz=-Math.max(.8,Math.abs(r.vz||0)*.6);
+    r.vx=(r.vx||0)*.25;
+   }else{
+    r.x=crusher.x-crusher.halfWidth-.57;
+    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
+   }
    r._crushBlockUntil=this.elapsed+.65;
    if(this.elapsed-this._crowdedNotified>3){
     this.emit('crusherFull',{limit:MAX_RESOURCES,x:r.x,z:r.z});
@@ -2454,8 +2688,8 @@ class Simulation{
      // only one pad in a frame. Vehicle must remain nearby to enable payment.
      for(const pad of gatePads){
       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
-         insideTrigger(r,pad.trigger)){
-       if(enteredTrigger(r,pad.trigger)&&this.payCoin(r,null,'gate',pad.id)){
+         sweptEntryTrigger(r,pad.trigger)){
+       if(this.payCoin(r,null,'gate',pad.id)){
         paid=true;depositedThisFrame++;
        }
        break;
@@ -2464,18 +2698,18 @@ class Simulation{
      if(!paid&&!r.dead&&this.stage===0){
       for(const [key,pad] of Object.entries(world.featureStations||{})){
        if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-          enteredTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
+          sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
         paid=true;depositedThisFrame++;break;
        }
       }
       const pad=world.coinStation;
       if(!paid&&pad&&Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-         enteredTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
+         sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
        paid=true;depositedThisFrame++;
       }
      }
      if(!paid&&!r.dead&&station&&playerAtStation&&
-        enteredTrigger(r,station.trigger)){
+        sweptEntryTrigger(r,station.trigger)){
       if(this.payCoin(r))depositedThisFrame++;
      }
     }
@@ -2577,6 +2811,9 @@ const {INFRA_COSTS: INFRA_COSTS} = __m_economy;
 const {INFRA_LABELS: INFRA_LABELS} = __m_economy;
 const {crusherYield: crusherYield} = __m_economy;
 const {mainBridgeWidth: mainBridgeWidth} = __m_mapLayout;
+const {NAV_TARGETS: NAV_TARGETS} = __m_navigation;
+const {drawNavigation: drawNavigation} = __m_navigation;
+
 
 
 
@@ -2611,10 +2848,28 @@ const telemetryToggle=document.getElementById('telemetryToggle');
 const telemetryPanel=document.getElementById('telemetryPanel');
 const stageBadge=document.getElementById('stageBadge');
 const stageInfo=document.getElementById('stageInfo');
+const navHud=document.getElementById('navHud');
+const navCycle=document.getElementById('navCycle');
+const navReadout=document.getElementById('navReadout');
+const navContext=document.getElementById('navMap').getContext('2d');
+let navChoice='auto';
 const qualityController=new AdaptiveQuality(
  typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches
 );
 let measuredFps=0,frameSeconds=0,frameSamples=0,visibleResources=0;
+function updateNavigation(){
+ navHud.hidden=stage!==0;
+ if(stage!==0||!sim)return;
+ const nav=drawNavigation(navContext,sim,world,navChoice);
+ if(!nav)return;
+ navCycle.textContent=navChoice==='auto'?'导航：自动':'目标：'+nav.target.label;
+ navReadout.textContent=nav.target.label+' · '+Math.round(nav.distance)+'m';
+}
+navCycle.addEventListener('click',()=>{
+ const targets=['auto',...NAV_TARGETS.map(t=>t.id)];
+ navChoice=targets[(targets.indexOf(navChoice)+1)%targets.length];
+ updateNavigation();
+});
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
  telemetryPanel.hidden=!open;
@@ -2702,6 +2957,7 @@ function loadScene(s,preserve=false){
   '冰河矿场：下方铲矿石、通过唯一数字门倍增；跨中央主桥到北岸粉碎门获取金币。金币可升级数字门、粉碎门、铲车、主桥、金币价值；最后解锁北端桥并驾驶前往冰雪第二关。冰河不能直接通行。':
   '冰雪矿区：冰晶通过粉碎机变成独立金锭，金锭在数字门倍增、投入升级；铲车进度两关共享，可从菜单返回第一关。';
  updateUI();
+ updateNavigation();
 }
 function toast(text,seconds=2.1){toastElement.textContent=text;toastElement.classList.add('active');notifUntil=clocks+seconds;}
 function unlockAudio(){
@@ -2765,7 +3021,7 @@ function handleEvents(){
  }
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('实体已达到上限：请将金币用于升级释放容量',2.8);
- else if(crusherBlocked)toast(stage?'粉晶粉碎机资源已满：保留粉晶等待空位':'粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
+ else if(crusherBlocked)toast(stage?'冰晶加工已达容量上限：保留冰晶等待空位':'实体已满：粉碎机保留矿石，待能完整产出'+crusherYield(sim.tracks)+'枚金币时重试',3);
  else if(supplyPaused)toast('矿场资源较满，已暂停自动补货；不会删除现有实体',2.7);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
  else if(converted){lastImpact.coins=convertedYield;toast(stage?'冰晶加工：'+converted+' 颗 → '+convertedYield+' 根金锭':'粉碎成功：'+converted+' 颗矿石 → '+convertedYield+' 枚金币',1.6);beep(460,.095,.038);}
@@ -2883,6 +3139,7 @@ function drawFrame(t){
   renderVehicle(renderer,sim.player,clocks);
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
+ if(Math.floor(clocks*4)!==Math.floor((clocks-dt)*4))updateNavigation();
   document.getElementById('hint').classList.toggle('dismissed',!paused&&clocks>12);
  }
  if(clocks>notifUntil)toastElement.classList.remove('active');
@@ -2890,7 +3147,7 @@ function drawFrame(t){
 }
 function resetInput(){drag.id=null;drag.x=drag.y=0;joystick.style.display='none';knob.style.transform='translate(0,0)';pointers.clear();pinch=null;pinchLocked=false;}
 function showMenu(){paused=true;menu.classList.add('visible');upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');playButton.textContent='继续驾驶';resetInput();updateUI();}
-function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast('把蓝球推入粉碎轮，金币推向右上方升级台',3);updateUI();}
+function hideMenu(){if(graphicsLost)return;unlockAudio();paused=false;menu.classList.remove('visible');toast(stage===0?'先把矿石推过南侧数字门，再沿主桥送到北岸粉碎门':'把冰晶推入粉碎机，金锭用于升级',3);updateUI();updateNavigation();}
 function moveTouch(point){
  const dx=point.x-drag.originX,dy=point.y-drag.originY,max=52,mag=Math.max(1,Math.hypot(dx,dy)/max);
  drag.x=dx/max/mag;drag.y=dy/max/mag;

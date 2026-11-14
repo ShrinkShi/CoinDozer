@@ -64,6 +64,9 @@ export class World{
   for(const x of [-7.25,7.25]){
    this.add('cylinder',x,2,c.z,.65,3.9,.65,PALETTE.purpleCap);
    this.add('sphere',x,4.05,c.z,.96,1,.96,PALETTE.purpleCap);
+   // The visible grinder support is solid. Keep the central 14-wide
+   // processing throat unobstructed for actual ore.
+   this.obstacles.push({type:'circle',x,z:c.z,radius:.60,height:3.9});
   }
   this.add('box',0,3.55,c.z,14.5,.4,.68,PALETTE.purple);
   const rail=(x1,z1,x2,z2)=>{
@@ -105,6 +108,9 @@ export class World{
    this.add('box',px,.20,z,.89,.40,.91,cave?[.54,.81,.99,4]:PALETTE.purple);
    this.add('box',px,3.51,z,.97,.65,.94,cave?[.86,.96,1,4]:PALETTE.purpleCap);
    this.add('sphere',px,3.87,z,.78,.64,.76,cave?[.95,.99,1,4]:PALETTE.purpleCap);
+   // Register each drawn portal pillar as a static solid. Previously the
+   // vehicle could pass through the physical-looking side of a gate.
+   this.obstacles.push({type:'circle',x:px,z,radius:.39,height:3.4});
   }
   this.add('box',x,1.66,z,half*1.95,2.83,.085,cave?[.64,.88,1]:PALETTE.glass,0,0,0,.34);
   this.sites.gates.push({id,x,y:1.85,z:z-.15,multiplier});

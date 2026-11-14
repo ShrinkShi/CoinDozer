@@ -4,7 +4,7 @@ import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
 import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
 import {EconomyTelemetry} from './telemetry.js';
-import {insideTrigger,enteredTrigger,crossedGatePlane} from './triggers.js';
+import {insideTrigger,sweptEntryTrigger,crossedGatePlane} from './triggers.js';
 import {advanceTrackOdometer} from './vehicleRig.js';
 import {sceneRules,paymentValue,isStageCurrency} from './sceneRules.js';
 import {INFRA_COSTS,crusherYield} from './economy.js';
@@ -61,8 +61,17 @@ export class Simulation{
   if(r.dead||r.kind!==this.rules.ore||this.elapsed<(r._crushBlockUntil||0))return false;
   const outputCount=this.stage===0?crusherYield(this.tracks):this.rules.yield;
   if(!this.hasCapacity(outputCount-1)){
-   r.x=crusher.x-crusher.halfWidth-.57;
-   r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
+   if(this.stage===0){
+    // The long map is fed from the southern bridge. Reject along the
+    // unobstructed intake lane rather than jamming against the side column.
+    r.x=clamp(r.x,crusher.x-crusher.halfWidth+.85,crusher.x+crusher.halfWidth-.85);
+    r.z=crusher.z-crusher.halfDepth-.57;
+    r.vz=-Math.max(.8,Math.abs(r.vz||0)*.6);
+    r.vx=(r.vx||0)*.25;
+   }else{
+    r.x=crusher.x-crusher.halfWidth-.57;
+    r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
+   }
    r._crushBlockUntil=this.elapsed+.65;
    if(this.elapsed-this._crowdedNotified>3){
     this.emit('crusherFull',{limit:MAX_RESOURCES,x:r.x,z:r.z});
@@ -275,8 +284,8 @@ export class Simulation{
      // only one pad in a frame. Vehicle must remain nearby to enable payment.
      for(const pad of gatePads){
       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
-         insideTrigger(r,pad.trigger)){
-       if(enteredTrigger(r,pad.trigger)&&this.payCoin(r,null,'gate',pad.id)){
+         sweptEntryTrigger(r,pad.trigger)){
+       if(this.payCoin(r,null,'gate',pad.id)){
         paid=true;depositedThisFrame++;
        }
        break;
@@ -285,18 +294,18 @@ export class Simulation{
      if(!paid&&!r.dead&&this.stage===0){
       for(const [key,pad] of Object.entries(world.featureStations||{})){
        if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-          enteredTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
+          sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
         paid=true;depositedThisFrame++;break;
        }
       }
       const pad=world.coinStation;
       if(!paid&&pad&&Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-         enteredTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
+         sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
        paid=true;depositedThisFrame++;
       }
      }
      if(!paid&&!r.dead&&station&&playerAtStation&&
-        enteredTrigger(r,station.trigger)){
+        sweptEntryTrigger(r,station.trigger)){
       if(this.payCoin(r))depositedThisFrame++;
      }
     }
