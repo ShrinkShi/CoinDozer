@@ -34,4 +34,4 @@ assert.equal(s.telemetry.totals.goldProduced,3*s.crushed,
 assert.ok(s.telemetry.totals.goldProduced>=6,
  'ore ×2 should generate at least six gold coins, not three');
 assert.equal(s.telemetry.totals.recycled,0);
-console.log('v0.7.1 natural vehicle-driven ore -> gate -> bridge -> grinder -> three coins PASS');
+console.log('v0.7.1 natural drive: one ore -> ×2 gate -> bridge -> grinder -> six independently produced coins PASS');
