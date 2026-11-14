@@ -30,40 +30,48 @@ export class Simulation{
  }
  setStage(stage){Object.assign(this,new Simulation(stage))}
  emit(type,data={}){this.events.push({type,...data})}
- /** Deterministic 1 ore -> 3 individual physical coins; full capacity blocks conversion. */
+ /** Atomic 1 ore -> 3 independent coins. If two additional slots are not
+  * available, retain the ore and nudge it back to the entry lane.
+  */
  crush(r,crusher){
-  if(this.elapsed<(r._crushBlockUntil||0))return false;
+  if(r.dead||r.kind!=='blue'||this.elapsed<(r._crushBlockUntil||0))return false;
   const alive=this._liveGateCount ?? this.resources.reduce((n,p)=>n+(p.dead?0:1),0);
   if(alive+this.queuedAdd.length+2>MAX_RESOURCES){
-   r.x=crusher.x-crusher.halfWidth-.26;
-   r.vx=-Math.max(.7,Math.abs(r.vx||0)*.6);
+   r.x=crusher.x-crusher.halfWidth-.57;
+   r.vx=-Math.max(.8,Math.abs(r.vx||0)*.6);
    r._crushBlockUntil=this.elapsed+.65;
-   if(this.elapsed-this._crowdedNotified>3){this.emit('gateFull',{limit:MAX_RESOURCES});this._crowdedNotified=this.elapsed;}
+   if(this.elapsed-this._crowdedNotified>3){
+    this.emit('crusherFull',{limit:MAX_RESOURCES,x:r.x,z:r.z});
+    this._crowdedNotified=this.elapsed;
+   }
    this.telemetry.record('blocked',1,this.elapsed);
    return false;
   }
+  const impactZ=clamp(r.z,crusher.z-.78,crusher.z+.78);
+  const outputX=crusher.x+1.05;
+  // Reuse incoming body and create EXACTLY two independent objects.
   r.kind='gold';r.passedGates=r.passedGates||0;
-  r.vx=Math.max(2.4,(r.vx||0)*.55+2.2);
-  r.vz=(r.vz||0)*.52;r.vy=Math.max(1.5,r.vy||0);
-  r.x=Math.max(r.x,crusher.x+.55);
-  r.cooldown=.35;
+  r.x=outputX;r.z=impactZ;r.y=Math.max(0,r.y);
+  r.vx=3.1+Math.min(1.6,Math.abs(r.vx||0)*.25);
+  r.vz=(r.vz||0)*.28;r.vy=1.9;
+  r.cooldown=.35;r.flashStartedAt=this.elapsed;
   r.tiltX=(Math.random()-.5)*.2;r.tiltZ=(Math.random()-.5)*.2;
-  r.omegaX=0;r.omegaZ=0;
+  r.omegaX=0;r.omegaZ=0;r._frameZ=r.z;
   for(let i=0;i<2;i++){
    const side=i?1:-1;
    this.queuedAdd.push({...r,
-    x:r.x+(i+1)*.34,z:r.z+side*.29,
-    y:Math.max(0,r.y+.10+i*.12),
-    vx:r.vx+.9+i*.5,vy:1.5+.3*i,vz:r.vz+side*1.1,
+    x:outputX+.2+i*.21,z:impactZ+side*.34,
+    y:r.y+.06+i*.10,
+    vx:r.vx+.35+i*.35,vy:2.15+.25*i,vz:side*(1.0+i*.22),
     angle:Math.random()*TAU,tiltX:0,tiltZ:0,omegaX:0,omegaZ:0,
-    dead:false,cooldown:.35,_frameZ:r.z+side*.29
+    dead:false,cooldown:.35,_frameZ:impactZ+side*.34
    });
   }
   this.crushed++;this.processed++;
   this.telemetry.record('oreCrushed',1,this.elapsed);
   this.telemetry.record('goldProduced',3,this.elapsed);
   this.telemetry.record('goldValueProduced',3*coinCredit(this.tracks),this.elapsed);
-  this.emit('crush',{x:r.x,z:r.z,coins:3});
+  this.emit('crush',{x:crusher.x+.5,z:impactZ,coins:3});
   return true;
  }
  /** Each deposited coin contributes its current face value (credits).
@@ -183,8 +191,9 @@ export class Simulation{
   }
   // Store positions before the 3D granular solver for reliable portal crossings.
   for(const r of this.resources)if(!r.dead){r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
-  this.granular.step(this.resources,dt,p,previous);
-  this.physics.contacts=this.granular.lastPairs;this.physics.height=this.granular.height;
+  this.granular.step(this.resources,dt,p,previous,world);
+  if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
   this.physics.active=this.granular.lastActive;
   let count=0;
   this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
@@ -211,7 +220,7 @@ export class Simulation{
    if(this.stage===0){
     const crusher=world.crusher;
     // The visible rotating teeth span the bar between these columns.
-    const inside=(Math.abs(r.x-crusher.x)<crusher.halfWidth && Math.abs(r.z-crusher.z)<crusher.halfDepth);
+    const inside=(Math.abs(r.x-crusher.x)<crusher.halfWidth && Math.abs(r.z-crusher.z)<crusher.halfDepth && r.y<2.1);
     if(inside && r.kind==='blue'){
      if(this.crush(r,crusher))crushedThisFrame++;
     }else if(inside && r.kind==='gold'){

@@ -11,6 +11,7 @@
 import {clamp} from './math.js';
 import {headingBasis} from './heading.js';
 import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
+import {StaticCollisionField} from './collisions.js';
 export const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
   gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
@@ -74,9 +75,15 @@ export class GranularSolver {
     this.lastActive=0;
     this.grid = new Map();
     this.moving = [];
+    this.obstacleWorld=null;this.obstacleField=null;this.obstacleContacts=0;
   }
 
-  step(resources, dt, player, previousPlayer = player){
+  step(resources, dt, player, previousPlayer = player, world=null){
+    if(this.obstacleWorld!==world){
+      this.obstacleWorld=world;
+      this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
+    }
+    this.obstacleContacts=0;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
     const passes = Math.max(1, Math.min(3, Math.ceil(dt / .019)));
     const h = dt / passes;
@@ -185,6 +192,7 @@ export class GranularSolver {
       p.vz=clamp(p.vz,-MAX_SPEED,MAX_SPEED);
       p.x=clamp(p.x,-30.5,30.5);
       p.z=clamp(p.z,-26.2,29);
+      if(this.obstacleField)this.obstacleContacts+=this.obstacleField.resolve(p,shape.radius);
       nowMoving.push(i);
     }
 
@@ -256,6 +264,7 @@ export class GranularSolver {
     }
     for(const i of nowMoving){
       const a=resources[i];
+      if(this.obstacleField)this.obstacleContacts+=this.obstacleField.resolve(a,S(a.kind).radius);
       // Position correction should create limited momentum, not an explosion.
       const dx=a.x-a.prevX,dz=a.z-a.prevZ;
       a.vx=clamp(a.vx+clamp(dx/dt-a.vx,-4,4)*.16,-MAX_SPEED,MAX_SPEED);

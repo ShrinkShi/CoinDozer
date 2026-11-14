@@ -54,6 +54,8 @@ let renderer,world,sim,stage=0,paused=true,keys=new Set(),last=0,clocks=0,sound=
 const drag={id:null,x:0,y:0,originX:0,originY:0};
 const pointers=new Map();let pinch=null,pinchLocked=false;
 const effects=[];
+const crushPopup=document.getElementById('crushPopup');
+let lastImpact=null;
 
 function loadProgress(){
  try{
@@ -77,7 +79,7 @@ function saveProgress(){
 }
 function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
- effects.length=0;frameSeconds=0;frameSamples=0;measuredFps=0;
+ effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
  sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
 }
@@ -93,13 +95,18 @@ function beep(freq=530,length=.1,vol=.045){try{
  }catch(e){}
 }
 function handleEvents(){
- let paid=0,converted=0,upgrades=[],gateUpgrades=[],gate=null,full=false,supplyPaused=false;
+ let paid=0,converted=0,upgrades=[],gateUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false;
  for(const event of sim.events){
   switch(event.type){
    case 'multiply':gate=event;break;
    case 'gateFull':full=true;break;
+   case 'crusherFull':crusherBlocked=true;break;
    case 'supplyPaused':supplyPaused=true;break;
    case 'crushBatch':converted+=event.count;break;
+   case 'crush':
+    lastImpact={x:event.x,z:event.z,start:clocks,coins:event.coins};
+    if(effects.length<35)effects.push({type:'crush',x:event.x,z:event.z,start:clocks});
+    break;
    case 'deposit':paid++;if(effects.length<40)effects.push({x:event.x,z:event.z,start:clocks});break;
    case 'upgrade':upgrades.push(event);break;
    case 'gateUpgrade':gateUpgrades.push(event);break;
@@ -110,9 +117,10 @@ function handleEvents(){
  if(upgrades.length){const item=upgrades.at(-1);toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('倍增已受资源上限限制：请把金币投入升级台或使用计数带回收',2.8);
+ else if(crusherBlocked)toast('粉碎机暂时无法产出完整的3枚金币：资源已满，矿石保留在入口',3);
  else if(supplyPaused)toast('矿场资源较满，已暂停自动补货；不会删除现有实体',2.7);
  else if(gate){toast('×'+gate.factor+'！实际新增 '+gate.created+' 个资源实体',1.6);beep(850,.13,.06);}
- else if(converted){toast('粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
+ else if(converted){lastImpact.coins=converted*3;toast('粉碎成功：'+converted+' 颗矿石 → '+(converted*3)+' 枚金币',1.6);beep(460,.095,.038);}
 }
 function updateUI(){
  if(!sim)return;
@@ -160,10 +168,29 @@ function inputVector(){
 function drawEffects(){
  for(let i=effects.length-1;i>=0;i--){
   const e=effects[i],age=clocks-e.start;
-  if(age>.68){effects.splice(i,1);continue;}
-  const t=age/.68;
-  const x=e.x+(19-e.x)*t,z=e.z+(-12.05-e.z)*t;
-  renderer.add('sphere',x,.5+Math.sin(t*Math.PI)*2,z,.19,.19,.19,[1,.79,.1,3]);
+  if(age>(e.type==='crush' ? 0.56 : 0.68)){effects.splice(i,1);continue;}
+  if(e.type==='crush'){
+   // Four brief sparks per collision, capped to 35 impact events.
+   for(let j=0;j<4;j++){
+    const a=j*Math.PI*.5+e.x*.13,dist=age*(2.2+j*.26);
+    renderer.add('sphere',e.x+Math.cos(a)*dist,.55+age*2.1-j*.035,
+      e.z+Math.sin(a)*dist,.105,.105,.105,j%2?[1,.86,.33,3]:[1,.43,.08,3]);
+   }
+  }else{
+   const t=age/.68;
+   const x=e.x+(19-e.x)*t,z=e.z+(-12.05-e.z)*t;
+   renderer.add('sphere',x,.5+Math.sin(t*Math.PI)*2,z,.19,.19,.19,[1,.79,.1,3]);
+  }
+ }
+ if(lastImpact){
+  const age=clocks-lastImpact.start;
+  const pos=age<.72?renderer.screen(lastImpact.x,1.8+age*.9,lastImpact.z):null;
+  if(pos&&pos.visible){
+   crushPopup.textContent='+'+lastImpact.coins;
+   crushPopup.style.left=pos.x+'px';crushPopup.style.top=pos.y+'px';
+   crushPopup.style.opacity=String(Math.max(0,1-age/.72));
+   crushPopup.style.display='block';
+  }else crushPopup.style.display='none';
  }
 }
 function drawFrame(t){

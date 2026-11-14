@@ -5,10 +5,10 @@ export const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 export class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
+ constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};this.upgradeStation=null;this.rng=seeded(stage?337:20261102);this.make(stage);}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
- addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
+ addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.obstacles.push({type:'circle',x,z,radius:r*.79,height:r*1.3});this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
  borderRocks(pink=false){let C=pink?[[.58,.4,.53],[.66,.46,.60],[.70,.54,.67]]:[PALETTE.rock,PALETTE.rockLight,PALETTE.rockShade];for(let i=0;i<48;i++){let x=-32+i*1.37+this.n(-.7,.7);this.addRock(x,-29+this.n(-2.4,2.4),this.n(1.0,2.1),C[i%3]);}for(let i=0;i<34;i++){let z=-28+i*1.6;this.addRock(-34+this.n(-2.5,1.5),z,this.n(.7,2),C[i%3]);this.addRock(34+this.n(-1.3,2.2),z,this.n(.8,1.7),C[(i+1)%3])}for(let i=0;i<28;i++){let x=-31+i*2.4;this.addRock(x,30+this.n(-.8,2.7),this.n(.8,2.3),C[i%3])}}
  make(stage){if(stage===1){this.makeBonus();return}
  this.add('box',0,-.92,0,71,1.8,64,PALETTE.dirtEdge);
@@ -39,6 +39,14 @@ export class World{
  }
  // Purple uprights and orange brush/rotating hazard, next to the gold pile.
  this.crusher={x:12,z:7.2,halfWidth:2.65,halfDepth:1.12};
+ // Tapered steel rails have matching visible meshes and solid footprints.
+ const guide=(x1,z1,x2,z2)=>{
+  const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz);
+  this.add('box',(x1+x2)/2,.41,(z1+z2)/2,length,.78,.34,PALETTE.metal,-Math.atan2(dz,dx));
+  this.obstacles.push({type:'segment',x1,z1,x2,z2,radius:.17,height:.8});
+ };
+ guide(7.2,10.05,10.2,8.55);
+ guide(7.2,4.35,10.2,5.85);
  for(let x of [9.6,14.4]){this.add('cylinder',x,1.9,7.2,.69,3.8,.69,PALETTE.purpleCap);this.add('sphere',x,3.91,7.2,1.04,1.05,1.04,PALETTE.purpleCap);this.add('box',x,.18,7.2,1.1,.34,1.18,PALETTE.purple)}
  this.add('box',12,3.55,7.2,5.25,.44,.65,PALETTE.purple);
  // Black counting strip with fluorescent yellow rim and large white counter.
@@ -65,7 +73,11 @@ export class World{
  this.add('box',19,.47,-20.3,7.4,.17,6.1,[.63,.35,.78]);
  for(const x of [15.8,22.2])this.add('box',x,.56,-20.3,.15,.18,5.7,PALETTE.mint);
  // Scattered pebbles, coin glints, and soil bumps.
- for(let i=0;i<56;i++){let x=this.n(-27,27),z=this.n(-23,22);if(x>-2&&x<14&&z>-3&&z<14)continue;this.add('boulder',x,.14,z,this.n(.26,.62),this.n(.22,.46),this.n(.27,.64),i%3?PALETTE.rockShade:PALETTE.rockLight)}
+ for(let i=0;i<56;i++){let x=this.n(-27,27),z=this.n(-23,22);if(x>-2&&x<14&&z>-3&&z<14)continue;
+  const sx=this.n(.26,.62),sy=this.n(.22,.46),sz=this.n(.27,.64);
+  this.add('boulder',x,.14,z,sx,sy,sz,i%3?PALETTE.rockShade:PALETTE.rockLight);
+  this.obstacles.push({type:'circle',x,z,radius:Math.min(sx,sz)*.43,height:.14+sy*.5});
+ }
  }
  frameGate(gate){const {x,z,half,multiplier,id}=gate;
   for(const side of [-1,1]){let px=x+side*half;
