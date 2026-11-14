@@ -6,6 +6,7 @@ import {clamp,formatNum} from './math.js';
 import {screenStickToWorld} from './heading.js';
 import {MAX_VEHICLE_LEVEL,TRACK_KEYS,TRACK_LABELS,TRACK_COSTS,GATE_COSTS,gateFactor,coinCredit,trackRemaining} from './economy.js';
 import {wheelZoom,pinchZoom,pointerDistance} from './cameraZoom.js';
+import {AdaptiveQuality,QUALITY_NAMES} from './quality.js';
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
 const toastElement=document.getElementById('toast');
@@ -20,7 +21,10 @@ const upgradeButton=document.getElementById('upgradeButton'),upgradePicker=docum
 const trackButtons=document.getElementById('trackButtons');
 const telemetryToggle=document.getElementById('telemetryToggle');
 const telemetryPanel=document.getElementById('telemetryPanel');
-let measuredFps=0,frameSeconds=0,frameSamples=0;
+const qualityController=new AdaptiveQuality(
+ typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches
+);
+let measuredFps=0,frameSeconds=0,frameSamples=0,visibleResources=0;
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
  telemetryPanel.hidden=!open;
@@ -35,6 +39,12 @@ function updateTelemetry(){
  set('metricFps',measuredFps?Math.round(measuredFps):'--');
  set('metricEntities',`${formatNum(sim.activeCount)} / ${Math.min(sim.activeCount,sim.physics.active||0)}`);
  set('metricContacts',formatNum(sim.physics.contacts||0));
+ set('metricVisible',formatNum(visibleResources));
+ set('metricSleeping',formatNum(sim.physics.sleeping||0));
+ set('metricDeferred',formatNum(sim.physics.deferred||0));
+ set('metricQuality',QUALITY_NAMES[renderer?.qualityName||qualityController.mode]);
+ set('metricDraws',`${formatNum(renderer?.drawnInstances||0)} / ${formatNum(renderer?.drawCalls||0)}`);
+ set('metricUpload',`${Math.round((renderer?.uploadedBytes||0)/1024)} KiB`);
  set('metricGoldRate',formatNum(Math.round(snapshot.producedGoldPerMinute)));
  set('metricValueRate',formatNum(Math.round(snapshot.producedCreditsPerMinute)));
  set('metricPaidRate',formatNum(Math.round(snapshot.paidCreditsPerMinute)));
@@ -45,7 +55,7 @@ function updateTelemetry(){
  const busy=sim.activeCount>=MAX_RESOURCES*.86;
  document.getElementById('metricStatus').textContent=busy?
  '资源拥挤：补货已暂缓。把金币推入升级站，或用计数带回收。':
- '仅统计本次游玩；产金不含免费补货，前60秒的分钟数值为折算速率。';
+ '仅统计本次游玩；画质按实测帧率缓慢调整，不减少实体数或改变物理。';
 }
 for(const key of TRACK_KEYS){const b=document.createElement('button');b.className='track-option';b.dataset.track=key;b.type='button';trackButtons.append(b);
  b.addEventListener('click',()=>{sim.selectUpgrade(key);saveProgress();updateUI();upgradePicker.hidden=true;upgradeButton.setAttribute('aria-expanded','false');toast('已选 '+TRACK_LABELS[key]+'，把金币推到紫色升级站',2.5);});}
@@ -79,7 +89,7 @@ function saveProgress(){
 }
 function loadScene(s,preserve=false){
  stage=s;world=new World(stage);sim=new Simulation(stage,preserve?loadProgress():{});
- effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;
+ effects.length=0;lastImpact=null;crushPopup.style.display='none';frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;}
  sceneButton.textContent='切换预览场景：'+(stage===0?'熔岩矿场':'粉晶岩洞');updateUI();
 }
@@ -171,7 +181,7 @@ function drawEffects(){
   if(age>(e.type==='crush' ? 0.56 : 0.68)){effects.splice(i,1);continue;}
   if(e.type==='crush'){
    // Four brief sparks per collision, capped to 35 impact events.
-   for(let j=0;j<4;j++){
+   for(let j=0;j<(renderer.quality?.effectSparks||4);j++){
     const a=j*Math.PI*.5+e.x*.13,dist=age*(2.2+j*.26);
     renderer.add('sphere',e.x+Math.cos(a)*dist,.55+age*2.1-j*.035,
       e.z+Math.sin(a)*dist,.105,.105,.105,j%2?[1,.86,.33,3]:[1,.43,.08,3]);
@@ -198,14 +208,18 @@ function drawFrame(t){
  const dt=Math.min(rawDt,.046);last=t;clocks+=dt;
  if(!paused && rawDt>0 && rawDt<2){
   frameSeconds+=rawDt;frameSamples++;
-  if(frameSeconds>=.65){measuredFps=frameSamples/frameSeconds;frameSamples=0;frameSeconds=0;}
+  if(frameSeconds>=.65){
+   measuredFps=frameSamples/frameSeconds;
+   if(qualityController.sample(measuredFps,frameSeconds))renderer?.setQuality(qualityController.mode);
+   frameSamples=0;frameSeconds=0;
+  }
  }
  if(renderer){
   if(!paused){const v=inputVector();sim.update(dt,v.x,v.z,world);handleEvents();}
   renderer.begin(clocks,sim.player,dt);
   world.render(renderer,clocks,sim.player);
   renderTreads(renderer,sim.treads,stage);
-  renderResources(renderer,sim.resources,sim.elapsed,renderer.camera);
+  visibleResources=renderResources(renderer,sim.resources,sim.elapsed,renderer.camera);
   renderVehicle(renderer,sim.player,clocks);
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
@@ -272,5 +286,5 @@ document.getElementById('resetButton').addEventListener('click',()=>{
  try{localStorage.removeItem('coindozer-progress-v06');localStorage.removeItem('coindozer-progress-v05');localStorage.removeItem('video-dozer-v01');}catch(e){}
  loadScene(stage,false);toast('游戏进度已重置');
 });
-try{renderer=new Renderer(canvas);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
+try{renderer=new Renderer(canvas);renderer.setQuality(qualityController.mode);loadScene(0,true);renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;requestAnimationFrame(drawFrame);}
 catch(error){console.error(error);const panel=document.querySelector('.panel'),p=document.createElement('p');p.style.color='#ffb6a3';p.textContent='图形初始化失败：'+error.message;panel.append(p);playButton.disabled=true;}

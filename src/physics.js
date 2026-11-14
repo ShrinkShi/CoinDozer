@@ -195,6 +195,9 @@ export class Simulation{
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
   this.physics.active=this.granular.lastActive;
+  this.physics.sleeping=this.granular.lastSleeping||0;
+  this.physics.scheduled=this.granular.lastScheduled||0;
+  this.physics.deferred=this.granular.activity?.dropped||0;
   let count=0;
   this._liveGateCount=this.resources.reduce((n,r)=>n+(r.dead?0:1),0);
   let crushedThisFrame=0,depositedThisFrame=0;

@@ -12,6 +12,7 @@ import {clamp} from './math.js';
 import {headingBasis} from './heading.js';
 import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
 import {StaticCollisionField} from './collisions.js';
+import {ParticleActivity} from './activity.js';
 export const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
   gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
@@ -75,6 +76,9 @@ export class GranularSolver {
     this.lastActive=0;
     this.grid = new Map();
     this.moving = [];
+    this.activity=new ParticleActivity();
+    this.contactCounts=new Uint8Array(0);
+    this.lastSleeping=0;this.lastScheduled=0;
     this.obstacleWorld=null;this.obstacleField=null;this.obstacleContacts=0;
   }
 
@@ -84,6 +88,9 @@ export class GranularSolver {
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
+    const scheduled=this.activity.select(resources,player);
+    this.lastSleeping=this.activity.sleeping;
+    this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
     const passes = Math.max(1, Math.min(3, Math.ceil(dt / .019)));
     const h = dt / passes;
@@ -99,31 +106,13 @@ export class GranularSolver {
     const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);
     const driving=player.speed>.18 && travel>0;
     const displacement=driving?Math.min(.38,travel*1.5):0;
-    const nowMoving=[];
+    const nowMoving=this.moving;nowMoving.length=0;
     let simulated=0;
-    // The scene can contain 6,500 distinct coins. On low-end phones we
-    // schedule granular contacts for the nearest 850 at a time; all other
-    // coins remain individual and visible, and wake as the shovel approaches.
-    // This is a contact-solver budget, NOT a visual or logical aggregation.
-    let active=null;
-    if(resources.length>1250){
-      const nearby=[];
-      for(let i=0;i<resources.length;i++){
-        const r=resources[i];if(r.dead)continue;
-        const d=(r.x-player.x)**2+(r.z-player.z)**2;
-        const motion=Math.abs(r.vx||0)+Math.abs(r.vz||0)+Math.abs(r.vy||0);
-        if(d<19*19||motion>.45)nearby.push({i,priority:d-motion*4});
-      }
-      nearby.sort((a,b)=>a.priority-b.priority);
-      active=new Set(nearby.slice(0,850).map(r=>r.i));
-    }
-    for(let i=0;i<resources.length;i++){
-      if(active&&!active.has(i))continue;
+    // v0.6.3: active indices were selected ONCE in step(), shared by all
+    // substeps. Distant settled particles are omitted from numerical integration
+    // but remain independent, visible, and eligible for wake-up.
+    for(const i of this.activity.active){
       const p=resources[i];if(p.dead)continue;
-      // Far, settled resources remain individually rendered, but sleep until
-      // the machine approaches. No particles are merged or omitted visually.
-      const distant=(p.x-player.x)**2+(p.z-player.z)**2>12.7**2;
-      if(distant && Math.abs(p.vx||0)+Math.abs(p.vy||0)+Math.abs(p.vz||0)<.28)continue;
       simulated++;
       const shape=S(p.kind),onGround=p.y<.012;
       p.vy=Number.isFinite(p.vy)?p.vy:0;
@@ -200,10 +189,13 @@ export class GranularSolver {
     // displace a particle across a bucket border. Each neighbour pair is unique.
     const iterations=nowMoving.length>730?1:nowMoving.length>350?2:3;
     this.lastActive=simulated;
-    const contactCounts=new Uint8Array(resources.length);
+    if(this.contactCounts.length<resources.length)
+      this.contactCounts=new Uint8Array(Math.max(resources.length,this.contactCounts.length*2,128));
+    const contactCounts=this.contactCounts;
     for(let iteration=0;iteration<iterations;iteration++){
       contactCounts.fill(0);
-      const grid=this.grid;grid.clear();
+      const grid=this.grid;
+      for(const bucket of grid.values())bucket.length=0;
       for(const i of nowMoving){
         const p=resources[i],key=(Math.floor(p.x/HORIZONTAL_BUCKET))+','+Math.floor(p.z/HORIZONTAL_BUCKET);
         let cells=grid.get(key);if(!cells){cells=[];grid.set(key,cells)}cells.push(i);
