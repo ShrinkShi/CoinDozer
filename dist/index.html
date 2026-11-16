@@ -571,8 +571,9 @@ function planNpcRoute(world,start,goal,avoid=[]){
   }
   return true;
  };
+ if(raw.length<=1)return raw;
  const smooth=[];let at=0;
- while(at<raw.length){
+ while(at<raw.length-1){
   let next=raw.length-1;
   while(next>at+1&&!clear(raw[at],raw[next]))next--;
   smooth.push(raw[next]);at=next;
