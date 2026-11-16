@@ -596,7 +596,6 @@ function updateNpc(npc,resources,world,dt,now,player){
  if(!npc.enabled||world.stage!==0)return {dirX:0,dirZ:0,speed:0};
  let target=resources.find(r=>!r.dead&&r.id===npc.targetId);
  if(target&&target.kind!=='blue'){
-  if(target.kind==='gold')npc.completed++;
   npc.targetId=null;target=null;npc.route.length=0;
  }
  if(!target){
@@ -3203,6 +3202,10 @@ class Simulation{
    });
   }
   this.crushed++;this.processed++;
+  if(this.stage===0&&this.npc?.enabled&&this.npc.targetId===r.id){
+   this.npc.completed++;this.npc.targetId=null;this.npc.route.length=0;
+   this.npc.state='search';
+  }
   this.telemetry.record('oreCrushed',1,this.elapsed);
   this.telemetry.record('goldProduced',outputCount,this.elapsed);
   this.telemetry.record('goldValueProduced',outputCount*paymentValue(this.stage,this.tracks),this.elapsed);

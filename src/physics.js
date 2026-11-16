@@ -285,6 +285,10 @@ export class Simulation{
    });
   }
   this.crushed++;this.processed++;
+  if(this.stage===0&&this.npc?.enabled&&this.npc.targetId===r.id){
+   this.npc.completed++;this.npc.targetId=null;this.npc.route.length=0;
+   this.npc.state='search';
+  }
   this.telemetry.record('oreCrushed',1,this.elapsed);
   this.telemetry.record('goldProduced',outputCount,this.elapsed);
   this.telemetry.record('goldValueProduced',outputCount*paymentValue(this.stage,this.tracks),this.elapsed);

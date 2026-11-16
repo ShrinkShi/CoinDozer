@@ -184,7 +184,6 @@ export function updateNpc(npc,resources,world,dt,now,player){
  if(!npc.enabled||world.stage!==0)return {dirX:0,dirZ:0,speed:0};
  let target=resources.find(r=>!r.dead&&r.id===npc.targetId);
  if(target&&target.kind!=='blue'){
-  if(target.kind==='gold')npc.completed++;
   npc.targetId=null;target=null;npc.route.length=0;
  }
  if(!target){
