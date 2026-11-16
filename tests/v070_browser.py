@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist/index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.7.1' in html
+assert 'VIDEO REPLICA · 0.7.2' in html
 needle='try{\n loadScene(loadProgress().stage===1?1:0,true);'
 assert needle in html
 html=html.replace(needle,
@@ -53,7 +53,10 @@ with sync_playwright() as p:
        dead:false,cooldown:0,spin:0,angle:0};
       s.resources=[coin];s.player.x=p.x;s.player.z=p.z;
       s.granular.step=()=>{coin.z=p.z;};
-      s.update(.016,0,0,w);x.handleEvents();x.saveProgress();
+      s.update(.016,0,0,w);x.handleEvents();
+      s.granular.step=()=>{};
+      for(let i=0;i<30&&!coin.dead;i++){s.update(.044,0,0,w);x.handleEvents();}
+      x.saveProgress();
       return {paid:coin.dead,progress:s.tracks.exit.deposited,unlocked:s.tracks.exit.level};
     }""")
     assert first=={'paid':True,'progress':1,'unlocked':0},first

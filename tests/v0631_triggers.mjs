@@ -34,14 +34,12 @@ for(const direction of [-1,1]){
  const c=particle('gold',pad.x,pad.z),sim=make(c);
  sim.player.x=pad.x;sim.player.z=pad.z;
  sim.update(.016,0,0,world);
- assert.equal(c.dead,false,'parked coin is not paid by player proximity alone');
+ assert.equal(c.dead,false,'station proximity starts loading but never pays immediately');
+ assert.equal(c.cargoState,'loading');
  assert.equal(sim.totalDeposited,0);
- // Leaving and reentering produces exactly one legitimate payment.
- c.z=pad.z+pad.trigger.halfZ+.3;
- sim.update(.016,0,0,world);
- sim.granular.step=()=>{c.z=pad.z;};
- sim.update(.016,0,0,world);
- assert.equal(c.dead,true);
+ sim.granular.step=()=>{};
+ for(let i=0;i<30&&!c.dead;i++)sim.update(.044,0,0,world);
+ assert.equal(c.dead,true,'the cargo coin pays only after its outbound animation');
  assert.equal(sim.gateTracks[0].deposited,1);
  assert.equal(sim.totalDeposited,1);
  assert.equal(sim.activeCount,0);
@@ -59,7 +57,11 @@ for(const direction of [-1,1]){
  const sim=make(c);sim.player.x=station.x;sim.player.z=station.z;
  sim.granular.step=()=>{c.z=station.z;};
  sim.update(.016,0,0,world);
- assert.equal(c.dead,true,'pushed coin pays the vehicle station');
+ assert.equal(c.dead,false,'a loose coin is first loaded into the vehicle');
+ assert.equal(c.cargoState,'loading');
+ sim.granular.step=()=>{};
+ for(let i=0;i<30&&!c.dead;i++)sim.update(.044,0,0,world);
+ assert.equal(c.dead,true,'the vehicle station consumes the coin after unloading');
  assert.equal(sim.tracks.chassis.deposited,1);
 }
 {

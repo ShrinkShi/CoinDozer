@@ -19,6 +19,7 @@ jobs:
           node tests/v070_layout.mjs
           node tests/v071_playability.mjs
           node tests/v071_drive.mjs
+          node tests/v072_cargo.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -31,7 +32,7 @@ jobs:
           python build.py
           node tests/v0632_bundle_syntax.mjs
           git diff --exit-code -- dist/index.html
-          grep -q 'VIDEO REPLICA · 0.7.1' dist/index.html
+          grep -q 'VIDEO REPLICA · 0.7.2' dist/index.html
 
   browser-smoke:
     runs-on: ubuntu-24.04
@@ -55,3 +56,5 @@ jobs:
         run: python tests/v070_browser.py
       - name: v0.7.1 minimap and control integration
         run: python tests/v071_browser.py
+      - name: v0.7.2 physical cargo and payment integration
+        run: python tests/v072_browser.py

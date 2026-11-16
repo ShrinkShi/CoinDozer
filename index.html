@@ -17,7 +17,7 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.1</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.2</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
@@ -51,9 +51,9 @@
       <p id="metricStatus" class="telemetry-note">仅统计本次游玩；刷新后归零。前60秒为折算速率。</p>
     </section>
     <section id="upgradePicker" aria-label="选择铲车升级路线" hidden>
-      <div class="picker-title">车辆改装路线 <small>第一关仅底盘、速度、转向、铲斗在北岸车辆台选择升级</small></div>
+      <div class="picker-title">车辆改装路线 <small>第一关底盘、速度、转向、铲斗和货箱容量均在北岸车辆台升级</small></div>
       <div id="trackButtons" class="track-buttons"></div>
-      <p class="picker-footnote">每枚金币可抵扣 <b id="pickerCoinValue">1</b> 金额。数字门、金币价值、粉碎门、主桥及下一关桥分别有专用投币台，不能在菜单直接购买。</p>
+      <p class="picker-footnote">每枚金币可抵扣 <b id="pickerCoinValue">1</b> 金额。数字门、金币价值、粉碎门、主桥及下一关桥分别有专用投币台；货箱容量在车辆改装台升级，所有升级都必须实际支付。</p>
       <p id="featureStatus" class="feature-status">粉碎门、桥梁及关卡解锁状态</p>
     </section>
     <div id="worldLabels" aria-hidden="true">
@@ -80,12 +80,12 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.1</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.2</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
-        <p>v0.7.1 六类升级：①数字门倍数 ②粉碎门金币产量 ③铲车底盘、速度、转向、铲斗 ④主桥宽度 ⑤金币价值 ⑥通往下一关的桥（默认锁定）。<b>矿石不能直接支付升级；只允许实物金币在指定站台支付。</b></p>
+        <p>v0.7.2 在原有升级基础上新增货箱容量升级。金币必须先进入货箱，再由车辆运往指定升级台；只有飞抵有效站台才会被消耗。</p>
         <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
-        <p>v0.7.1：修复斜向穿越数字门、冰河高速穿越、粉碎机满载卡料和投币掠过漏判。画面左侧的工程俯视小地图可以查看铲车位置与通向目标的过桥路线，点击「导航」循环切换目标。</p>
+        <p>v0.7.2：金币靠近铲车后会飞入车尾开放货箱；货箱内的金币仍是独立实体，随车辆移动。靠近有效升级台后，金币会逐枚飞出，抵达站台才完成支付。货箱容量可在北岸车辆改装台升级为 20、40、70、110 或 160 枚。动画中断或刷新时，未完成支付的金币会恢复到货箱，不会重复扣款。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>

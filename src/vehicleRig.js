@@ -1,3 +1,4 @@
+import {CARGO_LAYOUTS} from './economy.js';
 /** Pure, deterministic tracked-chassis visual kinematics.
  * This module does not affect vehicle collision geometry or game economy.
  * Both the scene preview and the live vehicle use the same rig calculations.
@@ -40,12 +41,37 @@ export function vehicleVisualStyle(player){
  const level=bounded(player.level),blade=bounded(player.bladeLevel);
  return {
   level,blade,speed:bounded(player.speedLevel),steering:bounded(player.steeringLevel),
-  coin:bounded(player.coinLevel),
+  coin:bounded(player.coinLevel),cargo:bounded(player.cargoLevel),
+  cargoLayout:CARGO_LAYOUTS[bounded(player.cargoLevel)],
   scale:1+level*.055,
   bladeScale:1+blade*.17,
   trackWidth:.77+level*.045,
   armour:level>=2,
   canopy:level>=3,
   reinforced:level>=4
+ };
+}
+
+/** World-space pose for one individually stored coin in the open rear cargo
+ * box. Local -Z is the blade/front; positive local Z is the vehicle rear.
+ */
+export function cargoSlotPose(player,slot,level=0){
+ const tier=Math.max(0,Math.min(CARGO_LAYOUTS.length-1,Math.floor(level||0)));
+ const layout=CARGO_LAYOUTS[tier],index=Math.max(0,Math.floor(slot||0));
+ const perLayer=layout.columns*layout.rows;
+ const layer=Math.floor(index/perLayer);
+ const within=index%perLayer;
+ const row=Math.floor(within/layout.columns),column=within%layout.columns;
+ const chassis=Math.max(0,Math.min(4,Math.floor(player.level||0)));
+ const scale=1+chassis*.055,spacing=layout.spacing*scale;
+ const localX=(column-(layout.columns-1)/2)*spacing;
+ const localZ=(row-(layout.rows-1)/2)*spacing+3.45*scale;
+ const sin=Math.sin(player.yaw||0),cos=Math.cos(player.yaw||0);
+ const fx=sin,fz=-cos,rx=cos,rz=sin;
+ return {
+  x:player.x+(localX*rx-localZ*fx),
+  y:(.82+layer*.29)*scale,
+  z:player.z+(localX*rz-localZ*fz),
+  layer,row,column
  };
 }

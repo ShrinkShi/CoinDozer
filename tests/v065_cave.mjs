@@ -116,7 +116,11 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  const s=make(1,[bar]);s.player.x=p.x;s.player.z=p.z;
  s.granular.step=()=>{bar.z=p.z;};
  s.update(.016,0,0,cave);
- assert.equal(bar.dead,true,'ingots pay on physical entry');
+ assert.equal(bar.dead,false,'loose ingots first enter the cargo box');
+ assert.equal(bar.cargoState,'loading');
+ s.granular.step=()=>{};
+ for(let i=0;i<30&&!bar.dead;i++)s.update(.044,0,0,cave);
+ assert.equal(bar.dead,true,'ingot pays only after flying out of cargo');
  assert.equal(s.gateTracks[1].deposited,3);
 }
 {
@@ -124,7 +128,11 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  const s=make(1,[p]);s.player.x=u.x;s.player.z=u.z;
  s.granular.step=()=>{p.z=u.z;};
  s.update(.016,0,0,cave);
- assert.equal(p.dead,true,'ingots pay the cave vehicle station');
+ assert.equal(p.dead,false,'ingots are first loaded into the rear cargo box');
+ assert.equal(p.cargoState,'loading');
+ s.granular.step=()=>{};
+ for(let i=0;i<30&&!p.dead;i++)s.update(.044,0,0,cave);
+ assert.equal(p.dead,true,'ingots pay only after the outbound cargo animation');
  assert.equal(s.tracks.chassis.deposited,3);
 }
 {
@@ -153,7 +161,10 @@ assert.equal(new Simulation(1).player.level,0,'no fake free chassis levels in ca
  s.resources=[coin];s.player.x=lava.upgradeStation.x;s.player.z=lava.upgradeStation.z;
  s.granular.step=()=>{coin.z=lava.upgradeStation.z;};
  s.update(.016,0,0,lava);
- assert.equal(coin.dead,true,'lava gold payment regression');
+ assert.equal(coin.dead,false,'lava gold enters the same cargo system');
+ s.granular.step=()=>{};
+ for(let i=0;i<30&&!coin.dead;i++)s.update(.044,0,0,lava);
+ assert.equal(coin.dead,true,'lava gold pays after the outbound cargo animation');
  assert.equal(s.tracks.chassis.deposited,1,'old coin base value unchanged');
 }
 console.log('v0.6.5: fully playable crystal cave, atomic conversion, payouts, gate isolation, restock and lava regression PASS');

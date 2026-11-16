@@ -92,13 +92,17 @@ const north=w.terrain.rivers[1];
  s.resources=[coin];s.player.x=pad.x;s.player.z=pad.z;
  s.granular.step=()=>{coin.z=pad.z-3;};
  s.update(.016,0,0,w);
- assert.equal(coin.dead,true,'physical pad charges a fast surface coin');
+ assert.equal(coin.dead,false,'a loose coin cannot be paid directly at the pad');
+ assert.equal(coin.cargoState,'loading','a nearby coin begins its visible cargo transfer');
+ for(let tick=0;tick<30&&!coin.dead;tick++)s.update(.044,0,0,w);
+ assert.equal(coin.dead,true,'cargo coin completes its outbound station animation');
  assert.equal(s.tracks.crusher.deposited,1);
  const s2=new Simulation(0),high=material('gold',pad.x,pad.z+3,2);
  s2.resources=[high];s2.player.x=pad.x;s2.player.z=pad.z;
  s2.granular.step=()=>{high.z=pad.z-3;};
  s2.update(.016,0,0,w);
  assert.equal(high.dead,false,'flying coin was never consumed');
+ assert.equal(high.cargoState,undefined,'high coins do not enter the cargo box');
 }
 {
  // Full crusher must return the same ore to the true SOUTH intake, without

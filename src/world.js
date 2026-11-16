@@ -232,7 +232,7 @@ export class World{
    renderVehicle(renderer,{x:this.upgradeStation.previewX,z:this.upgradeStation.previewZ,
     yaw:Math.PI,level:next,bladeLevel:player.bladeLevel,
     speedLevel:player.speedLevel,steeringLevel:player.steeringLevel,
-    coinLevel:player.coinLevel},t,.47);
+    coinLevel:player.coinLevel,cargoLevel:player.cargoLevel},t,.47);
    renderer.add('box',this.upgradeStation.x,.38+Math.sin(t*3)*.04,
     this.upgradeStation.z,this.upgradeStation.trigger.halfX*2-.12,.065,
     Math.min(1.6,this.upgradeStation.trigger.halfZ*2-.1),
