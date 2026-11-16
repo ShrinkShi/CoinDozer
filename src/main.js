@@ -11,6 +11,7 @@ import {sceneRules,paymentValue} from './sceneRules.js';
 import {INFRA_COSTS,INFRA_LABELS,crusherYield,BELT_COSTS,BELT_LABELS} from './economy.js';
 import {mainBridgeWidth} from './mapLayout.js';
 import {NAV_TARGETS,drawNavigation} from './navigation.js';
+import {NPC_STATE_LABELS} from './npc.js';
 
 const canvas=document.getElementById('scene'),menu=document.getElementById('menu');
 const graphicsStatus=document.getElementById('graphicsStatus');
@@ -38,6 +39,8 @@ const stageInfo=document.getElementById('stageInfo');
 const navHud=document.getElementById('navHud');
 const navCycle=document.getElementById('navCycle');
 const navReadout=document.getElementById('navReadout');
+const npcToggle=document.getElementById('npcToggle');
+const npcReadout=document.getElementById('npcReadout');
 const navContext=document.getElementById('navMap').getContext('2d');
 let navChoice='auto';
 const qualityController=new AdaptiveQuality(
@@ -56,6 +59,19 @@ navCycle.addEventListener('click',()=>{
  const targets=['auto',...NAV_TARGETS.map(t=>t.id)];
  navChoice=targets[(targets.indexOf(navChoice)+1)%targets.length];
  updateNavigation();
+});
+npcToggle.addEventListener('click',()=>{
+ if(!sim||stage!==0)return;
+ sim.npc.enabled=!sim.npc.enabled;
+ sim.npc.speed=0;
+ if(sim.npc.enabled){
+  sim.npc.state='search';sim.npc.targetId=null;sim.npc.route.length=0;
+  sim.npc.nextPlanAt=0;sim.npc.stuckFor=0;
+  toast('NPC 样机已启动：正在寻找矿石并规划主桥路线',3.2);
+ }else{
+  sim.npc.state='idle';toast('NPC 样机已停用',2);
+ }
+ updateUI();updateNavigation();
 });
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
@@ -231,6 +247,12 @@ function updateUI(){
  if(!sim)return;
  document.getElementById('score').textContent=formatNum(sim.crushed);
  document.getElementById('cargoCount').textContent=`${formatNum(sim.cargoCount())}/${formatNum(sim.cargoCapacity())}`;
+ npcToggle.hidden=stage!==0;npcToggle.disabled=stage!==0;
+ npcToggle.setAttribute('aria-pressed',String(stage===0&&sim.npc.enabled));
+ npcToggle.textContent=sim.npc.enabled?'停止 NPC 样机':'启动 NPC 样机';
+ npcReadout.textContent=sim.npc.enabled?
+  (NPC_STATE_LABELS[sim.npc.state]||sim.npc.state)+` · 完成 ${sim.npc.completed} / 脱困 ${sim.npc.recoveries}`:
+  '待机：未启动';
  const builtBeltCount=sim.beltTracks.filter(b=>b.level>0).length;
  const beltStatus=document.getElementById('beltStatus');
  beltStatus.hidden=stage!==0;
@@ -267,7 +289,7 @@ function updateUI(){
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已加工冰晶 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':sim.npc.enabled?'NPC 样机正在尝试自动推料；玩家仍可正常驾驶':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
 }
 function positionLabels(){
  for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...beltLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
@@ -352,6 +374,10 @@ function drawFrame(t){
   renderTreads(renderer,sim.treads,stage);
   visibleResources=renderResources(renderer,sim.resources,sim.elapsed,renderer.camera,stage);
   renderVehicle(renderer,sim.player,clocks);
+  if(stage===0&&sim.npc.enabled){
+   renderTreads(renderer,sim.npc.treads,stage);
+   renderVehicle(renderer,sim.npc,clocks);
+  }
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
  if(Math.floor(clocks*4)!==Math.floor((clocks-dt)*4))updateNavigation();

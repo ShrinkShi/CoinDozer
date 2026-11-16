@@ -84,30 +84,33 @@ export class GranularSolver {
     this.obstacleWorld=null;this.obstacleField=null;this.obstacleContacts=0;
   }
 
-  step(resources, dt, player, previousPlayer = player, world=null){
+  step(resources, dt, player, previousPlayer = player, world=null, additionalVehicles=[]){
     if(this.obstacleWorld!==world){
       this.obstacleWorld=world;
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
-    const scheduled=this.activity.select(resources,player,world?.conveyors||[]);
+    const actors=[{body:player,previous:previousPlayer},...additionalVehicles]
+      .filter(actor=>actor?.body&&actor?.previous);
+    const scheduled=this.activity.select(resources,actors.map(actor=>actor.body),world?.conveyors||[]);
     this.lastSleeping=this.activity.sleeping;
     this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
     const passes = Math.max(1, Math.min(3, Math.ceil(dt / .019)));
     const h = dt / passes;
-    for(let s=0;s<passes;s++)this.substep(resources,h,player,previousPlayer,passes);
+    for(let s=0;s<passes;s++)this.substep(resources,h,actors,passes);
   }
 
-  substep(resources, dt, player, previousPlayer, substeps){
+  substep(resources, dt, actors, substeps){
     this.contacts=0;
     this.height=0;
-    const {fx:vx,fz:vz,rx,rz}=headingBasis(player.yaw);
-    const playerDx=player.x-previousPlayer.x,playerDz=player.z-previousPlayer.z;
-    // The lip follows the machine, not an invisible attraction toward the player.
-    const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);
-    const driving=player.speed>.18 && travel>0;
-    const displacement=driving?Math.min(.38,travel*1.5):0;
+    const rigs=actors.map(({body,previous})=>{
+      const {fx:vx,fz:vz,rx,rz}=headingBasis(body.yaw);
+      const travel=Math.max(0,((body.x-previous.x)*vx+(body.z-previous.z)*vz)/substeps);
+      const driving=body.speed>.18&&travel>0;
+      return {player:body,vx,vz,rx,rz,driving,
+       displacement:driving?Math.min(.38,travel*1.5):0};
+    });
     const nowMoving=this.moving;nowMoving.length=0;
     let simulated=0;
     // v0.6.3: active indices were selected ONCE in step(), shared by all
@@ -132,40 +135,34 @@ export class GranularSolver {
       p.x+=p.vx*dt;p.z+=p.vz*dt;
       p.y+=p.vy*dt;
       if(p.y<0){p.y=0;if(p.vy<0)p.vy= -p.vy*shape.restitution;if(p.vy<.20)p.vy=0;}
-      // Shared seven-segment scoop profile drives both mesh and collision.
-      // Projection is applied only on forward driving/contact, never magnetic.
-      if(driving){
+      // The same bucket shell and collision profile are shared by the human
+      // dozer and the autonomous prototype. Each particle is integrated once;
+      // every active vehicle then contributes only its own real contact.
+      for(const rig of rigs){
+        const player=rig.player,{vx,vz,rx,rz}=rig,displacement=rig.displacement;
         const dx=p.x-player.x,dz=p.z-player.z;
         const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
         const bucketWidth=SCOOP_HALF_WIDTH*(1+Math.min(4,player.level)*.055)*(1+.17*Math.min(4,player.bladeLevel||0));
         const centre=p.y+p._halfHeight;
-        if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
+        if(rig.driving&&ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
           const contact=nearestScoopContact(ahead,centre);
           const front=scoopBoundary(clamp(centre,.15,1.38));
-          // The wall constraint catches high-speed particles that crossed the
-          // front lip between ticks; the nearest segment supplies the slope.
           const overlap=front+shape.radius*.35-ahead;
-          if(Math.abs(side)<bucketWidth-.09 && overlap>0){
+          if(Math.abs(side)<bucketWidth-.09&&overlap>0){
             const correction=Math.min(.32,overlap*.85+displacement*.10);
             p.x+=vx*correction;p.z+=vz*correction;
             const rise=Math.min(.115,correction*contact.nUp*.36);
             p.y+=rise;
             const along=p.vx*vx+p.vz*vz;
             const transfer=clamp((player.speed*.90-along)*.58,0,3.25);
-            p.vx+=vx*transfer;
-            p.vz+=vz*transfer;
-            p.vy+=rise*5.0;
+            p.vx+=vx*transfer;p.vz+=vz*transfer;p.vy+=rise*5.0;
             if(p.kind==='gold'){
-              // The scoop induces visible turning, but only after contact.
               p.omegaX+=(side<0?-1:1)*contact.nUp*.26;
               p.omegaZ-=transfer*.27;
             }
           }
-          // Scoop side plates occupy the lower metre. A particle too high
-          // escapes over the plates; lower particles cannot pass straight
-          // through a solid side wall.
           const sideDist=Math.abs(side),normal=side<0?-1:1;
-          if(sideDist>bucketWidth-shape.radius*.85 && centre<1.22){
+          if(sideDist>bucketWidth-shape.radius*.85&&centre<1.22){
             const penetration=shape.radius*.85-Math.abs(sideDist-bucketWidth);
             if(penetration>0){
               const outside=sideDist>bucketWidth;
@@ -175,8 +172,7 @@ export class GranularSolver {
             }
           }
         }
-        // Block particles from tunnelling through the front of the chassis.
-        if(ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
+        if(centre<2.05&&ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
           const back=1.63-ahead;
           p.x+=vx*back*.50;p.z+=vz*back*.50;
           p.vx+=vx*player.speed*.33;p.vz+=vz*player.speed*.33;

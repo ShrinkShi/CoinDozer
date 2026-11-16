@@ -10,12 +10,12 @@ const STEEL=[.37,.42,.41,4],STEEL_LIGHT=[.66,.69,.65,4];
 const YELLOW=[1.0,.69,.065,4],YELLOW_LIT=[1,.81,.17,4],YELLOW_DARK=[.75,.44,.037,4];
 export function renderVehicle(renderer,player,t,baseY=0){
  const {x,z,yaw}=player,visual=vehicleVisualStyle(player);
- const level=visual.level,advanced=level>=2,upgraded=level>=1;
+ const level=visual.level,advanced=level>=2,upgraded=level>=1,npc=player.npc===true;
  const size=visual.scale,bladeScale=visual.bladeScale;
  const bladeLift=Math.min(.07,Math.max(0,player.bladeBounce||0));
- const blade=level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
- const bladeEdge=level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
- const hood=level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
+ const blade=npc?[.12,.72,.88,4]:level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
+ const bladeEdge=npc?[.055,.39,.54,4]:level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
+ const hood=npc?[.055,.42,.55,4]:level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
  const {fx,fz,rx,rz}=headingBasis(yaw);
  function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
   // Match the movement/physical blade convention: local -Z is FORWARD.
@@ -23,6 +23,7 @@ export function renderVehicle(renderer,player,t,baseY=0){
   renderer.add(mesh,xx,ly*size+baseY,zz,sx*size,sy*size,sz*size,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
+ if(npc)part('shadow',0,.088,.45,4.1,1,5.6,[0,0,0,8]);
  function bladePart(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
   // Blade motion follows contact damping, less than 7 cm from collision shell.
   part(mesh,lx*bladeScale,ly+bladeLift,lz,sx*bladeScale,sy,sz,color,a,p,roll,opacity);
@@ -97,6 +98,13 @@ export function renderVehicle(renderer,player,t,baseY=0){
  part('box',.48,1.90,.21,.23,.42,.30,hood);
  part('cylinder',0,1.58,-.12,.65,.09,.65,RUBBER,0,.65,0);
  part('box',0,1.18,-.46,.55,.08,.42,STEEL);
+ if(npc){
+  // Cyan roof beacon identifies the autonomous prototype without changing
+  // its collision shell, dimensions or performance upgrades.
+  part('cylinder',0,2.78,.63,.20,.25,.20,STEEL_LIGHT,0,0,Math.PI/2);
+  part('sphere',0,3.02,.63,.25,.22,.25,[.10,.84,.98,3],t*2.1);
+  part('box',0,1.72,-1.05,.92,.13,.14,[.12,.75,.88,4]);
+ }
  // Exhaust with hollow dark top, hydraulic booms mounted to sidewalls.
  part('cylinder',.68,1.92,1.02,.25,1.31,.25,STEEL);
  part('cylinder',.68,2.61,1.02,.33,.13,.33,RUBBER);

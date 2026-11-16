@@ -86,6 +86,24 @@ void main(){
   color=mix(shell,vec3(.63,.94,1.0),clamp(swirl*.88+centerDot*.48,0.,.90));
   color+=pow(max(0.,diffuse),28.)*vec3(.35,.45,.62);
   color+=specular*vec3(.32,.44,.62);
+ }else if(mat>9.5&&mat<10.5){
+  // Layered frozen-water surface: low-frequency cloudy frost, fine grain,
+  // branching-looking cracks and a restrained blue-white glint.
+  vec2 q=vWorld.xz;
+  float cloud=noise(q*.42)*.55+noise(q*1.65)*.30+noise(q*5.1)*.15;
+  float fracture=abs(sin(q.x*1.13+q.y*.77+noise(q*.31)*4.8));
+  float crack=1.-smoothstep(.012,.095,fracture);
+  float fine=sin(q.x*21.0+noise(q*2.3)*3.0)*sin(q.y*18.0);
+  vec3 ice=mix(vTint.rgb*.70,vec3(.88,.97,1.0),clamp(cloud*.62+.12,0.,.78));
+  ice=mix(ice,vec3(.96,.995,1.0),crack*.42);
+  ice+=specular*vec3(.36,.52,.66);
+  ice+=max(0.,fine)*.018;
+  color=ice*(.84+.19*diffuse);
+ }else if(mat>10.5&&mat<11.5){
+  // Brushed steel rollers and machine rails, with a directional micrograin.
+  float grain=.5+.5*sin(vLocal.x*125.0+vLocal.z*9.0);
+  color=vTint.rgb*(.42+.55*diffuse)*( .965+.035*grain);
+  color+=specular*vec3(.72,.78,.82);
  }else{
   color+=specular*.07;
  }

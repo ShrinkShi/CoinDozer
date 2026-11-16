@@ -1,4 +1,4 @@
-"""v0.7.3 Chromium: five fixed pads, paid belt construction, physics and reload.
+"""v0.7.4 Chromium: five fixed pads, paid belt construction, physics and reload.
 Runtime remains one standalone HTML with no browser-side framework dependency.
 """
 from pathlib import Path
@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 
 root=Path(__file__).resolve().parents[1]
 html=(root/'dist/index.html').read_text(encoding='utf-8')
-assert 'VIDEO REPLICA · 0.7.3' in html
+assert 'VIDEO REPLICA · 0.7.4' in html
 needle='try{\n loadScene(loadProgress().stage===1?1:0,true);'
 assert needle in html
 html=html.replace(needle,
@@ -81,6 +81,6 @@ with sync_playwright() as p:
  assert page.evaluate("window.__v073.world.conveyors.length")==1
  assert page.locator('#beltStatus').is_visible()
  assert not errors,errors
- print('v0.7.3 mobile: five build pads, cargo-paid belt, persistent build and stage isolation PASS',flush=True)
+ print('v0.7.4 mobile: five build pads, cargo-paid belt, persistent build and stage isolation PASS',flush=True)
  context.close()
  browser.close()

@@ -10,6 +10,7 @@ import {sceneRules,paymentValue,isStageCurrency} from './sceneRules.js';
 import {INFRA_COSTS,crusherYield} from './economy.js';
 import {LONG_MAP} from './mapLayout.js';
 import {constrainToTerrain} from './terrain.js';
+import {createNpc,updateNpc} from './npc.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
@@ -45,6 +46,7 @@ export class Simulation{
   this.coinsSpent={vehicle:0,gate:0,feature:0,belt:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
   this.cargoTransfers=[];this.cargoPickupRadius=CARGO_PICKUP_RADIUS;
+  this.npc=createNpc();
   this.restoreCargo(progress);
   this.liveCount=this.countLiving();this.activeCount=this.liveCount;
  }
@@ -283,6 +285,10 @@ export class Simulation{
    });
   }
   this.crushed++;this.processed++;
+  if(this.stage===0&&this.npc?.enabled&&this.npc.targetId===r.id){
+   this.npc.completed++;this.npc.targetId=null;this.npc.route.length=0;
+   this.npc.state='search';
+  }
   this.telemetry.record('oreCrushed',1,this.elapsed);
   this.telemetry.record('goldProduced',outputCount,this.elapsed);
   this.telemetry.record('goldValueProduced',outputCount*paymentValue(this.stage,this.tracks),this.elapsed);
@@ -403,6 +409,7 @@ export class Simulation{
   this.elapsed+=dt;
   if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks,this.beltTracks);
   const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
+  const npc=this.npc,npcPrevious={x:npc.x,z:npc.z,yaw:npc.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
   if(goal>.1){
@@ -430,6 +437,40 @@ export class Simulation{
     if(this.treads.length>700)this.treads.splice(0,25);
    }
   }
+  // One optional NPC sample uses the same chassis movement, terrain barriers,
+  // track odometer and granular scoop shell as the human-controlled vehicle.
+  const npcActive=this.stage===0&&npc.enabled;
+  const command=updateNpc(npc,this.resources,world,dt,this.elapsed,p);
+  if(npcActive){
+   if(!command.reverse&&Math.hypot(command.dirX,command.dirZ)>.01){
+    const targetYaw=Math.atan2(command.dirX,-command.dirZ);
+    const delta=Math.atan2(Math.sin(targetYaw-npc.yaw),Math.cos(targetYaw-npc.yaw));
+    npc.yaw+=clamp(delta,-dt*2.35,dt*2.35);
+    const error=Math.atan2(Math.sin(targetYaw-npc.yaw),Math.cos(targetYaw-npc.yaw));
+    const alignment=Math.max(0,Math.cos(error));
+    const desired=command.speed*alignment;
+    npc.speed+=(desired-npc.speed)*Math.min(1,dt*6.8);
+    if(alignment<.03)npc.speed*=.72;
+   }else{
+    const desired=command.reverse?-command.speed:0;
+    npc.speed+=(desired-npc.speed)*Math.min(1,dt*7.5);
+   }
+   const basis=headingBasis(npc.yaw),npcStep=npc.speed*dt;
+   npc.x=clamp(npc.x+basis.fx*npcStep,bounds.minX+1.05,bounds.maxX-1.05);
+   npc.z=clamp(npc.z+basis.fz*npcStep,bounds.minZ+1.05,bounds.maxZ-1.05);
+   constrainToTerrain(npc,npcPrevious,world.terrain,1.05);
+   if(Math.abs(npc.speed)>.8){
+    npc.lastTrail+=Math.abs(npcStep);
+    if(npc.lastTrail>.38){
+     npc.lastTrail=0;
+     for(const side of [-1,1])npc.treads.push({x:npc.x+basis.rx*side*.90-basis.fx*.62,
+      z:npc.z+basis.rz*side*.90-basis.fz*.62,a:npc.yaw,t:this.elapsed});
+     if(npc.treads.length>220)npc.treads.splice(0,20);
+    }
+   }
+  }else{
+   npc.speed+=(0-npc.speed)*Math.min(1,dt*8);
+  }
   // Store positions before the 3D granular solver for reliable portal crossings.
   for(const r of this.resources)if(!r.dead){
    if(!Number.isSafeInteger(r.id))r.id=this.nextResourceId++;
@@ -437,11 +478,36 @@ export class Simulation{
    if(!r.cargoState){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;}
    r.cooldown=Math.max(0,(r.cooldown||0)-dt);
   }
-  this.granular.step(this.resources,dt,p,previous,world);
-  if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  this.granular.step(this.resources,dt,p,previous,world,
+   npcActive?[{body:npc,previous:npcPrevious}]:[]);
+  if(this.granular.obstacleField){
+   this.granular.obstacleField.resolve(p,1.05);
+   if(npcActive)this.granular.obstacleField.resolve(npc,1.05);
+  }
+  // Vehicle bodies are solid against one another. Resolve overlap symmetrically
+  // and remove only inward relative velocity, preserving each driver's intent.
+  if(npcActive){
+   let dx=npc.x-p.x,dz=npc.z-p.z,d2=dx*dx+dz*dz;
+   const min=2.25;
+   if(d2<min*min){
+    const d=Math.sqrt(d2)||.001,nx=dx/d,nz=dz/d,overlap=min-d;
+    p.x-=nx*overlap*.5;p.z-=nz*overlap*.5;
+    npc.x+=nx*overlap*.5;npc.z+=nz*overlap*.5;
+    const pf=headingBasis(p.yaw),nf=headingBasis(npc.yaw);
+    const relative=(npc.speed*nf.fx-p.speed*pf.fx)*nx+
+     (npc.speed*nf.fz-p.speed*pf.fz)*nz;
+    if(relative<0){
+     const impulse=-relative*.32;
+     p.speed-=impulse*(pf.fx*nx+pf.fz*nz);
+     npc.speed+=impulse*(nf.fx*nx+nf.fz*nz);
+    }
+   }
+  }
   constrainToTerrain(p,previous,world.terrain,1.05);
-  // Visual odometer observes actual resolved movement, never drives the physics.
+  if(npcActive)constrainToTerrain(npc,npcPrevious,world.terrain,1.05);
+  // Visual odometers observe actual resolved movement, never drive physics.
   advanceTrackOdometer(p,previous);
+  if(npcActive)advanceTrackOdometer(npc,npcPrevious);
   const impact=Math.min(.085,Math.max(0,this.granular.lastPairs||0)*.004);
   p.bladeBounce=(p.bladeBounce||0)*Math.exp(-dt*9)+impact*(1-Math.exp(-dt*9));
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;

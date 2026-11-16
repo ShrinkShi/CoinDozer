@@ -13,6 +13,11 @@ jobs:
         run: |
           node --check src/main.js
           node --check src/conveyors.js
+          node --check src/npc.js
+          node --check src/physics.js
+          node --check src/granular.js
+          node --check src/activity.js
+          node --check src/vehicle.js
           node --check src/triggers.js
           node tests/v0631_triggers.mjs
           node tests/v064_vehicle.mjs
@@ -22,6 +27,7 @@ jobs:
           node tests/v071_drive.mjs
           node tests/v072_cargo.mjs
           node tests/v073_conveyors.mjs
+          node tests/v074_npc.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -34,7 +40,7 @@ jobs:
           python build.py
           node tests/v0632_bundle_syntax.mjs
           git diff --exit-code -- dist/index.html
-          grep -q 'VIDEO REPLICA · 0.7.3' dist/index.html
+          grep -q 'VIDEO REPLICA · 0.7.4' dist/index.html
 
   browser-smoke:
     runs-on: ubuntu-24.04
@@ -62,3 +68,5 @@ jobs:
         run: python tests/v072_browser.py
       - name: v0.7.3 fixed-conveyor mobile integration
         run: python tests/v073_browser.py
+      - name: v0.7.4 autonomous prototype mobile integration
+        run: python tests/v074_browser.py
