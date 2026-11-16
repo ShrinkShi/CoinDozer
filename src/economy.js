@@ -26,6 +26,11 @@ export const CARGO_LAYOUTS=Object.freeze([
 ]);
 export const CARGO_CAPACITIES=Object.freeze(CARGO_LAYOUTS.map(x=>x.capacity));
 export const CARGO_COSTS=Object.freeze([25,55,110,240]);
+// Each of the five fixed conveyor sites has one build tier and three upgrades.
+// All costs are paid with the same individually carried physical coins.
+export const CONVEYOR_COUNT=5;
+export const BELT_COSTS=Object.freeze([24,60,120,200]);
+export const BELT_LABELS=Object.freeze(['原矿上料','南岸接驳','主桥运输','粉碎机上料','金币出料']);
 export function cargoCapacity(tracks){
  const level=Math.min(CARGO_CAPACITIES.length-1,Math.max(0,Math.floor(tracks?.cargo?.level||0)));
  return CARGO_CAPACITIES[level];
@@ -98,8 +103,9 @@ export function newProgress(raw={}){
  // Cave gate upgrades are saved separately from the four lava-field gates.
  // Missing caveGates is valid for every legacy v0.6.x save.
  const caveGates=Array.from({length:2},(_,i)=>makeTrack(raw.caveGates?.[i]??{},GATE_COSTS));
+ const belts=Array.from({length:CONVEYOR_COUNT},(_,i)=>makeTrack(raw.belts?.[i]??{},BELT_COSTS));
  const selected=TRACK_KEYS.includes(raw.selected)?raw.selected:'chassis';
- return {tracks,gates,caveGates,selected,totalDeposited:nonnegative(raw.totalDeposited)};
+ return {tracks,gates,caveGates,belts,selected,totalDeposited:nonnegative(raw.totalDeposited)};
 }
 export function trackRemaining(track,costs){return track.level<costs.length?Math.max(0,costs[track.level]-track.deposited):0;}
 export function gateFactor(track){return GATE_FACTORS[Math.min(track.level,GATE_FACTORS.length-1)];}

@@ -1,4 +1,5 @@
 import {LONG_MAP} from './mapLayout.js';
+import {CONVEYOR_SITES} from './conveyors.js';
 
 /** Navigational overlay only: no inventory, physics or production side effects.
  * Coordinates come from the same long-map constants as the game colliders.
@@ -14,14 +15,15 @@ export const NAV_TARGETS=Object.freeze([
  {id:'bridgePad',label:'主桥升级',x:LONG_MAP.bridgePad.x,z:LONG_MAP.bridgePad.z},
  {id:'coinPad',label:'金币价值',x:LONG_MAP.coinValuePad.x,z:LONG_MAP.coinValuePad.z},
  {id:'exitPad',label:'北端桥解锁',x:LONG_MAP.exitPad.x,z:LONG_MAP.exitPad.z},
- {id:'exit',label:'冰雪关卡入口',x:LONG_MAP.entry.x,z:LONG_MAP.entry.z}
+ {id:'exit',label:'冰雪关卡入口',x:LONG_MAP.entry.x,z:LONG_MAP.entry.z},
+ ...CONVEYOR_SITES.map(b=>({id:'belt'+b.id,label:'建造：'+b.label,x:b.padX,z:b.padZ}))
 ]);
 export function navigationGoal(sim,choice='auto'){
  if(choice!=='auto'){
   const selected=NAV_TARGETS.find(p=>p.id===choice);
   if(selected)return selected;
  }
- if((sim?.tracks?.exit?.level||0)>0)return NAV_TARGETS.at(-1);
+ if((sim?.tracks?.exit?.level||0)>0)return NAV_TARGETS.find(p=>p.id==='exit');
  if((sim?.crushed||0)>0)return NAV_TARGETS.find(p=>p.id==='vehicle');
  if((sim?.gateHits||0)>0)return NAV_TARGETS.find(p=>p.id==='crusher');
  const id=(sim?.player?.z??-47)<-42?'ore':'gate';
