@@ -130,6 +130,15 @@
  max-width:152px;text-align:center}.world-label.belt-cost{font-size:10px;
  padding:3px 4px;max-width:112px}}
 
+/* v0.7.4: one optional autonomous bulldozer prototype; no economy controls. */
+#npcToggle{border:1px solid #78dceaa0;border-radius:6px;background:#123943e8;
+ color:#d8fbff;padding:6px 3px;font:inherit;font-weight:850;
+ pointer-events:auto;touch-action:manipulation;line-height:1.25}
+#npcToggle[aria-pressed="true"]{background:#0d7280;color:#fff}
+#npcReadout{display:block;text-align:center;white-space:normal;font-size:9px;
+ line-height:1.3;color:#bce8ed;min-height:1.3em}
+@media(max-width:540px){#npcToggle{font-size:9px;padding:5px 1px}#npcReadout{font-size:8px}}
+
 </style>
 </head>
 <body>
@@ -142,7 +151,7 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.3</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.4</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
@@ -151,6 +160,8 @@
       <canvas id="navMap" width="132" height="202" aria-hidden="true"></canvas>
       <button id="navCycle" type="button" title="点击切换导航目标">导航：自动</button>
       <span id="navReadout" aria-live="off">初始矿石</span>
+      <button id="npcToggle" type="button" aria-pressed="false">启动 NPC 样机</button>
+      <span id="npcReadout" aria-live="off">待机：未启动</span>
     </aside>
     <button type="button" id="cameraModeButton" aria-pressed="false" title="切换矿场跟随视角和铲车特写镜头">镜头：全景</button>
     <button type="button" id="telemetryToggle" aria-expanded="false" aria-controls="telemetryPanel" title="经济与性能数据（F3）">数据</button>
@@ -211,12 +222,12 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.3</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.4</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
-        <p>v0.7.3 新增五段固定工位传送带：原矿上料、数字门后南岸接驳、主桥运输、粉碎机上料和金币出料。先在各自绿色工位使用车尾实物金币建造，再逐级升级带宽、速度和输送覆盖长度。</p>
+        <p>v0.7.4 在第一关加入可开关的单台 NPC 铲车技术样机。它会搜索真实矿石、规划经过中央主桥的路线、尝试推料，并在受阻时倒车脱困。样机不雇佣、不收费、不生成资源，也不替代玩家操作。</p>
         <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
-        <p>传送带不是矿石传送门：只向真正接触皮带的独立实体施加前向推力，物体仍须通过数字门、桥梁和粉碎机。金币运输带末端是装车点，仍须玩家把车开来收集并运送至升级台。第二关解锁规则暂时保持不变。</p>
+        <p>传送带仍按 v0.7.4 规则运行。NPC 与玩家共享真实铲斗碰撞、资源实体、冰河屏障和物理调度，不会穿越河面或直接修改矿石坐标。当前只验证一台样机，不代表完整雇佣系统已完成。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>
@@ -393,6 +404,260 @@ function conveyorImpulse(body,belts,dt){
 }
 
 return {CONVEYOR_SITES,beltGeometry,activeConveyors,beltContact,conveyorImpulse};
+})();
+
+// --- npc.js (isolated) ---
+const __m_npc = (()=>{
+'use strict';
+const {clamp: clamp} = __m_math;
+const {headingBasis: headingBasis} = __m_heading;
+/** Single-vehicle autonomy prototype for v0.7.4.
+ * It navigates the existing physical map; it never edits resource positions,
+ * creates inventory, or bypasses the shared granular / river collision solver.
+ */
+
+
+const CELL=2.5, VEHICLE_RADIUS=1.05, PATH_REPLAN=.72;
+const DIRS=Object.freeze([
+ [-1,0,1],[1,0,1],[0,-1,1],[0,1,1],
+ [-1,-1,Math.SQRT2],[-1,1,Math.SQRT2],[1,-1,Math.SQRT2],[1,1,Math.SQRT2]
+]);
+const GRID_CACHE=new WeakMap();
+
+const NPC_STATE_LABELS=Object.freeze({
+ idle:'待机：等待矿石',search:'搜索矿石',approach:'规划路线',push:'推料中',
+ recover:'脱困恢复',blocked:'路线受阻'
+});
+function createNpc(){
+ return {npc:true,enabled:false,x:-8,z:-48,y:0,yaw:Math.PI,speed:0,
+  level:0,bladeLevel:0,speedLevel:0,steeringLevel:0,coinLevel:0,cargoLevel:0,
+  trackLeft:0,trackRight:0,travelDistance:0,bladeBounce:0,
+  state:'idle',targetId:null,targetX:0,targetZ:0,route:[],routeIndex:0,
+  nextPlanAt:0,plannedX:NaN,plannedZ:NaN,stuckFor:0,lastX:-8,lastZ:-48,
+  recoveryUntil:0,recoveries:0,completed:0,ignoredTargets:Object.create(null),
+  treads:[],lastTrail:0};
+}
+function pointSegmentDistanceSq(x,z,o){
+ const dx=o.x2-o.x1,dz=o.z2-o.z1;
+ const t=clamp(((x-o.x1)*dx+(z-o.z1)*dz)/(dx*dx+dz*dz||1),0,1);
+ const px=o.x1+dx*t,pz=o.z1+dz*t;
+ return (x-px)**2+(z-pz)**2;
+}
+function makeGrid(world){
+ const bounds=world.bounds,rivers=world.terrain?.rivers||[],obstacles=world.obstacles||[];
+ const minX=Math.ceil((bounds.minX+VEHICLE_RADIUS)/CELL);
+ const maxX=Math.floor((bounds.maxX-VEHICLE_RADIUS)/CELL);
+ const minZ=Math.ceil((bounds.minZ+VEHICLE_RADIUS)/CELL);
+ const maxZ=Math.floor((bounds.maxZ-VEHICLE_RADIUS)/CELL);
+ const nx=maxX-minX+1,nz=maxZ-minZ+1,blocked=new Uint8Array(nx*nz);
+ for(let iz=0;iz<nz;iz++)for(let ix=0;ix<nx;ix++){
+  const x=(minX+ix)*CELL,z=(minZ+iz)*CELL;
+  let no=false;
+  for(const r of rivers){
+   if(z>=r.zMin-VEHICLE_RADIUS&&z<=r.zMax+VEHICLE_RADIUS){
+    const half=(r.width||0)*.5-VEHICLE_RADIUS-.08;
+    if(half<=0||Math.abs(x-r.x)>half){no=true;break;}
+   }
+  }
+  if(!no)for(const o of obstacles){
+   if((o.height??1)<.8)continue;
+   const reach=VEHICLE_RADIUS+o.radius+.20;
+   const d2=o.type==='segment'?pointSegmentDistanceSq(x,z,o):(x-o.x)**2+(z-o.z)**2;
+   if(d2<reach*reach){no=true;break;}
+  }
+  blocked[iz*nx+ix]=no?1:0;
+ }
+ return {minX,minZ,nx,nz,blocked};
+}
+function gridFor(world){
+ const width=world.terrain?.rivers?.[0]?.width||12;
+ let byWidth=GRID_CACHE.get(world);
+ if(!byWidth){byWidth=new Map();GRID_CACHE.set(world,byWidth);}
+ if(!byWidth.has(width))byWidth.set(width,makeGrid(world));
+ return byWidth.get(width);
+}
+class MinHeap{
+ constructor(){this.items=[];}
+ push(id,score){
+  const a=this.items;let i=a.length;a.push({id,score});
+  while(i){const p=(i-1)>>1;if(a[p].score<=score)break;a[i]=a[p];i=p;}
+  a[i]={id,score};
+ }
+ pop(){
+  const a=this.items;if(!a.length)return null;
+  const root=a[0],last=a.pop();if(a.length){
+   let i=0;
+   while(true){let c=i*2+1;if(c>=a.length)break;
+    if(c+1<a.length&&a[c+1].score<a[c].score)c++;
+    if(a[c].score>=last.score)break;
+    a[i]=a[c];i=c;
+   }
+   a[i]=last;
+  }
+  return root;
+ }
+ get length(){return this.items.length;}
+}
+function octile(ax,az,bx,bz){
+ const dx=Math.abs(ax-bx),dz=Math.abs(az-bz),m=Math.min(dx,dz);
+ return dx+dz+(Math.SQRT2-2)*m;
+}
+function planNpcRoute(world,start,goal,avoid=[]){
+ if(!world?.terrain||!world.bounds)return [];
+ const grid=gridFor(world),{minX,minZ,nx,nz,blocked}=grid;
+ const total=nx*nz;
+ const index=(ix,iz)=>iz*nx+ix;
+ const pos=id=>({x:(minX+id%nx)*CELL,z:(minZ+Math.floor(id/nx))*CELL});
+ const dynamicBlocked=(id)=>{
+  if(blocked[id])return true;
+  const p=pos(id);
+  return avoid.some(a=>a&&Math.hypot(p.x-a.x,p.z-a.z)<2.35&&
+   Math.hypot(p.x-start.x,p.z-start.z)>3.0);
+ };
+ const nearest=(point,allowBlocked=false)=>{
+  let best=-1,score=Infinity;
+  for(let id=0;id<total;id++){
+   if(!allowBlocked&&dynamicBlocked(id))continue;
+   const p=pos(id),d=(p.x-point.x)**2+(p.z-point.z)**2;
+   if(d<score){score=d;best=id;}
+  }
+  return best;
+ };
+ const startId=nearest(start,true),goalId=nearest(goal,false);
+ if(startId<0||goalId<0)return [];
+ if(startId===goalId)return [goal];
+ const g=new Float32Array(total);g.fill(Infinity);
+ const came=new Int32Array(total);came.fill(-1);
+ const closed=new Uint8Array(total),heap=new MinHeap();
+ const end=pos(goalId);g[startId]=0;
+ heap.push(startId,octile(pos(startId).x,pos(startId).z,end.x,end.z));
+ let found=false,visited=0;
+ while(heap.length&&visited++<total*2){
+  const item=heap.pop(),id=item.id;if(closed[id])continue;
+  if(id===goalId){found=true;break;}
+  closed[id]=1;
+  const ix=id%nx,iz=Math.floor(id/nx),current=pos(id);
+  for(const [dx,dz,cost] of DIRS){
+   const x=ix+dx,z=iz+dz;
+   if(x<0||x>=nx||z<0||z>=nz)continue;
+   const next=index(x,z);if(closed[next]||dynamicBlocked(next))continue;
+   if(dx&&dz&&(dynamicBlocked(index(ix+dx,iz))||dynamicBlocked(index(ix,iz+dz))))continue;
+   const candidate=g[id]+cost;
+   if(candidate>=g[next])continue;
+   came[next]=id;g[next]=candidate;
+   const p=pos(next);
+   heap.push(next,candidate+octile(p.x,p.z,end.x,end.z));
+  }
+ }
+ if(!found)return [];
+ const raw=[];for(let id=goalId;id!==startId&&id>=0;id=came[id])raw.push(pos(id));
+ raw.reverse();
+ // Greedy line-of-sight smoothing retains the bridge corridor and obstacle clearance.
+ const clear=(a,b)=>{
+  const distance=Math.hypot(b.x-a.x,b.z-a.z),steps=Math.ceil(distance/.8);
+  for(let i=1;i<steps;i++){
+   const t=i/steps,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t;
+   for(const r of world.terrain.rivers||[]){
+    if(z>=r.zMin-VEHICLE_RADIUS&&z<=r.zMax+VEHICLE_RADIUS&&
+     Math.abs(x-r.x)>(r.width||0)*.5-VEHICLE_RADIUS-.08)return false;
+   }
+   for(const o of world.obstacles||[]){
+    if((o.height??1)<.8)continue;
+    const reach=VEHICLE_RADIUS+o.radius+.20;
+    const d2=o.type==='segment'?pointSegmentDistanceSq(x,z,o):(x-o.x)**2+(z-o.z)**2;
+    if(d2<reach*reach)return false;
+   }
+   for(const a0 of avoid)if(a0&&Math.hypot(x-a0.x,z-a0.z)<2.35)return false;
+  }
+  return true;
+ };
+ const smooth=[];let at=0;
+ while(at<raw.length){
+  let next=raw.length-1;
+  while(next>at+1&&!clear(raw[at],raw[next]))next--;
+  smooth.push(raw[next]);at=next;
+ }
+ return smooth;
+}
+function chooseOre(npc,resources,now){
+ let best=null,bestScore=Infinity;
+ for(const r of resources){
+  if(r.dead||r.kind!=='blue'||r.cargoState||r.z>12||
+   (npc.ignoredTargets[r.id]||0)>now)continue;
+  // Prefer material on the main production corridor and within the bridge aperture.
+  const score=Math.hypot(r.x-npc.x,r.z-npc.z)+Math.abs(r.x)*1.35+
+   Math.max(0,Math.abs(r.x)-3.2)*8;
+  if(score<bestScore){bestScore=score;best=r;}
+ }
+ return best;
+}
+function updateNpc(npc,resources,world,dt,now,player){
+ if(!npc.enabled||world.stage!==0)return {dirX:0,dirZ:0,speed:0};
+ let target=resources.find(r=>!r.dead&&r.id===npc.targetId);
+ if(target&&target.kind!=='blue'){
+  if(target.kind==='gold')npc.completed++;
+  npc.targetId=null;target=null;npc.route.length=0;
+ }
+ if(!target){
+  target=chooseOre(npc,resources,now);
+  if(target){npc.targetId=target.id;npc.state='approach';npc.nextPlanAt=0;}
+ }
+ if(!target){
+  npc.state='idle';npc.speed+=(0-npc.speed)*Math.min(1,dt*5);
+  return {dirX:0,dirZ:0,speed:0};
+ }
+ npc.targetX=target.x;npc.targetZ=target.z;
+ if(now<npc.recoveryUntil){
+  npc.state='recover';
+  const b=headingBasis(npc.yaw);
+  return {dirX:-b.fx,dirZ:-b.fz,speed:2.1,reverse:true};
+ }
+ const b=headingBasis(npc.yaw);
+ const dx=target.x-npc.x,dz=target.z-npc.z;
+ const ahead=dx*b.fx+dz*b.fz,lateral=dx*b.rx+dz*b.rz;
+ const inScoopRange=ahead>1.35&&ahead<4.0&&Math.abs(lateral)<2.25;
+ npc.state=inScoopRange?'push':'approach';
+ const goal={x:clamp(target.x,-2.9,2.9),z:target.z-2.45};
+ const goalMoved=Math.hypot(goal.x-npc.plannedX,goal.z-npc.plannedZ)>1.45;
+ if(now>=npc.nextPlanAt||goalMoved){
+  npc.route=planNpcRoute(world,npc,goal,player?[player]:[]);
+  npc.routeIndex=0;npc.nextPlanAt=now+PATH_REPLAN;
+  npc.plannedX=goal.x;npc.plannedZ=goal.z;
+ }
+ while(npc.routeIndex<npc.route.length-1){
+  const q=npc.route[npc.routeIndex];
+  if(Math.hypot(q.x-npc.x,q.z-npc.z)>1.55)break;
+  npc.routeIndex++;
+ }
+ let tx,tz,desiredSpeed;
+ if(inScoopRange){
+  // Hold the target in front of the bucket; the granular solver supplies the push.
+  tx=clamp(target.x-npc.x,-.9,.9);tz=Math.max(1.1,target.z-npc.z);
+  desiredSpeed=4.8;
+ }else{
+  const q=npc.route[npc.routeIndex]||goal;
+  tx=q.x-npc.x;tz=q.z-npc.z;desiredSpeed=4.15;
+ }
+ const length=Math.hypot(tx,tz)||1;
+ let dirX=tx/length,dirZ=tz/length;
+ const moved=Math.hypot(npc.x-npc.lastX,npc.z-npc.lastZ);
+ if(desiredSpeed>1.5&&moved<Math.max(.025,dt*.12))npc.stuckFor+=dt;
+ else npc.stuckFor=Math.max(0,npc.stuckFor-dt*1.5);
+ npc.lastX=npc.x;npc.lastZ=npc.z;
+ if(npc.stuckFor>1.65){
+  npc.stuckFor=0;npc.recoveries++;
+  npc.recoveryUntil=now+.72;npc.route.length=0;npc.nextPlanAt=0;
+  if(npc.recoveries%3===0){
+   npc.ignoredTargets[target.id]=now+9;npc.targetId=null;
+  }
+  npc.state='recover';
+  const f=headingBasis(npc.yaw);
+  return {dirX:-f.fx,dirZ:-f.fz,speed:2.1,reverse:true};
+ }
+ return {dirX,dirZ,speed:desiredSpeed,reverse:false};
+}
+
+return {NPC_STATE_LABELS,createNpc,planNpcRoute,updateNpc};
 })();
 
 // --- navigation.js (isolated) ---
@@ -1167,6 +1432,24 @@ void main(){
   color=mix(shell,vec3(.63,.94,1.0),clamp(swirl*.88+centerDot*.48,0.,.90));
   color+=pow(max(0.,diffuse),28.)*vec3(.35,.45,.62);
   color+=specular*vec3(.32,.44,.62);
+ }else if(mat>9.5&&mat<10.5){
+  // Layered frozen-water surface: low-frequency cloudy frost, fine grain,
+  // branching-looking cracks and a restrained blue-white glint.
+  vec2 q=vWorld.xz;
+  float cloud=noise(q*.42)*.55+noise(q*1.65)*.30+noise(q*5.1)*.15;
+  float fracture=abs(sin(q.x*1.13+q.y*.77+noise(q*.31)*4.8));
+  float crack=1.-smoothstep(.012,.095,fracture);
+  float fine=sin(q.x*21.0+noise(q*2.3)*3.0)*sin(q.y*18.0);
+  vec3 ice=mix(vTint.rgb*.70,vec3(.88,.97,1.0),clamp(cloud*.62+.12,0.,.78));
+  ice=mix(ice,vec3(.96,.995,1.0),crack*.42);
+  ice+=specular*vec3(.36,.52,.66);
+  ice+=max(0.,fine)*.018;
+  color=ice*(.84+.19*diffuse);
+ }else if(mat>10.5&&mat<11.5){
+  // Brushed steel rollers and machine rails, with a directional micrograin.
+  float grain=.5+.5*sin(vLocal.x*125.0+vLocal.z*9.0);
+  color=vTint.rgb*(.42+.55*diffuse)*( .965+.035*grain);
+  color+=specular*vec3(.72,.78,.82);
  }else{
   color+=specular*.07;
  }
@@ -1489,77 +1772,66 @@ const __m_activity = (()=>{
 const {beltContact: beltContact} = __m_conveyors;
 /**
  * Reusable 2D broadphase for scheduling independent granular bodies.
- * It is rebuilt ONCE per simulation frame, not once per physics substep.
- * Every sleeping body remains a physical object, rendered and eligible for
- * gates, upgrades and later wake-up. No object merging or disappearance.
+ * Rebuilt once per simulation frame. Every sleeping body remains a physical
+ * object, rendered and eligible for later wake-up. No merging or disappearance.
+ * v0.7.4: wake radius follows every active tracked vehicle, including the
+ * optional autonomous prototype, rather than only the human-controlled dozer.
  */
 
-const CELL=2.5;
-const ACTIVE_BUDGET=850;
-const NEAR_RADIUS2=13.5*13.5;
-const WAKE_RADIUS2=19*19;
+const CELL=2.5,ACTIVE_BUDGET=850,NEAR_RADIUS2=13.5*13.5,WAKE_RADIUS2=19*19;
 const key=(x,z)=>x*1024+z;
 class ParticleActivity{
  constructor(budget=ACTIVE_BUDGET){
-  this.budget=budget;
-  this.cells=new Map();
-  this.candidates=[];
-  this.active=[];
-  this.priorities=new Float32Array(0);
-  this.mark=new Uint32Array(0);
-  this.generation=0;
-  this.sleeping=0;
-  this.dropped=0;
+  this.budget=budget;this.cells=new Map();this.candidates=[];this.active=[];
+  this.priorities=new Float32Array(0);this.mark=new Uint32Array(0);
+  this.generation=0;this.sleeping=0;this.dropped=0;
  }
- select(resources,player,conveyors=[]){
+ select(resources,players,conveyors=[]){
+  const actors=(Array.isArray(players)?players:[players]).filter(Boolean);
+  const fallback={x:0,z:0};if(!actors.length)actors.push(fallback);
   const n=resources.length;
   if(this.priorities.length<n){
    const size=Math.max(128,n,this.priorities.length*2);
-   this.priorities=new Float32Array(size);
-   this.mark=new Uint32Array(size);
-   this.generation=0;
+   this.priorities=new Float32Array(size);this.mark=new Uint32Array(size);this.generation=0;
   }
   if(++this.generation===0xffffffff){this.mark.fill(0);this.generation=1;}
   for(const bucket of this.cells.values())bucket.length=0;
   const candidates=this.candidates;candidates.length=0;
   const stamp=this.generation,mark=this.mark,priority=this.priorities;
+  const distanceToActors=(p)=>{
+   let best=Infinity;
+   for(const a of actors){const dx=p.x-a.x,dz=p.z-a.z,d2=dx*dx+dz*dz;if(d2<best)best=d2;}
+   return best;
+  };
   const add=(i,score)=>{
    if(mark[i]===stamp)return;
    mark[i]=stamp;priority[i]=score;candidates.push(i);
   };
   let living=0,attached=0;
   for(let i=0;i<n;i++){
-   const p=resources[i];if(p.dead)continue;
-   living++;
-   // Stored and animated cargo coins remain real living entities, but are
-   // attached to the vehicle/transfer path and never enter granular contacts.
+   const p=resources[i];if(p.dead)continue;living++;
    if(p.cargoState){attached++;continue;}
    const cx=Math.floor(p.x/CELL),cz=Math.floor(p.z/CELL),k=key(cx,cz);
-   let bucket=this.cells.get(k);
-   if(!bucket){bucket=[];this.cells.set(k,bucket);}
+   let bucket=this.cells.get(k);if(!bucket){bucket=[];this.cells.set(k,bucket);}
    bucket.push(i);
-   const dx=p.x-player.x,dz=p.z-player.z,d2=dx*dx+dz*dz;
+   const d2=distanceToActors(p);
    const motion=Math.abs(p.vx||0)+Math.abs(p.vz||0)+Math.abs(p.vy||0);
-   // Never sleep an airborne or moving particle even if it is far away.
    if(motion>.30||(p.y||0)>.025)add(i,d2-motion*6);
-   // Sleeping grains resting on an active conveyor must be woken without
-   // requiring the player to drive nearby. They remain regular rigid bodies.
-   for(const belt of conveyors)if(beltContact(p,belt)){
-    add(i,-1500+d2*.001);break;
-   }
+   for(const belt of conveyors)if(beltContact(p,belt)){add(i,-1500+d2*.001);break;}
   }
-  // Wake resting grains near the shovel using nearby spatial cells.
-  const cx=Math.floor(player.x/CELL),cz=Math.floor(player.z/CELL);
+  // Wake settled material around every active scoop, not just the human player.
   const range=Math.ceil(Math.sqrt(WAKE_RADIUS2)/CELL);
-  for(let x=cx-range;x<=cx+range;x++)for(let z=cz-range;z<=cz+range;z++){
-   const bucket=this.cells.get(key(x,z));if(!bucket)continue;
-   for(const i of bucket){
-    const p=resources[i],dx=p.x-player.x,dz=p.z-player.z,d2=dx*dx+dz*dz;
-    if(d2<NEAR_RADIUS2)add(i,d2-2000);
+  for(const actor of actors){
+   const cx=Math.floor(actor.x/CELL),cz=Math.floor(actor.z/CELL);
+   for(let x=cx-range;x<=cx+range;x++)for(let z=cz-range;z<=cz+range;z++){
+    const bucket=this.cells.get(key(x,z));if(!bucket)continue;
+    for(const i of bucket){
+     const p=resources[i],dx=p.x-actor.x,dz=p.z-actor.z,d2=dx*dx+dz*dz;
+     if(d2<NEAR_RADIUS2)add(i,d2-2000);
+    }
    }
   }
-  // A moving resource wakes nearby settled bodies so it cannot tunnel
-  // directly through a static pile when the vehicle is farther away.
+  // A moving resource wakes neighbours so it cannot tunnel through a sleeping pile.
   const movingCount=candidates.length;
   for(let m=0;m<movingCount&&m<1500;m++){
    const p=resources[candidates[m]];
@@ -1570,18 +1842,15 @@ class ParticleActivity{
     const bucket=this.cells.get(key(x,z));if(!bucket)continue;
     for(const i of bucket){
      const q=resources[i],dx=q.x-p.x,dz=q.z-p.z;
-     if(dx*dx+dz*dz<1.3*1.3)add(i,(q.x-player.x)**2+(q.z-player.z)**2-1000);
+     if(dx*dx+dz*dz<1.3*1.3)add(i,distanceToActors(q)-1000);
     }
    }
   }
-  if(candidates.length>this.budget){
-   candidates.sort((a,b)=>priority[a]-priority[b]);
-  }
+  if(candidates.length>this.budget)candidates.sort((a,b)=>priority[a]-priority[b]);
   this.active.length=0;
   const take=Math.min(this.budget,candidates.length);
   for(let i=0;i<take;i++)this.active.push(candidates[i]);
-  this.attached=attached;
-  this.sleeping=living-this.active.length-attached;
+  this.attached=attached;this.sleeping=living-this.active.length-attached;
   this.dropped=Math.max(0,candidates.length-take);
   return this.active;
  }
@@ -1790,30 +2059,33 @@ class GranularSolver {
     this.obstacleWorld=null;this.obstacleField=null;this.obstacleContacts=0;
   }
 
-  step(resources, dt, player, previousPlayer = player, world=null){
+  step(resources, dt, player, previousPlayer = player, world=null, additionalVehicles=[]){
     if(this.obstacleWorld!==world){
       this.obstacleWorld=world;
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
-    const scheduled=this.activity.select(resources,player,world?.conveyors||[]);
+    const actors=[{body:player,previous:previousPlayer},...additionalVehicles]
+      .filter(actor=>actor?.body&&actor?.previous);
+    const scheduled=this.activity.select(resources,actors.map(actor=>actor.body),world?.conveyors||[]);
     this.lastSleeping=this.activity.sleeping;
     this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
     const passes = Math.max(1, Math.min(3, Math.ceil(dt / .019)));
     const h = dt / passes;
-    for(let s=0;s<passes;s++)this.substep(resources,h,player,previousPlayer,passes);
+    for(let s=0;s<passes;s++)this.substep(resources,h,actors,passes);
   }
 
-  substep(resources, dt, player, previousPlayer, substeps){
+  substep(resources, dt, actors, substeps){
     this.contacts=0;
     this.height=0;
-    const {fx:vx,fz:vz,rx,rz}=headingBasis(player.yaw);
-    const playerDx=player.x-previousPlayer.x,playerDz=player.z-previousPlayer.z;
-    // The lip follows the machine, not an invisible attraction toward the player.
-    const travel=Math.max(0,(playerDx*vx+playerDz*vz)/substeps);
-    const driving=player.speed>.18 && travel>0;
-    const displacement=driving?Math.min(.38,travel*1.5):0;
+    const rigs=actors.map(({body,previous})=>{
+      const {fx:vx,fz:vz,rx,rz}=headingBasis(body.yaw);
+      const travel=Math.max(0,((body.x-previous.x)*vx+(body.z-previous.z)*vz)/substeps);
+      const driving=body.speed>.18&&travel>0;
+      return {player:body,vx,vz,rx,rz,driving,
+       displacement:driving?Math.min(.38,travel*1.5):0};
+    });
     const nowMoving=this.moving;nowMoving.length=0;
     let simulated=0;
     // v0.6.3: active indices were selected ONCE in step(), shared by all
@@ -1838,40 +2110,34 @@ class GranularSolver {
       p.x+=p.vx*dt;p.z+=p.vz*dt;
       p.y+=p.vy*dt;
       if(p.y<0){p.y=0;if(p.vy<0)p.vy= -p.vy*shape.restitution;if(p.vy<.20)p.vy=0;}
-      // Shared seven-segment scoop profile drives both mesh and collision.
-      // Projection is applied only on forward driving/contact, never magnetic.
-      if(driving){
+      // The same bucket shell and collision profile are shared by the human
+      // dozer and the autonomous prototype. Each particle is integrated once;
+      // every active vehicle then contributes only its own real contact.
+      for(const rig of rigs){
+        const player=rig.player,{vx,vz,rx,rz}=rig,displacement=rig.displacement;
         const dx=p.x-player.x,dz=p.z-player.z;
         const ahead=dx*vx+dz*vz,side=dx*rx+dz*rz;
         const bucketWidth=SCOOP_HALF_WIDTH*(1+Math.min(4,player.level)*.055)*(1+.17*Math.min(4,player.bladeLevel||0));
         const centre=p.y+p._halfHeight;
-        if(ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
+        if(rig.driving&&ahead>1.42&&ahead<3.24&&centre<1.62&&Math.abs(side)<bucketWidth+shape.radius){
           const contact=nearestScoopContact(ahead,centre);
           const front=scoopBoundary(clamp(centre,.15,1.38));
-          // The wall constraint catches high-speed particles that crossed the
-          // front lip between ticks; the nearest segment supplies the slope.
           const overlap=front+shape.radius*.35-ahead;
-          if(Math.abs(side)<bucketWidth-.09 && overlap>0){
+          if(Math.abs(side)<bucketWidth-.09&&overlap>0){
             const correction=Math.min(.32,overlap*.85+displacement*.10);
             p.x+=vx*correction;p.z+=vz*correction;
             const rise=Math.min(.115,correction*contact.nUp*.36);
             p.y+=rise;
             const along=p.vx*vx+p.vz*vz;
             const transfer=clamp((player.speed*.90-along)*.58,0,3.25);
-            p.vx+=vx*transfer;
-            p.vz+=vz*transfer;
-            p.vy+=rise*5.0;
+            p.vx+=vx*transfer;p.vz+=vz*transfer;p.vy+=rise*5.0;
             if(p.kind==='gold'){
-              // The scoop induces visible turning, but only after contact.
               p.omegaX+=(side<0?-1:1)*contact.nUp*.26;
               p.omegaZ-=transfer*.27;
             }
           }
-          // Scoop side plates occupy the lower metre. A particle too high
-          // escapes over the plates; lower particles cannot pass straight
-          // through a solid side wall.
           const sideDist=Math.abs(side),normal=side<0?-1:1;
-          if(sideDist>bucketWidth-shape.radius*.85 && centre<1.22){
+          if(sideDist>bucketWidth-shape.radius*.85&&centre<1.22){
             const penetration=shape.radius*.85-Math.abs(sideDist-bucketWidth);
             if(penetration>0){
               const outside=sideDist>bucketWidth;
@@ -1881,8 +2147,7 @@ class GranularSolver {
             }
           }
         }
-        // Block particles from tunnelling through the front of the chassis.
-        if(ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
+        if(centre<2.05&&ahead>-.72&&ahead<1.63&&Math.abs(side)<1.24){
           const back=1.63-ahead;
           p.x+=vx*back*.50;p.z+=vz*back*.50;
           p.vx+=vx*player.speed*.33;p.vz+=vz*player.speed*.33;
@@ -2015,12 +2280,12 @@ const STEEL=[.37,.42,.41,4],STEEL_LIGHT=[.66,.69,.65,4];
 const YELLOW=[1.0,.69,.065,4],YELLOW_LIT=[1,.81,.17,4],YELLOW_DARK=[.75,.44,.037,4];
 function renderVehicle(renderer,player,t,baseY=0){
  const {x,z,yaw}=player,visual=vehicleVisualStyle(player);
- const level=visual.level,advanced=level>=2,upgraded=level>=1;
+ const level=visual.level,advanced=level>=2,upgraded=level>=1,npc=player.npc===true;
  const size=visual.scale,bladeScale=visual.bladeScale;
  const bladeLift=Math.min(.07,Math.max(0,player.bladeBounce||0));
- const blade=level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
- const bladeEdge=level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
- const hood=level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
+ const blade=npc?[.12,.72,.88,4]:level>=4?[.99,.82,.17,4]:level>=3?[.70,.39,.91,4]:advanced?[.24,.69,.82,4]:YELLOW;
+ const bladeEdge=npc?[.055,.39,.54,4]:level>=4?[.66,.47,.12,4]:level>=3?[.37,.18,.63,4]:advanced?[.11,.42,.54,4]:YELLOW_DARK;
+ const hood=npc?[.055,.42,.55,4]:level>=4?[.24,.28,.34,4]:level>=3?[.23,.44,.76,4]:advanced?[.92,.44,.25,4]:YELLOW;
  const {fx,fz,rx,rz}=headingBasis(yaw);
  function part(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
   // Match the movement/physical blade convention: local -Z is FORWARD.
@@ -2028,6 +2293,7 @@ function renderVehicle(renderer,player,t,baseY=0){
   renderer.add(mesh,xx,ly*size+baseY,zz,sx*size,sy*size,sz*size,color,modelYaw(yaw)+a,p,roll,opacity);
  }
  part('shadow',0,.093,.32,6.3,1,6.9,[0,0,0,8]);
+ if(npc)part('shadow',0,.088,.45,4.1,1,5.6,[0,0,0,8]);
  function bladePart(mesh,lx,ly,lz,sx,sy,sz,color,a=0,p=0,roll=0,opacity=1){
   // Blade motion follows contact damping, less than 7 cm from collision shell.
   part(mesh,lx*bladeScale,ly+bladeLift,lz,sx*bladeScale,sy,sz,color,a,p,roll,opacity);
@@ -2102,6 +2368,13 @@ function renderVehicle(renderer,player,t,baseY=0){
  part('box',.48,1.90,.21,.23,.42,.30,hood);
  part('cylinder',0,1.58,-.12,.65,.09,.65,RUBBER,0,.65,0);
  part('box',0,1.18,-.46,.55,.08,.42,STEEL);
+ if(npc){
+  // Cyan roof beacon identifies the autonomous prototype without changing
+  // its collision shell, dimensions or performance upgrades.
+  part('cylinder',0,2.78,.63,.20,.25,.20,STEEL_LIGHT,0,0,Math.PI/2);
+  part('sphere',0,3.02,.63,.25,.22,.25,[.10,.84,.98,3],t*2.1);
+  part('box',0,1.72,-1.05,.92,.13,.14,[.12,.75,.88,4]);
+ }
  // Exhaust with hollow dark top, hydraulic booms mounted to sidewalls.
  part('cylinder',.68,1.92,1.02,.25,1.31,.25,STEEL);
  part('cylinder',.68,2.61,1.02,.33,.13,.33,RUBBER);
@@ -2286,7 +2559,7 @@ const {configureTerrain: configureTerrain} = __m_terrain;
 
 
 const PALETTE={
- dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
+ dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36,11],ice:[.40,.70,.85,10],iceLight:[.72,.90,.97,10],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 class World{
  constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.conveyorStations=[];this.conveyors=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
@@ -2309,11 +2582,11 @@ class World{
   // Two ice rivers are both visible and physically impassable off bridge.
   for(const river of [M.river1,M.river2]){
    const depth=river.halfDepth*2;
-   this.add('box',0,.085,river.z,70,.12,depth,[.40,.70,.85,4]);
-   this.add('box',0,.155,river.z,70,.022,depth-.4,[.72,.90,.97,4]);
+   this.add('box',0,.085,river.z,70,.12,depth,PALETTE.ice);
+   this.add('box',0,.155,river.z,70,.022,depth-.4,PALETTE.iceLight);
    for(let i=-32;i<=32;i+=4)this.add('box',i,.171,
     river.z+Math.sin(i*.8)*2.8,this.n(.65,1.9),.011,.075,
-    [.93,.99,1,4],this.n(-.5,.5));
+    [.93,.99,1,10],this.n(-.5,.5));
   }
   // One and only one double-sided ore multiplier (gate id 0).
   const gate={id:0,x:M.digitGate.x,z:M.digitGate.z,
@@ -2641,6 +2914,9 @@ const {INFRA_COSTS: INFRA_COSTS} = __m_economy;
 const {crusherYield: crusherYield} = __m_economy;
 const {LONG_MAP: LONG_MAP} = __m_mapLayout;
 const {constrainToTerrain: constrainToTerrain} = __m_terrain;
+const {createNpc: createNpc} = __m_npc;
+const {updateNpc: updateNpc} = __m_npc;
+
 
 
 
@@ -2687,6 +2963,7 @@ class Simulation{
   this.coinsSpent={vehicle:0,gate:0,feature:0,belt:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
   this.cargoTransfers=[];this.cargoPickupRadius=CARGO_PICKUP_RADIUS;
+  this.npc=createNpc();
   this.restoreCargo(progress);
   this.liveCount=this.countLiving();this.activeCount=this.liveCount;
  }
@@ -3045,6 +3322,7 @@ class Simulation{
   this.elapsed+=dt;
   if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks,this.beltTracks);
   const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
+  const npc=this.npc,npcPrevious={x:npc.x,z:npc.z,yaw:npc.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
   if(goal>.1){
@@ -3072,6 +3350,40 @@ class Simulation{
     if(this.treads.length>700)this.treads.splice(0,25);
    }
   }
+  // One optional NPC sample uses the same chassis movement, terrain barriers,
+  // track odometer and granular scoop shell as the human-controlled vehicle.
+  const npcActive=this.stage===0&&npc.enabled;
+  const command=updateNpc(npc,this.resources,world,dt,this.elapsed,p);
+  if(npcActive){
+   if(!command.reverse&&Math.hypot(command.dirX,command.dirZ)>.01){
+    const targetYaw=Math.atan2(command.dirX,-command.dirZ);
+    const delta=Math.atan2(Math.sin(targetYaw-npc.yaw),Math.cos(targetYaw-npc.yaw));
+    npc.yaw+=clamp(delta,-dt*2.35,dt*2.35);
+    const error=Math.atan2(Math.sin(targetYaw-npc.yaw),Math.cos(targetYaw-npc.yaw));
+    const alignment=Math.max(0,Math.cos(error));
+    const desired=command.speed*alignment;
+    npc.speed+=(desired-npc.speed)*Math.min(1,dt*6.8);
+    if(alignment<.03)npc.speed*=.72;
+   }else{
+    const desired=command.reverse?-command.speed:0;
+    npc.speed+=(desired-npc.speed)*Math.min(1,dt*7.5);
+   }
+   const basis=headingBasis(npc.yaw),npcStep=npc.speed*dt;
+   npc.x=clamp(npc.x+basis.fx*npcStep,bounds.minX+1.05,bounds.maxX-1.05);
+   npc.z=clamp(npc.z+basis.fz*npcStep,bounds.minZ+1.05,bounds.maxZ-1.05);
+   constrainToTerrain(npc,npcPrevious,world.terrain,1.05);
+   if(Math.abs(npc.speed)>.8){
+    npc.lastTrail+=Math.abs(npcStep);
+    if(npc.lastTrail>.38){
+     npc.lastTrail=0;
+     for(const side of [-1,1])npc.treads.push({x:npc.x+basis.rx*side*.90-basis.fx*.62,
+      z:npc.z+basis.rz*side*.90-basis.fz*.62,a:npc.yaw,t:this.elapsed});
+     if(npc.treads.length>220)npc.treads.splice(0,20);
+    }
+   }
+  }else{
+   npc.speed+=(0-npc.speed)*Math.min(1,dt*8);
+  }
   // Store positions before the 3D granular solver for reliable portal crossings.
   for(const r of this.resources)if(!r.dead){
    if(!Number.isSafeInteger(r.id))r.id=this.nextResourceId++;
@@ -3079,11 +3391,36 @@ class Simulation{
    if(!r.cargoState){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;}
    r.cooldown=Math.max(0,(r.cooldown||0)-dt);
   }
-  this.granular.step(this.resources,dt,p,previous,world);
-  if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
+  this.granular.step(this.resources,dt,p,previous,world,
+   npcActive?[{body:npc,previous:npcPrevious}]:[]);
+  if(this.granular.obstacleField){
+   this.granular.obstacleField.resolve(p,1.05);
+   if(npcActive)this.granular.obstacleField.resolve(npc,1.05);
+  }
+  // Vehicle bodies are solid against one another. Resolve overlap symmetrically
+  // and remove only inward relative velocity, preserving each driver's intent.
+  if(npcActive){
+   let dx=npc.x-p.x,dz=npc.z-p.z,d2=dx*dx+dz*dz;
+   const min=2.25;
+   if(d2<min*min){
+    const d=Math.sqrt(d2)||.001,nx=dx/d,nz=dz/d,overlap=min-d;
+    p.x-=nx*overlap*.5;p.z-=nz*overlap*.5;
+    npc.x+=nx*overlap*.5;npc.z+=nz*overlap*.5;
+    const pf=headingBasis(p.yaw),nf=headingBasis(npc.yaw);
+    const relative=(npc.speed*nf.fx-p.speed*pf.fx)*nx+
+     (npc.speed*nf.fz-p.speed*pf.fz)*nz;
+    if(relative<0){
+     const impulse=-relative*.32;
+     p.speed-=impulse*(pf.fx*nx+pf.fz*nz);
+     npc.speed+=impulse*(nf.fx*nx+nf.fz*nz);
+    }
+   }
+  }
   constrainToTerrain(p,previous,world.terrain,1.05);
-  // Visual odometer observes actual resolved movement, never drives the physics.
+  if(npcActive)constrainToTerrain(npc,npcPrevious,world.terrain,1.05);
+  // Visual odometers observe actual resolved movement, never drive physics.
   advanceTrackOdometer(p,previous);
+  if(npcActive)advanceTrackOdometer(npc,npcPrevious);
   const impact=Math.min(.085,Math.max(0,this.granular.lastPairs||0)*.004);
   p.bladeBounce=(p.bladeBounce||0)*Math.exp(-dt*9)+impact*(1-Math.exp(-dt*9));
   this.physics.contacts=this.granular.lastPairs+(this.granular.obstacleContacts||0);this.physics.height=this.granular.height;
@@ -3216,6 +3553,8 @@ const {BELT_LABELS: BELT_LABELS} = __m_economy;
 const {mainBridgeWidth: mainBridgeWidth} = __m_mapLayout;
 const {NAV_TARGETS: NAV_TARGETS} = __m_navigation;
 const {drawNavigation: drawNavigation} = __m_navigation;
+const {NPC_STATE_LABELS: NPC_STATE_LABELS} = __m_npc;
+
 
 
 
@@ -3255,6 +3594,8 @@ const stageInfo=document.getElementById('stageInfo');
 const navHud=document.getElementById('navHud');
 const navCycle=document.getElementById('navCycle');
 const navReadout=document.getElementById('navReadout');
+const npcToggle=document.getElementById('npcToggle');
+const npcReadout=document.getElementById('npcReadout');
 const navContext=document.getElementById('navMap').getContext('2d');
 let navChoice='auto';
 const qualityController=new AdaptiveQuality(
@@ -3273,6 +3614,19 @@ navCycle.addEventListener('click',()=>{
  const targets=['auto',...NAV_TARGETS.map(t=>t.id)];
  navChoice=targets[(targets.indexOf(navChoice)+1)%targets.length];
  updateNavigation();
+});
+npcToggle.addEventListener('click',()=>{
+ if(!sim||stage!==0)return;
+ sim.npc.enabled=!sim.npc.enabled;
+ sim.npc.speed=0;
+ if(sim.npc.enabled){
+  sim.npc.state='search';sim.npc.targetId=null;sim.npc.route.length=0;
+  sim.npc.nextPlanAt=0;sim.npc.stuckFor=0;
+  toast('NPC 样机已启动：正在寻找矿石并规划主桥路线',3.2);
+ }else{
+  sim.npc.state='idle';toast('NPC 样机已停用',2);
+ }
+ updateUI();updateNavigation();
 });
 function toggleTelemetry(force){
  const open=force===undefined?telemetryPanel.hidden:Boolean(force);
@@ -3448,6 +3802,12 @@ function updateUI(){
  if(!sim)return;
  document.getElementById('score').textContent=formatNum(sim.crushed);
  document.getElementById('cargoCount').textContent=`${formatNum(sim.cargoCount())}/${formatNum(sim.cargoCapacity())}`;
+ npcToggle.hidden=stage!==0;npcToggle.disabled=stage!==0;
+ npcToggle.setAttribute('aria-pressed',String(stage===0&&sim.npc.enabled));
+ npcToggle.textContent=sim.npc.enabled?'停止 NPC 样机':'启动 NPC 样机';
+ npcReadout.textContent=sim.npc.enabled?
+  (NPC_STATE_LABELS[sim.npc.state]||sim.npc.state)+` · 完成 ${sim.npc.completed} / 脱困 ${sim.npc.recoveries}`:
+  '待机：未启动';
  const builtBeltCount=sim.beltTracks.filter(b=>b.level>0).length;
  const beltStatus=document.getElementById('beltStatus');
  beltStatus.hidden=stage!==0;
@@ -3484,7 +3844,7 @@ function updateUI(){
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已加工冰晶 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':sim.npc.enabled?'NPC 样机正在尝试自动推料；玩家仍可正常驾驶':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
 }
 function positionLabels(){
  for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...beltLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
@@ -3569,6 +3929,10 @@ function drawFrame(t){
   renderTreads(renderer,sim.treads,stage);
   visibleResources=renderResources(renderer,sim.resources,sim.elapsed,renderer.camera,stage);
   renderVehicle(renderer,sim.player,clocks);
+  if(stage===0&&sim.npc.enabled){
+   renderTreads(renderer,sim.npc.treads,stage);
+   renderVehicle(renderer,sim.npc,clocks);
+  }
   drawEffects();renderer.end();positionLabels();
   if(Math.floor(clocks*6)!==Math.floor((clocks-dt)*6))updateUI();
  if(Math.floor(clocks*4)!==Math.floor((clocks-dt)*4))updateNavigation();

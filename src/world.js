@@ -7,7 +7,7 @@ import {LONG_MAP,mainBridgeWidth} from './mapLayout.js';
 import {CONVEYOR_SITES,activeConveyors} from './conveyors.js';
 import {configureTerrain} from './terrain.js';
 export const PALETTE={
- dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
+ dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36,11],ice:[.40,.70,.85,10],iceLight:[.72,.90,.97,10],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 export class World{
  constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.conveyorStations=[];this.conveyors=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
@@ -30,11 +30,11 @@ export class World{
   // Two ice rivers are both visible and physically impassable off bridge.
   for(const river of [M.river1,M.river2]){
    const depth=river.halfDepth*2;
-   this.add('box',0,.085,river.z,70,.12,depth,[.40,.70,.85,4]);
-   this.add('box',0,.155,river.z,70,.022,depth-.4,[.72,.90,.97,4]);
+   this.add('box',0,.085,river.z,70,.12,depth,PALETTE.ice);
+   this.add('box',0,.155,river.z,70,.022,depth-.4,PALETTE.iceLight);
    for(let i=-32;i<=32;i+=4)this.add('box',i,.171,
     river.z+Math.sin(i*.8)*2.8,this.n(.65,1.9),.011,.075,
-    [.93,.99,1,4],this.n(-.5,.5));
+    [.93,.99,1,10],this.n(-.5,.5));
   }
   // One and only one double-sided ore multiplier (gate id 0).
   const gate={id:0,x:M.digitGate.x,z:M.digitGate.z,
