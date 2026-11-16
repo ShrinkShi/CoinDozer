@@ -87,6 +87,8 @@ const near=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
  assert.ok(crossedGate,'NPC must deliver ore through the real multiplier');
  assert.ok(crossedBridge,'NPC and target must cross the real bridge');
  assert.ok(crushed,'NPC must push real ore into the crusher');
+ // The AI observes the crusher's ore→gold state transition on the next tick.
+ sim.update(.044,0,0,world);
  assert.ok(sim.npc.completed>=1,'NPC records one completed physical delivery');
  assert.ok(sim.telemetry.totals.goldProduced>=3,'only the crusher creates physical coins');
  assert.ok(sim.resources.every(r=>r.dead||
