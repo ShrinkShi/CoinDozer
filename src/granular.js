@@ -14,6 +14,7 @@ import {headingBasis} from './heading.js';
 import {nearestScoopContact,SCOOP_HALF_WIDTH,SCOOP_PROFILE} from './scoop.js';
 import {StaticCollisionField} from './collisions.js';
 import {ParticleActivity} from './activity.js';
+import {conveyorImpulse} from './conveyors.js';
 export const PARTICLE_SHAPES = Object.freeze({
   blue: {radius: .285, halfHeight: .285, drag: 3.4, restitution: .23},
   gold: {radius: .350, halfHeight: .140, drag: 4.7, restitution: .10},
@@ -89,7 +90,7 @@ export class GranularSolver {
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
-    const scheduled=this.activity.select(resources,player);
+    const scheduled=this.activity.select(resources,player,world?.conveyors||[]);
     this.lastSleeping=this.activity.sleeping;
     this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
@@ -123,6 +124,9 @@ export class GranularSolver {
       p._halfHeight=particleHalfHeight(p);
       const drag=Math.exp(-shape.drag*dt*(onGround?1:.17));
       p.vx*=drag;p.vz*=drag;
+      // Belt friction changes an individual particle's velocity only.
+      // Normal granular integration, collisions and terrain restrictions follow.
+      conveyorImpulse(p,this.obstacleWorld?.conveyors,dt);
       p.vy-=GRAVITY*dt;
       p.prevX=p.x;p.prevZ=p.z;p.prevY=p.y;
       p.x+=p.vx*dt;p.z+=p.vz*dt;

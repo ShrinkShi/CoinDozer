@@ -17,10 +17,11 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.2</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.3</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
+    <div id="beltStatus" class="belt-status" aria-live="off">固定传送带 0/5 · 绿色工位投币建设</div>
     <aside id="navHud" class="nav-hud" aria-label="冰河矿场位置和行驶目标">
       <canvas id="navMap" width="132" height="202" aria-hidden="true"></canvas>
       <button id="navCycle" type="button" title="点击切换导航目标">导航：自动</button>
@@ -67,6 +68,11 @@
       <div id="label-gatecost-2" class="world-label gate-cost">还需 12</div>
       <div id="label-gatecost-3" class="world-label gate-cost">还需 12</div>
 
+      <div id="label-belt-0" class="world-label belt-cost">原矿上料 · 建造需 24</div>
+      <div id="label-belt-1" class="world-label belt-cost">南岸接驳 · 建造需 24</div>
+      <div id="label-belt-2" class="world-label belt-cost">主桥运输 · 建造需 24</div>
+      <div id="label-belt-3" class="world-label belt-cost">粉碎机上料 · 建造需 24</div>
+      <div id="label-belt-4" class="world-label belt-cost">金币出料 · 建造需 24</div>
       <div id="label-cost" class="world-label cost">30</div>
       <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
       <div id="label-feature-crusher" class="world-label feature">粉碎门 还需 35</div>
@@ -80,12 +86,12 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.2</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.3</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
-        <p>v0.7.2 在原有升级基础上新增货箱容量升级。金币必须先进入货箱，再由车辆运往指定升级台；只有飞抵有效站台才会被消耗。</p>
+        <p>v0.7.3 新增五段固定工位传送带：原矿上料、数字门后南岸接驳、主桥运输、粉碎机上料和金币出料。先在各自绿色工位使用车尾实物金币建造，再逐级升级带宽、速度和输送覆盖长度。</p>
         <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
-        <p>v0.7.2：金币靠近铲车后会飞入车尾开放货箱；货箱内的金币仍是独立实体，随车辆移动。靠近有效升级台后，金币会逐枚飞出，抵达站台才完成支付。货箱容量可在北岸车辆改装台升级为 20、40、70、110 或 160 枚。动画中断或刷新时，未完成支付的金币会恢复到货箱，不会重复扣款。</p>
+        <p>传送带不是矿石传送门：只向真正接触皮带的独立实体施加前向推力，物体仍须通过数字门、桥梁和粉碎机。金币运输带末端是装车点，仍须玩家把车开来收集并运送至升级台。第二关解锁规则暂时保持不变。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>

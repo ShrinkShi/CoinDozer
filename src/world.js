@@ -3,13 +3,14 @@ import {renderVehicle} from './vehicle.js';
 import {MAX_VEHICLE_LEVEL,SUPPLY} from './economy.js';
 import {boxTrigger} from './triggers.js';
 import {sceneRules} from './sceneRules.js';
-import {LONG_MAP} from './mapLayout.js';
+import {LONG_MAP,mainBridgeWidth} from './mapLayout.js';
+import {CONVEYOR_SITES,activeConveyors} from './conveyors.js';
 import {configureTerrain} from './terrain.js';
 export const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 export class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
+ constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.conveyorStations=[];this.conveyors=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
  addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.obstacles.push({type:'circle',x,z,radius:r*.79,height:r*1.3});this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
@@ -17,7 +18,7 @@ export class World{
  make(stage){
   if(stage===1){this.makeBonus();return;}
   const M=LONG_MAP;
-  this.sites={gates:[],gateCosts:[],features:{}};
+  this.sites={gates:[],gateCosts:[],beltCosts:[],features:{}};
   this.add('box',0,-.98,0,71,1.8,111,PALETTE.dirtEdge);
   this.add('box',0,-.06,0,70,.2,110,PALETTE.dirt);
   for(let i=0;i<70;i++){
@@ -57,6 +58,18 @@ export class World{
   this.featureStations.crusher=install('crusher',M.crusherPad,[.83,.49,.21]);
   this.featureStations.bridge=install('bridge',M.bridgePad,[.50,.76,.95]);
   this.featureStations.exit=install('exit',M.exitPad,[.75,.84,.96]);
+  // A paid building pad is permanently anchored near each of the five belt
+  // routes. The pad is not a transporter and does not itself consume resources.
+  for(const belt of CONVEYOR_SITES){
+   const x=belt.padX,z=belt.padZ;
+   const trigger=boxTrigger(x,z,2.4,1.25,.36);
+   this.conveyorStations.push({id:belt.id,x,z,vehicleRadius:4.7,trigger});
+   this.sites.beltCosts.push({id:belt.id,x,y:.75,z});
+   this.add('box',x,.145,z,5.15,.20,2.85,[.20,.64,.49,4]);
+   this.add('box',x,.27,z,4.8,.09,2.55,[.11,.18,.22,4]);
+   for(const side of [-1,1])
+    this.add('box',x+side*2.48,.4,z,.15,.26,2.7,[.21,.95,.73,4]);
+  }
   // The crusher is directly aligned with the central bridge head.
   const c=M.crusher;
   this.crusher={x:c.x,z:c.z,halfWidth:c.halfWidth,halfDepth:c.halfDepth,
@@ -100,7 +113,10 @@ export class World{
     this.n(.22,.6),z>40?[.86,.94,.98]:PALETTE.rockShade);
   }
  }
- syncInfrastructure(tracks){configureTerrain(this,tracks);}
+ syncInfrastructure(tracks,belts=[]){
+  configureTerrain(this,tracks);
+  this.conveyors=this.stage===0?activeConveyors(belts,mainBridgeWidth(tracks)):[];
+ }
  frameGate(gate){const {x,z,half,multiplier,id}=gate;
   const cave=this.stage===1;
   for(const side of [-1,1]){let px=x+side*half;
@@ -216,6 +232,34 @@ export class World{
     for(const side of [-1,1])
      renderer.add('box',deck.x+side*(deck.width*.5-.08),.51,deck.z,
       .12,.19,deck.depth,[.63,.49,.36,4]);
+   }
+   // Built conveyors are visible moving machinery. The visual rollers run
+   // with the very same speed used by the actual velocity contact solver.
+   for(const belt of this.conveyors){
+    const horizontal=belt.axis==='x',length=belt.max-belt.min;
+    const y=belt.deckY,centre=belt.axis==='z'?belt.z:belt.x;
+    renderer.add('box',belt.x,y,belt.z,horizontal?length:belt.width,.16,
+     horizontal?belt.width:length,[.15,.22,.25,5]);
+    renderer.add('box',belt.x,y+.105,belt.z,horizontal?length-.16:belt.width-.16,
+     .055,horizontal?belt.width-.16:length-.16,[.24,.30,.31,5]);
+    for(const side of [-1,1]){
+     renderer.add('box',horizontal?belt.x:belt.x+side*belt.width*.52,y+.19,
+      horizontal?belt.z+side*belt.width*.52:belt.z,
+      horizontal?length:.13,.14,horizontal?.13:length,[.90,.61,.14,4]);
+    }
+    const stripes=Math.min(26,Math.max(5,Math.ceil(length/1.3)));
+    for(let i=0;i<stripes;i++){
+     const travel=((i/stripes*length+t*belt.speed*.36)%length+length)%length;
+     const v=belt.min+travel;
+     renderer.add('box',horizontal?v:belt.x,y+.15,horizontal?belt.z:v,
+      horizontal?.23:belt.width*.81,.042,horizontal?belt.width*.81:.23,
+      [.65,.78,.65,4]);
+    }
+    for(const pos of [belt.min,belt.max]){
+     renderer.add('cylinder',horizontal?pos:belt.x,y+.09,horizontal?belt.z:pos,
+      .32,belt.width+.18,.32,[.42,.46,.44,4],horizontal?0:Math.PI/2,0,
+      horizontal?Math.PI/2:0);
+    }
    }
    const N=renderer.quality?.decorationStep||1;
    for(let i=-9;i<10;i+=N){
