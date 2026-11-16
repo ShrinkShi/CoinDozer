@@ -71,7 +71,7 @@ with sync_playwright() as p:
   s.update(.044,0,0,w);
   return ore.z>-40;
  }""")
- assert traveled,'a purchased belt must move an independent ore in real physics
+ assert traveled,'a purchased belt must move an independent ore in real physics'
  assert page.locator('#beltStatus').inner_text().startswith('固定传送带 1/5')
  # Legacy second map doesn't run or pay these first-stage machines.
  page.evaluate("window.__v073.loadScene(1,true)")
