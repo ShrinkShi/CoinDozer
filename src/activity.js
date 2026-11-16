@@ -4,6 +4,7 @@
  * Every sleeping body remains a physical object, rendered and eligible for
  * gates, upgrades and later wake-up. No object merging or disappearance.
  */
+import {beltContact} from './conveyors.js';
 const CELL=2.5;
 const ACTIVE_BUDGET=850;
 const NEAR_RADIUS2=13.5*13.5;
@@ -21,7 +22,7 @@ export class ParticleActivity{
   this.sleeping=0;
   this.dropped=0;
  }
- select(resources,player){
+ select(resources,player,conveyors=[]){
   const n=resources.length;
   if(this.priorities.length<n){
    const size=Math.max(128,n,this.priorities.length*2);
@@ -52,6 +53,11 @@ export class ParticleActivity{
    const motion=Math.abs(p.vx||0)+Math.abs(p.vz||0)+Math.abs(p.vy||0);
    // Never sleep an airborne or moving particle even if it is far away.
    if(motion>.30||(p.y||0)>.025)add(i,d2-motion*6);
+   // Sleeping grains resting on an active conveyor must be woken without
+   // requiring the player to drive nearby. They remain regular rigid bodies.
+   for(const belt of conveyors)if(beltContact(p,belt)){
+    add(i,-1500+d2*.001);break;
+   }
   }
   // Wake resting grains near the shovel using nearby spatial cells.
   const cx=Math.floor(player.x/CELL),cz=Math.floor(player.z/CELL);

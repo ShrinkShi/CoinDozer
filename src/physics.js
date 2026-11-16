@@ -2,7 +2,7 @@ import {clamp,TAU} from './math.js';
 import {createResourceLayout} from './world.js';
 import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
-import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate,cargoCapacity as getCargoCapacity} from './economy.js';
+import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,BELT_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate,cargoCapacity as getCargoCapacity} from './economy.js';
 import {EconomyTelemetry} from './telemetry.js';
 import {insideTrigger,crossedGatePlane} from './triggers.js';
 import {advanceTrackOdometer,cargoSlotPose} from './vehicleRig.js';
@@ -26,7 +26,8 @@ export class Simulation{
   for(const resource of this.resources)resource.id=this.nextResourceId++;
   this.elapsed=0;this.lastGate=-20;
   const loaded=newProgress(progress);
-  this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;this.selectedUpgrade=loaded.selected;
+  this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;
+  this.beltTracks=loaded.belts;this.selectedUpgrade=loaded.selected;
   this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
   this.totalDeposited=loaded.totalDeposited;
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
@@ -41,7 +42,7 @@ export class Simulation{
    trackLeft:0,trackRight:0,travelDistance:0,
    bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
-  this.coinsSpent={vehicle:0,gate:0,feature:0};this.stageExitIssued=false;
+  this.coinsSpent={vehicle:0,gate:0,feature:0,belt:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
   this.cargoTransfers=[];this.cargoPickupRadius=CARGO_PICKUP_RADIUS;
   this.restoreCargo(progress);
@@ -101,6 +102,10 @@ export class Simulation{
   if(station==='gate'){
    if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='belt'){
+   if(this.stage!==0||!Number.isInteger(gateId)||gateId<0||
+      gateId>=this.beltTracks.length)return false;
+   progress=this.beltTracks[gateId];costs=BELT_COSTS;
   }else if(station==='feature'){
    if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
    progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
@@ -126,6 +131,10 @@ export class Simulation{
    }
    if(world.coinStation&&near(world.coinStation)&&this.canPayCoin('coin','feature'))
     return target(world.coinStation,'feature','coin');
+  }
+  for(const pad of world.conveyorStations||[]){
+   if(near(pad)&&this.canPayCoin(null,'belt',pad.id))
+    return target(pad,'belt',null,pad.id);
   }
   if(world.upgradeStation&&near(world.upgradeStation)&&
      this.canPayCoin(this.selectedUpgrade,'vehicle'))
@@ -290,6 +299,10 @@ export class Simulation{
   if(station==='gate'){
    if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='belt'){
+   if(this.stage!==0||!Number.isInteger(gateId)||gateId<0||
+      gateId>=this.beltTracks.length)return false;
+   progress=this.beltTracks[gateId];costs=BELT_COSTS;
   }else if(station==='feature'){
    if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
    progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
@@ -308,6 +321,11 @@ export class Simulation{
   if(station==='gate'){
    this.emit('deposit',{station:'gate',id:gateId,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    if(result.upgrades)this.emit('gateUpgrade',{id:gateId,factor:gateFactor(progress),level:result.level});
+  }else if(station==='belt'){
+   this.emit('deposit',{station:'belt',id:gateId,credits:result.spent,
+    remaining:result.remaining,x:r.x,z:r.z});
+   if(result.upgrades)this.emit('beltUpgrade',{id:gateId,level:result.level,
+    remaining:result.remaining});
   }else{
    this.emit('deposit',{station:station==='feature'?'feature':'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    this.level=this.tracks.chassis.level;
@@ -383,7 +401,7 @@ export class Simulation{
  update(dt,dirX,dirZ,world){
   dt=clamp(dt,0,.044);if(!dt)return;
   this.elapsed+=dt;
-  if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks);
+  if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks,this.beltTracks);
   const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;

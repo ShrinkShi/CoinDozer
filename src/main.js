@@ -8,7 +8,7 @@ import {MAX_VEHICLE_LEVEL,TRACK_KEYS,TRACK_LABELS,TRACK_COSTS,GATE_COSTS,gateFac
 import {wheelZoom,pinchZoom,pointerDistance} from './cameraZoom.js';
 import {AdaptiveQuality,QUALITY_NAMES} from './quality.js';
 import {sceneRules,paymentValue} from './sceneRules.js';
-import {INFRA_COSTS,INFRA_LABELS,crusherYield} from './economy.js';
+import {INFRA_COSTS,INFRA_LABELS,crusherYield,BELT_COSTS,BELT_LABELS} from './economy.js';
 import {mainBridgeWidth} from './mapLayout.js';
 import {NAV_TARGETS,drawNavigation} from './navigation.js';
 
@@ -19,6 +19,7 @@ const toastElement=document.getElementById('toast');
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
 const gateCostLabels=Array.from({length:4},(_,id)=>document.getElementById('label-gatecost-'+id));
 const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-gate-'+id));
+const beltLabels=Array.from({length:5},(_,id)=>document.getElementById('label-belt-'+id));
 const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade')};
 const featureLabels=Object.fromEntries(['crusher','bridge','exit','coin'].map(
  key=>[key,document.getElementById('label-feature-'+key)]));
@@ -123,6 +124,7 @@ function saveProgress(){
    tracks:sim.tracks,
    gates:stage===0?sim.gateTracks:previous.gates,
    caveGates:stage===1?sim.gateTracks:previous.caveGates,
+   belts:stage===0?sim.beltTracks:previous.belts,
    cargoByStage,
    selected:sim.selectedUpgrade,totalDeposited:sim.totalDeposited,stage
   };
@@ -135,7 +137,7 @@ function loadScene(s,preserve=false){
  effects.length=0;lastImpact=null;crushPopup.style.display='none';
  frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;}
- if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks);
+ if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks,sim.beltTracks);
  sceneButton.disabled=stage===0;
  sceneButton.textContent=stage===0?
   (sim.tracks.exit.level?'北端桥已解锁：开车过桥进入冰雪世界':'冰雪关卡未解锁：先向北端桥付费'):
@@ -168,7 +170,7 @@ function beep(freq=530,length=.1,vol=.045){try{
  }catch(e){}
 }
 function handleEvents(){
- let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false,cargoChanged=false;
+ let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],beltUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false,cargoChanged=false;
  for(const event of sim.events){
   switch(event.type){
    case 'multiply':gate=event;break;
@@ -187,6 +189,7 @@ function handleEvents(){
    case 'featureUpgrade':featureUpgrades.push(event);break;
    case 'stageExit':exitStage=true;break;
    case 'gateUpgrade':gateUpgrades.push(event);break;
+   case 'beltUpgrade':beltUpgrades.push(event);break;
   }
  }
  sim.events.length=0;
@@ -200,15 +203,22 @@ function handleEvents(){
  else if(featureUpgrades.length){
   const item=featureUpgrades.at(-1);
   if(item.track==='exit'){
-   world.syncInfrastructure(sim.tracks);
+   world.syncInfrastructure(sim.tracks,sim.beltTracks);
    sceneButton.textContent='北端桥已解锁：开车过桥进入冰雪世界';
    toast('北端桥解锁成功，请开往地图最上方',3.5);
   }else if(item.track==='bridge'){
-   world.syncInfrastructure(sim.tracks);
+   world.syncInfrastructure(sim.tracks,sim.beltTracks);
    toast('主桥拓宽到 '+mainBridgeWidth(sim.tracks)+' 单位',2.7);
   }else if(item.track==='crusher')toast('粉碎门升级：每颗矿石产出 '+crusherYield(sim.tracks)+' 枚金币',3);
   else toast('金币升值：每枚金币抵扣 '+paymentValue(stage,sim.tracks)+' 金额',3);
   renderer?.pulseUpgrade();beep(710,.35,.09);
+ }
+ else if(beltUpgrades.length){
+  const item=beltUpgrades.at(-1);
+  world.syncInfrastructure(sim.tracks,sim.beltTracks);
+  toast(BELT_LABELS[item.id]+(item.level===1?' 已建成':' 升级为 Lv.'+item.level)+
+   '；现有矿石仍需真实移动通过数字门和桥梁',3);
+  renderer?.pulseUpgrade();beep(730,.32,.07);
  }
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('实体已达到上限：请将金币用于升级释放容量',2.8);
@@ -221,6 +231,10 @@ function updateUI(){
  if(!sim)return;
  document.getElementById('score').textContent=formatNum(sim.crushed);
  document.getElementById('cargoCount').textContent=`${formatNum(sim.cargoCount())}/${formatNum(sim.cargoCapacity())}`;
+ const builtBeltCount=sim.beltTracks.filter(b=>b.level>0).length;
+ const beltStatus=document.getElementById('beltStatus');
+ beltStatus.hidden=stage!==0;
+ if(stage===0)beltStatus.textContent=`固定传送带 ${builtBeltCount}/5 · 绿色工位投币建设`;
  const selected=sim.selectedUpgrade,track=sim.tracks[selected],costs=TRACK_COSTS[selected];
  const need=trackRemaining(track,costs);
  document.getElementById('left').textContent=track.level===costs.length?'已满级':formatNum(need);
@@ -253,15 +267,24 @@ function updateUI(){
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已加工冰晶 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'矿石先过数字门，再经主桥粉碎；金币装入车尾货箱后用于升级';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
 }
 function positionLabels(){
- for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
+ for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...beltLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
  const sites=world.sites;
  function place(el,site){if(!el||!site)return;let p=renderer.screen(site.x,site.y,site.z);
   if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px';}}
  for(const site of sites.gates||[]){const el=gateLabels[site.id];if(el){el.textContent='×'+(site.id<sim.gateTracks.length?gateFactor(sim.gateTracks[site.id]):2);place(el,site);}}
  for(const site of sites.gateCosts||[]){const el=gateCostLabels[site.id],record=sim.gateTracks[site.id];if(el&&record){el.textContent=record.level===GATE_COSTS.length?'MAX':`升门还差 ${trackRemaining(record,GATE_COSTS)}`;place(el,site);}}
+ if(stage===0)for(const site of sites.beltCosts||[]){
+  const el=beltLabels[site.id],track=sim.beltTracks[site.id];
+  if(!el||!track)continue;
+  const label=BELT_LABELS[site.id];
+  el.textContent=track.level===BELT_COSTS.length?
+   label+' · MAX':label+' · '+(track.level===0?'建造':'升级')+
+    '需 '+trackRemaining(track,BELT_COSTS);
+  place(el,site);
+ }
  place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);
  if(stage===0)for(const [key,site] of Object.entries(sites.features||{})){
   if(key==='gate')continue;

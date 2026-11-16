@@ -115,6 +115,21 @@
 /* v0.7.2 cargo counter remains visible on narrow mobile headers. */
 @media(max-width:390px){#topbar .stats span:nth-child(3){display:none}}
 
+/* v0.7.3 fixed automation status and world purchase labels.
+ * Neither overlay captures movement touches. */
+.belt-status{position:absolute;right:12px;top:182px;z-index:4;
+ background:#17302fca;color:#c2ffe8;border:1px solid #75f3bb56;
+ padding:6px 8px;border-radius:8px;font-size:10px;font-weight:750;
+ pointer-events:none;text-shadow:0 1px 2px #0009}
+.belt-status[hidden]{display:none}
+.world-label.belt-cost{font-size:clamp(11px,2.2vw,16px);
+ background:#163732e0;border:1px solid #76e5b59a;border-radius:6px;
+ color:#dcfff0;padding:5px 6px;text-shadow:0 1px 2px #000c;
+ max-width:180px;white-space:normal;line-height:1.2}
+@media(max-width:540px){.belt-status{right:8px;top:180px;font-size:9px;
+ max-width:152px;text-align:center}.world-label.belt-cost{font-size:10px;
+ padding:3px 4px;max-width:112px}}
+
 </style>
 </head>
 <body>
@@ -127,10 +142,11 @@
     </div>
   </section>
   <div id="game-ui">
-    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.2</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
+    <header id="topbar"><div class="brand">铲斗矿场 <span class="ver">VIDEO REPLICA · 0.7.3</span></div><div class="stats"><span>已粉碎 <strong id="score">0</strong></span><span>改装还差 <strong id="left">30</strong></span><span>单件价值 <strong id="coinValueStat">1</strong></span><span>货箱 <strong id="cargoCount">0/20</strong></span></div><button id="upgradeButton" aria-expanded="false" aria-controls="upgradePicker" title="选择升级项目">改装</button><button id="pauseButton" aria-label="游戏菜单">☰</button></header>
     <div id="resourceCount" class="resource-counter" aria-live="off">实体 0 / 6,500</div>
     <div id="zoomReadout" class="zoom-counter">视角 100%</div>
     <div id="stageBadge" class="stage-badge" aria-live="polite">冰河矿场</div>
+    <div id="beltStatus" class="belt-status" aria-live="off">固定传送带 0/5 · 绿色工位投币建设</div>
     <aside id="navHud" class="nav-hud" aria-label="冰河矿场位置和行驶目标">
       <canvas id="navMap" width="132" height="202" aria-hidden="true"></canvas>
       <button id="navCycle" type="button" title="点击切换导航目标">导航：自动</button>
@@ -177,6 +193,11 @@
       <div id="label-gatecost-2" class="world-label gate-cost">还需 12</div>
       <div id="label-gatecost-3" class="world-label gate-cost">还需 12</div>
 
+      <div id="label-belt-0" class="world-label belt-cost">原矿上料 · 建造需 24</div>
+      <div id="label-belt-1" class="world-label belt-cost">南岸接驳 · 建造需 24</div>
+      <div id="label-belt-2" class="world-label belt-cost">主桥运输 · 建造需 24</div>
+      <div id="label-belt-3" class="world-label belt-cost">粉碎机上料 · 建造需 24</div>
+      <div id="label-belt-4" class="world-label belt-cost">金币出料 · 建造需 24</div>
       <div id="label-cost" class="world-label cost">30</div>
       <div id="label-upgrade" class="world-label upgrade">UPGRADE</div>
       <div id="label-feature-crusher" class="world-label feature">粉碎门 还需 35</div>
@@ -190,12 +211,12 @@
     <div class="bottom-hint" id="hint">拖动屏幕驾驶 · WASD / 方向键</div>
     <section id="menu" class="modal visible" aria-label="游戏说明">
       <div class="panel">
-        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.2</div>
+        <div class="eyebrow">基于 V3 长地图布局 · INDEPENDENT ORE / PHYSICAL COINS · v0.7.3</div>
         <h1>把整座矿场<br><em>铲进倍数门。</em></h1>
         <p id="stageInfo">第一关冰河矿场：从下方铲矿石穿过唯一数字门倍增，再从主桥跨越冰河，到北岸粉碎门获得真实金币；金币投入各升级台，最后解锁上方通往冰雪第二关的桥。</p>
-        <p>v0.7.2 在原有升级基础上新增货箱容量升级。金币必须先进入货箱，再由车辆运往指定升级台；只有飞抵有效站台才会被消耗。</p>
+        <p>v0.7.3 新增五段固定工位传送带：原矿上料、数字门后南岸接驳、主桥运输、粉碎机上料和金币出料。先在各自绿色工位使用车尾实物金币建造，再逐级升级带宽、速度和输送覆盖长度。</p>
         <p>主桥和北端桥之外的冰河不能通行。主桥升级会同时扩大可通行宽度；付满 350 金额后北桥解锁，驾驶过桥才能进入冰雪关卡。回收带已完全移除。</p>
-        <p>v0.7.2：金币靠近铲车后会飞入车尾开放货箱；货箱内的金币仍是独立实体，随车辆移动。靠近有效升级台后，金币会逐枚飞出，抵达站台才完成支付。货箱容量可在北岸车辆改装台升级为 20、40、70、110 或 160 枚。动画中断或刷新时，未完成支付的金币会恢复到货箱，不会重复扣款。</p>
+        <p>传送带不是矿石传送门：只向真正接触皮带的独立实体施加前向推力，物体仍须通过数字门、桥梁和粉碎机。金币运输带末端是装车点，仍须玩家把车开来收集并运送至升级台。第二关解锁规则暂时保持不变。</p>
         <div class="modeGrid"><div><b>手机</b><span>单指摇杆移动 · 双指捏合或张开调整镜头</span></div><div><b>电脑</b><span>WASD / 方向键移动 · 鼠标滚轮缩放 · P 暂停</span></div></div>
         <button id="playButton" class="primary">进入矿场</button>
         <p id="startupIssue" class="startup-issue" hidden role="alert"></p>
@@ -301,10 +322,85 @@ function nextBridgeUnlocked(tracks){return (tracks?.exit?.level||0)>=1;}
 return {LONG_MAP,MAIN_BRIDGE_WIDTHS,mainBridgeWidth,nextBridgeUnlocked};
 })();
 
+// --- conveyors.js (isolated) ---
+const __m_conveyors = (()=>{
+'use strict';
+const {clamp: clamp} = __m_math;
+/** Fixed, paid, contact-driven conveyor network for the first long map.
+ * The five sites are never freely placeable; all effects act on the existing
+ * individually simulated bodies. No teleportation, passive minting or cloning.
+ */
+
+const CONVEYOR_SITES=Object.freeze([
+ Object.freeze({id:0,key:'intake',label:'原矿上料',kind:'blue',axis:'z',x:0,z:-35,from:-45,to:-25,padX:-24,padZ:-40}),
+ Object.freeze({id:1,key:'south',label:'南岸接驳',kind:'blue',axis:'z',x:0,z:-19.3,from:-25.4,to:-13.2,padX:-24,padZ:-20}),
+ Object.freeze({id:2,key:'bridge',label:'主桥运输',kind:'blue',axis:'z',x:0,z:-7.8,from:-13.8,to:-1.8,padX:22,padZ:-.3}),
+ Object.freeze({id:3,key:'north',label:'粉碎机上料',kind:'blue',axis:'z',x:0,z:3.8,from:-2.3,to:9.9,padX:-24,padZ:4}),
+ Object.freeze({id:4,key:'gold',label:'金币出料',kind:'gold',axis:'x',x:7.7,z:8,from:1.2,to:14.2,padX:27,padZ:7})
+]);
+
+function beltGeometry(site,level,bridgeWidth=12){
+ const tier=clamp(Math.floor(level||0),0,4);
+ if(tier<=0)return null;
+ const extension=(tier-1)*.65;
+ const min=site.from-extension,max=site.to+extension;
+ const width=Math.min(site.key==='bridge'?bridgeWidth-1.0:20,3.6+(tier-1)*.85);
+ return {id:site.id,key:site.key,label:site.label,kind:site.kind,axis:site.axis,
+  x:site.axis==='x'?(min+max)/2:site.x,
+  z:site.axis==='z'?(min+max)/2:site.z,
+  min,max,width,speed:6.4+(tier-1)*1.9,level:tier,
+  // A conveyor over the river is supported by the same physical bridge.
+  deckY:site.key==='bridge'?.52:.20};
+}
+function activeConveyors(records=[],bridgeWidth=12){
+ const result=[];
+ for(const site of CONVEYOR_SITES){
+  const belt=beltGeometry(site,records[site.id]?.level||0,bridgeWidth);
+  if(belt)result.push(belt);
+ }
+ return result;
+}
+/** Inclusive contact area in the horizontal plane; touching only the belt
+ * body (not the upgrade pad) can propel a resource. Airborne bodies are ignored.
+ */
+function beltContact(body,belt){
+ if(!belt||!body||body.dead||body.cargoState||body.kind!==belt.kind||
+  (body.y||0)>.75)return false;
+ const forward=belt.axis==='z'?body.z:body.x;
+ const lateral=belt.axis==='z'?body.x:body.z;
+ const centre=belt.axis==='z'?belt.x:belt.z;
+ return forward>=belt.min&&forward<=belt.max&&Math.abs(lateral-centre)<=belt.width*.5;
+}
+/** Conveyor traction changes VELOCITY, not position. Normal granular physics
+ * integrates and collides the body afterwards, including the bridge barrier.
+ * dt is a granular substep and may be called repeatedly per rendered frame.
+ */
+function conveyorImpulse(body,belts,dt){
+ if(!belts||!belts.length||body.dead||body.cargoState)return false;
+ for(const belt of belts){
+  if(!beltContact(body,belt))continue;
+  const strength=Math.min(1,dt*18);
+  if(belt.axis==='z'){
+   body.vz=(body.vz||0)+(belt.speed-(body.vz||0))*strength;
+   body.vx=(body.vx||0)*(1-Math.min(1,dt*4.5));
+  }else{
+   body.vx=(body.vx||0)+(belt.speed-(body.vx||0))*strength;
+   body.vz=(body.vz||0)*(1-Math.min(1,dt*4.5));
+  }
+  return true;
+ }
+ return false;
+}
+
+return {CONVEYOR_SITES,beltGeometry,activeConveyors,beltContact,conveyorImpulse};
+})();
+
 // --- navigation.js (isolated) ---
 const __m_navigation = (()=>{
 'use strict';
 const {LONG_MAP: LONG_MAP} = __m_mapLayout;
+const {CONVEYOR_SITES: CONVEYOR_SITES} = __m_conveyors;
+
 
 /** Navigational overlay only: no inventory, physics or production side effects.
  * Coordinates come from the same long-map constants as the game colliders.
@@ -320,14 +416,15 @@ const NAV_TARGETS=Object.freeze([
  {id:'bridgePad',label:'主桥升级',x:LONG_MAP.bridgePad.x,z:LONG_MAP.bridgePad.z},
  {id:'coinPad',label:'金币价值',x:LONG_MAP.coinValuePad.x,z:LONG_MAP.coinValuePad.z},
  {id:'exitPad',label:'北端桥解锁',x:LONG_MAP.exitPad.x,z:LONG_MAP.exitPad.z},
- {id:'exit',label:'冰雪关卡入口',x:LONG_MAP.entry.x,z:LONG_MAP.entry.z}
+ {id:'exit',label:'冰雪关卡入口',x:LONG_MAP.entry.x,z:LONG_MAP.entry.z},
+ ...CONVEYOR_SITES.map(b=>({id:'belt'+b.id,label:'建造：'+b.label,x:b.padX,z:b.padZ}))
 ]);
 function navigationGoal(sim,choice='auto'){
  if(choice!=='auto'){
   const selected=NAV_TARGETS.find(p=>p.id===choice);
   if(selected)return selected;
  }
- if((sim?.tracks?.exit?.level||0)>0)return NAV_TARGETS.at(-1);
+ if((sim?.tracks?.exit?.level||0)>0)return NAV_TARGETS.find(p=>p.id==='exit');
  if((sim?.crushed||0)>0)return NAV_TARGETS.find(p=>p.id==='vehicle');
  if((sim?.gateHits||0)>0)return NAV_TARGETS.find(p=>p.id==='crusher');
  const id=(sim?.player?.z??-47)<-42?'ore':'gate';
@@ -454,6 +551,11 @@ const CARGO_LAYOUTS=Object.freeze([
 ]);
 const CARGO_CAPACITIES=Object.freeze(CARGO_LAYOUTS.map(x=>x.capacity));
 const CARGO_COSTS=Object.freeze([25,55,110,240]);
+// Each of the five fixed conveyor sites has one build tier and three upgrades.
+// All costs are paid with the same individually carried physical coins.
+const CONVEYOR_COUNT=5;
+const BELT_COSTS=Object.freeze([24,60,120,200]);
+const BELT_LABELS=Object.freeze(['原矿上料','南岸接驳','主桥运输','粉碎机上料','金币出料']);
 function cargoCapacity(tracks){
  const level=Math.min(CARGO_CAPACITIES.length-1,Math.max(0,Math.floor(tracks?.cargo?.level||0)));
  return CARGO_CAPACITIES[level];
@@ -526,8 +628,9 @@ function newProgress(raw={}){
  // Cave gate upgrades are saved separately from the four lava-field gates.
  // Missing caveGates is valid for every legacy v0.6.x save.
  const caveGates=Array.from({length:2},(_,i)=>makeTrack(raw.caveGates?.[i]??{},GATE_COSTS));
+ const belts=Array.from({length:CONVEYOR_COUNT},(_,i)=>makeTrack(raw.belts?.[i]??{},BELT_COSTS));
  const selected=TRACK_KEYS.includes(raw.selected)?raw.selected:'chassis';
- return {tracks,gates,caveGates,selected,totalDeposited:nonnegative(raw.totalDeposited)};
+ return {tracks,gates,caveGates,belts,selected,totalDeposited:nonnegative(raw.totalDeposited)};
 }
 function trackRemaining(track,costs){return track.level<costs.length?Math.max(0,costs[track.level]-track.deposited):0;}
 function gateFactor(track){return GATE_FACTORS[Math.min(track.level,GATE_FACTORS.length-1)];}
@@ -536,7 +639,7 @@ function vehicleSpeed(tracks,frame=0){return 5.55+Math.min(4,frame)*.25+tracks.s
 function vehicleTurnRate(tracks){return 7.5+tracks.steering.level*1.55;}
 function bucketScale(tracks){return 1+tracks.blade.level*.17;}
 
-return {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,GATE_FACTORS,GATE_COSTS,COIN_VALUES,CARGO_LAYOUTS,CARGO_CAPACITIES,CARGO_COSTS,cargoCapacity,CRUSHER_COSTS,CRUSHER_YIELDS,BRIDGE_COSTS,EXIT_COSTS,INFRA_COSTS,INFRA_LABELS,crusherYield,TRACK_COSTS,TRACK_LABELS,TRACK_KEYS,boundedTier,upgradeCost,remainingCost,makeTrack,applyCredit,applyUpgradePayment,newProgress,trackRemaining,gateFactor,coinCredit,vehicleSpeed,vehicleTurnRate,bucketScale};
+return {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,GATE_FACTORS,GATE_COSTS,COIN_VALUES,CARGO_LAYOUTS,CARGO_CAPACITIES,CARGO_COSTS,CONVEYOR_COUNT,BELT_COSTS,BELT_LABELS,cargoCapacity,CRUSHER_COSTS,CRUSHER_YIELDS,BRIDGE_COSTS,EXIT_COSTS,INFRA_COSTS,INFRA_LABELS,crusherYield,TRACK_COSTS,TRACK_LABELS,TRACK_KEYS,boundedTier,upgradeCost,remainingCost,makeTrack,applyCredit,applyUpgradePayment,newProgress,trackRemaining,gateFactor,coinCredit,vehicleSpeed,vehicleTurnRate,bucketScale};
 })();
 
 // --- vehicleRig.js (isolated) ---
@@ -1383,13 +1486,14 @@ return {StaticCollisionField};
 // --- activity.js (isolated) ---
 const __m_activity = (()=>{
 'use strict';
-
+const {beltContact: beltContact} = __m_conveyors;
 /**
  * Reusable 2D broadphase for scheduling independent granular bodies.
  * It is rebuilt ONCE per simulation frame, not once per physics substep.
  * Every sleeping body remains a physical object, rendered and eligible for
  * gates, upgrades and later wake-up. No object merging or disappearance.
  */
+
 const CELL=2.5;
 const ACTIVE_BUDGET=850;
 const NEAR_RADIUS2=13.5*13.5;
@@ -1407,7 +1511,7 @@ class ParticleActivity{
   this.sleeping=0;
   this.dropped=0;
  }
- select(resources,player){
+ select(resources,player,conveyors=[]){
   const n=resources.length;
   if(this.priorities.length<n){
    const size=Math.max(128,n,this.priorities.length*2);
@@ -1438,6 +1542,11 @@ class ParticleActivity{
    const motion=Math.abs(p.vx||0)+Math.abs(p.vz||0)+Math.abs(p.vy||0);
    // Never sleep an airborne or moving particle even if it is far away.
    if(motion>.30||(p.y||0)>.025)add(i,d2-motion*6);
+   // Sleeping grains resting on an active conveyor must be woken without
+   // requiring the player to drive nearby. They remain regular rigid bodies.
+   for(const belt of conveyors)if(beltContact(p,belt)){
+    add(i,-1500+d2*.001);break;
+   }
   }
   // Wake resting grains near the shovel using nearby spatial cells.
   const cx=Math.floor(player.x/CELL),cz=Math.floor(player.z/CELL);
@@ -1594,6 +1703,7 @@ const {SCOOP_HALF_WIDTH: SCOOP_HALF_WIDTH} = __m_scoop;
 const {SCOOP_PROFILE: SCOOP_PROFILE} = __m_scoop;
 const {StaticCollisionField: StaticCollisionField} = __m_collisions;
 const {ParticleActivity: ParticleActivity} = __m_activity;
+const {conveyorImpulse: conveyorImpulse} = __m_conveyors;
 /**
  * A compact 2.5D granular dynamics solver for the original advert's visible
  * bulldozed piles. Coordinates are in metres. Particle y is the *bottom*
@@ -1604,6 +1714,7 @@ const {ParticleActivity: ParticleActivity} = __m_activity;
  * body dynamics (there is no angular collision or friction cone solver).
  * No dependencies, no allocations proportional to particle count squared.
  */
+
 
 
 
@@ -1685,7 +1796,7 @@ class GranularSolver {
       this.obstacleField=world?new StaticCollisionField(world.obstacles||[]):null;
     }
     this.obstacleContacts=0;
-    const scheduled=this.activity.select(resources,player);
+    const scheduled=this.activity.select(resources,player,world?.conveyors||[]);
     this.lastSleeping=this.activity.sleeping;
     this.lastScheduled=scheduled.length;
     // Restrict numerical step length: a lost frame must not tunnel through piles.
@@ -1719,6 +1830,9 @@ class GranularSolver {
       p._halfHeight=particleHalfHeight(p);
       const drag=Math.exp(-shape.drag*dt*(onGround?1:.17));
       p.vx*=drag;p.vz*=drag;
+      // Belt friction changes an individual particle's velocity only.
+      // Normal granular integration, collisions and terrain restrictions follow.
+      conveyorImpulse(p,this.obstacleWorld?.conveyors,dt);
       p.vy-=GRAVITY*dt;
       p.prevX=p.x;p.prevZ=p.z;p.prevY=p.y;
       p.x+=p.vx*dt;p.z+=p.vz*dt;
@@ -2159,7 +2273,11 @@ const {SUPPLY: SUPPLY} = __m_economy;
 const {boxTrigger: boxTrigger} = __m_triggers;
 const {sceneRules: sceneRules} = __m_sceneRules;
 const {LONG_MAP: LONG_MAP} = __m_mapLayout;
+const {mainBridgeWidth: mainBridgeWidth} = __m_mapLayout;
+const {CONVEYOR_SITES: CONVEYOR_SITES} = __m_conveyors;
+const {activeConveyors: activeConveyors} = __m_conveyors;
 const {configureTerrain: configureTerrain} = __m_terrain;
+
 
 
 
@@ -2171,7 +2289,7 @@ const PALETTE={
  dirt:[.55,.372,.288,6],dirtLight:[.64,.451,.342,6],dirtEdge:[.38,.246,.185,6],rock:[.64,.437,.314],rockLight:[.70,.504,.362],rockShade:[.48,.318,.238],bridge:[.93,.615,.332],bridgeSide:[.65,.36,.18],yellow:[.98,.69,.075],gold:[1,.74,.06],goldDark:[.74,.37,.035],metal:[.32,.36,.36],black:[.12,.092,.084],blue:[.11,.64,.97],blueLight:[.40,.85,1],purple:[.42,.16,.71],purpleCap:[.46,.24,.79],orange:[.98,.33,.10],glass:[.68,.60,.92],mint:[.11,.90,.83],pearl:[1,.77,.90],white:[.97,.99,1],gray:[.35,.39,.39]};
 function seeded(seed=123){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
 class World{
- constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
+ constructor(stage=0){this.stage=stage;this.static=[];this.obstacles=[];this.sites={};this.gates=[];this.gateStations=[];this.conveyorStations=[];this.conveyors=[];this.crusher=null;this.upgradeStation=null;this.coinStation=null;this.featureStations={};this.terrain=null;this.bridges=null;this.bounds=stage===0?LONG_MAP.bounds:{minX:-31,maxX:31,minZ:-27,maxZ:30};this.rng=seeded(stage?337:20261102);this.make(stage);this.syncInfrastructure({bridge:{level:0},exit:{level:0}});}
  n(a,b){return a+(b-a)*this.rng()}
  add(mesh,x,y,z,sx,sy,sz,c,yaw=0,pitch=0,roll=0,opacity=1){this.static.push({mesh,x,y,z,sx,sy,sz,c,yaw,pitch,roll,opacity})}
  addRock(x,z,scale=1,c){let r=this.n(.86,1.18)*scale,co=c||PALETTE.rock;this.add('shadow',x,.090,z,r*2.8,1,r*2.2,[0,0,0,8]);this.add('boulder',x,r*.65,z,r*1.6,r*1.3,r*1.65,co,this.n(0,TAU));this.obstacles.push({type:'circle',x,z,radius:r*.79,height:r*1.3});this.add('boulder',x+r*.46,r*.45,z-r*.6,r*.85,r*.85,r*.77,PALETTE.rockShade,this.n(0,TAU))}
@@ -2179,7 +2297,7 @@ class World{
  make(stage){
   if(stage===1){this.makeBonus();return;}
   const M=LONG_MAP;
-  this.sites={gates:[],gateCosts:[],features:{}};
+  this.sites={gates:[],gateCosts:[],beltCosts:[],features:{}};
   this.add('box',0,-.98,0,71,1.8,111,PALETTE.dirtEdge);
   this.add('box',0,-.06,0,70,.2,110,PALETTE.dirt);
   for(let i=0;i<70;i++){
@@ -2219,6 +2337,18 @@ class World{
   this.featureStations.crusher=install('crusher',M.crusherPad,[.83,.49,.21]);
   this.featureStations.bridge=install('bridge',M.bridgePad,[.50,.76,.95]);
   this.featureStations.exit=install('exit',M.exitPad,[.75,.84,.96]);
+  // A paid building pad is permanently anchored near each of the five belt
+  // routes. The pad is not a transporter and does not itself consume resources.
+  for(const belt of CONVEYOR_SITES){
+   const x=belt.padX,z=belt.padZ;
+   const trigger=boxTrigger(x,z,2.4,1.25,.36);
+   this.conveyorStations.push({id:belt.id,x,z,vehicleRadius:4.7,trigger});
+   this.sites.beltCosts.push({id:belt.id,x,y:.75,z});
+   this.add('box',x,.145,z,5.15,.20,2.85,[.20,.64,.49,4]);
+   this.add('box',x,.27,z,4.8,.09,2.55,[.11,.18,.22,4]);
+   for(const side of [-1,1])
+    this.add('box',x+side*2.48,.4,z,.15,.26,2.7,[.21,.95,.73,4]);
+  }
   // The crusher is directly aligned with the central bridge head.
   const c=M.crusher;
   this.crusher={x:c.x,z:c.z,halfWidth:c.halfWidth,halfDepth:c.halfDepth,
@@ -2262,7 +2392,10 @@ class World{
     this.n(.22,.6),z>40?[.86,.94,.98]:PALETTE.rockShade);
   }
  }
- syncInfrastructure(tracks){configureTerrain(this,tracks);}
+ syncInfrastructure(tracks,belts=[]){
+  configureTerrain(this,tracks);
+  this.conveyors=this.stage===0?activeConveyors(belts,mainBridgeWidth(tracks)):[];
+ }
  frameGate(gate){const {x,z,half,multiplier,id}=gate;
   const cave=this.stage===1;
   for(const side of [-1,1]){let px=x+side*half;
@@ -2379,6 +2512,34 @@ class World{
      renderer.add('box',deck.x+side*(deck.width*.5-.08),.51,deck.z,
       .12,.19,deck.depth,[.63,.49,.36,4]);
    }
+   // Built conveyors are visible moving machinery. The visual rollers run
+   // with the very same speed used by the actual velocity contact solver.
+   for(const belt of this.conveyors){
+    const horizontal=belt.axis==='x',length=belt.max-belt.min;
+    const y=belt.deckY,centre=belt.axis==='z'?belt.z:belt.x;
+    renderer.add('box',belt.x,y,belt.z,horizontal?length:belt.width,.16,
+     horizontal?belt.width:length,[.15,.22,.25,5]);
+    renderer.add('box',belt.x,y+.105,belt.z,horizontal?length-.16:belt.width-.16,
+     .055,horizontal?belt.width-.16:length-.16,[.24,.30,.31,5]);
+    for(const side of [-1,1]){
+     renderer.add('box',horizontal?belt.x:belt.x+side*belt.width*.52,y+.19,
+      horizontal?belt.z+side*belt.width*.52:belt.z,
+      horizontal?length:.13,.14,horizontal?.13:length,[.90,.61,.14,4]);
+    }
+    const stripes=Math.min(26,Math.max(5,Math.ceil(length/1.3)));
+    for(let i=0;i<stripes;i++){
+     const travel=((i/stripes*length+t*belt.speed*.36)%length+length)%length;
+     const v=belt.min+travel;
+     renderer.add('box',horizontal?v:belt.x,y+.15,horizontal?belt.z:v,
+      horizontal?.23:belt.width*.81,.042,horizontal?belt.width*.81:.23,
+      [.65,.78,.65,4]);
+    }
+    for(const pos of [belt.min,belt.max]){
+     renderer.add('cylinder',horizontal?pos:belt.x,y+.09,horizontal?belt.z:pos,
+      .32,belt.width+.18,.32,[.42,.46,.44,4],horizontal?0:Math.PI/2,0,
+      horizontal?Math.PI/2:0);
+    }
+   }
    const N=renderer.quality?.decorationStep||1;
    for(let i=-9;i<10;i+=N){
     const x=i*3.6,phase=(t*.35+i*.19)%2.0;
@@ -2458,6 +2619,7 @@ const {UPGRADE_COSTS: UPGRADE_COSTS} = __m_economy;
 const {MAX_VEHICLE_LEVEL: MAX_VEHICLE_LEVEL} = __m_economy;
 const {TRACK_COSTS: TRACK_COSTS} = __m_economy;
 const {GATE_COSTS: GATE_COSTS} = __m_economy;
+const {BELT_COSTS: BELT_COSTS} = __m_economy;
 const {TRACK_KEYS: TRACK_KEYS} = __m_economy;
 const {newProgress: newProgress} = __m_economy;
 const {trackRemaining: trackRemaining} = __m_economy;
@@ -2506,7 +2668,8 @@ class Simulation{
   for(const resource of this.resources)resource.id=this.nextResourceId++;
   this.elapsed=0;this.lastGate=-20;
   const loaded=newProgress(progress);
-  this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;this.selectedUpgrade=loaded.selected;
+  this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;
+  this.beltTracks=loaded.belts;this.selectedUpgrade=loaded.selected;
   this.level=this.tracks.chassis.level;this.deposit=this.tracks.chassis.deposited;
   this.totalDeposited=loaded.totalDeposited;
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
@@ -2521,7 +2684,7 @@ class Simulation{
    trackLeft:0,trackRight:0,travelDistance:0,
    bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
-  this.coinsSpent={vehicle:0,gate:0,feature:0};this.stageExitIssued=false;
+  this.coinsSpent={vehicle:0,gate:0,feature:0,belt:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
   this.cargoTransfers=[];this.cargoPickupRadius=CARGO_PICKUP_RADIUS;
   this.restoreCargo(progress);
@@ -2581,6 +2744,10 @@ class Simulation{
   if(station==='gate'){
    if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='belt'){
+   if(this.stage!==0||!Number.isInteger(gateId)||gateId<0||
+      gateId>=this.beltTracks.length)return false;
+   progress=this.beltTracks[gateId];costs=BELT_COSTS;
   }else if(station==='feature'){
    if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
    progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
@@ -2606,6 +2773,10 @@ class Simulation{
    }
    if(world.coinStation&&near(world.coinStation)&&this.canPayCoin('coin','feature'))
     return target(world.coinStation,'feature','coin');
+  }
+  for(const pad of world.conveyorStations||[]){
+   if(near(pad)&&this.canPayCoin(null,'belt',pad.id))
+    return target(pad,'belt',null,pad.id);
   }
   if(world.upgradeStation&&near(world.upgradeStation)&&
      this.canPayCoin(this.selectedUpgrade,'vehicle'))
@@ -2770,6 +2941,10 @@ class Simulation{
   if(station==='gate'){
    if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
    progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='belt'){
+   if(this.stage!==0||!Number.isInteger(gateId)||gateId<0||
+      gateId>=this.beltTracks.length)return false;
+   progress=this.beltTracks[gateId];costs=BELT_COSTS;
   }else if(station==='feature'){
    if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
    progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
@@ -2788,6 +2963,11 @@ class Simulation{
   if(station==='gate'){
    this.emit('deposit',{station:'gate',id:gateId,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    if(result.upgrades)this.emit('gateUpgrade',{id:gateId,factor:gateFactor(progress),level:result.level});
+  }else if(station==='belt'){
+   this.emit('deposit',{station:'belt',id:gateId,credits:result.spent,
+    remaining:result.remaining,x:r.x,z:r.z});
+   if(result.upgrades)this.emit('beltUpgrade',{id:gateId,level:result.level,
+    remaining:result.remaining});
   }else{
    this.emit('deposit',{station:station==='feature'?'feature':'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    this.level=this.tracks.chassis.level;
@@ -2863,7 +3043,7 @@ class Simulation{
  update(dt,dirX,dirZ,world){
   dt=clamp(dt,0,.044);if(!dt)return;
   this.elapsed+=dt;
-  if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks);
+  if(typeof world.syncInfrastructure==='function')world.syncInfrastructure(this.tracks,this.beltTracks);
   const p=this.player,previous={x:p.x,z:p.z,yaw:p.yaw};
   const goal=Math.hypot(dirX,dirZ),strength=Math.min(1,goal);
   let alignment=1;
@@ -3031,6 +3211,8 @@ const {paymentValue: paymentValue} = __m_sceneRules;
 const {INFRA_COSTS: INFRA_COSTS} = __m_economy;
 const {INFRA_LABELS: INFRA_LABELS} = __m_economy;
 const {crusherYield: crusherYield} = __m_economy;
+const {BELT_COSTS: BELT_COSTS} = __m_economy;
+const {BELT_LABELS: BELT_LABELS} = __m_economy;
 const {mainBridgeWidth: mainBridgeWidth} = __m_mapLayout;
 const {NAV_TARGETS: NAV_TARGETS} = __m_navigation;
 const {drawNavigation: drawNavigation} = __m_navigation;
@@ -3054,6 +3236,7 @@ const toastElement=document.getElementById('toast');
 const joystick=document.getElementById('joystick'),knob=document.getElementById('joyKnob');
 const gateCostLabels=Array.from({length:4},(_,id)=>document.getElementById('label-gatecost-'+id));
 const gateLabels=Array.from({length:5},(_,id)=>document.getElementById('label-gate-'+id));
+const beltLabels=Array.from({length:5},(_,id)=>document.getElementById('label-belt-'+id));
 const labels={cost:document.getElementById('label-cost'),upgrade:document.getElementById('label-upgrade')};
 const featureLabels=Object.fromEntries(['crusher','bridge','exit','coin'].map(
  key=>[key,document.getElementById('label-feature-'+key)]));
@@ -3158,6 +3341,7 @@ function saveProgress(){
    tracks:sim.tracks,
    gates:stage===0?sim.gateTracks:previous.gates,
    caveGates:stage===1?sim.gateTracks:previous.caveGates,
+   belts:stage===0?sim.beltTracks:previous.belts,
    cargoByStage,
    selected:sim.selectedUpgrade,totalDeposited:sim.totalDeposited,stage
   };
@@ -3170,7 +3354,7 @@ function loadScene(s,preserve=false){
  effects.length=0;lastImpact=null;crushPopup.style.display='none';
  frameSeconds=0;frameSamples=0;measuredFps=0;visibleResources=0;
  if(renderer){renderer.camera.x=sim.player.x;renderer.camera.z=sim.player.z;renderer.camera.mapFacing=stage===0?-1:1;}
- if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks);
+ if(world.syncInfrastructure)world.syncInfrastructure(sim.tracks,sim.beltTracks);
  sceneButton.disabled=stage===0;
  sceneButton.textContent=stage===0?
   (sim.tracks.exit.level?'北端桥已解锁：开车过桥进入冰雪世界':'冰雪关卡未解锁：先向北端桥付费'):
@@ -3203,7 +3387,7 @@ function beep(freq=530,length=.1,vol=.045){try{
  }catch(e){}
 }
 function handleEvents(){
- let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false,cargoChanged=false;
+ let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],beltUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false,cargoChanged=false;
  for(const event of sim.events){
   switch(event.type){
    case 'multiply':gate=event;break;
@@ -3222,6 +3406,7 @@ function handleEvents(){
    case 'featureUpgrade':featureUpgrades.push(event);break;
    case 'stageExit':exitStage=true;break;
    case 'gateUpgrade':gateUpgrades.push(event);break;
+   case 'beltUpgrade':beltUpgrades.push(event);break;
   }
  }
  sim.events.length=0;
@@ -3235,15 +3420,22 @@ function handleEvents(){
  else if(featureUpgrades.length){
   const item=featureUpgrades.at(-1);
   if(item.track==='exit'){
-   world.syncInfrastructure(sim.tracks);
+   world.syncInfrastructure(sim.tracks,sim.beltTracks);
    sceneButton.textContent='北端桥已解锁：开车过桥进入冰雪世界';
    toast('北端桥解锁成功，请开往地图最上方',3.5);
   }else if(item.track==='bridge'){
-   world.syncInfrastructure(sim.tracks);
+   world.syncInfrastructure(sim.tracks,sim.beltTracks);
    toast('主桥拓宽到 '+mainBridgeWidth(sim.tracks)+' 单位',2.7);
   }else if(item.track==='crusher')toast('粉碎门升级：每颗矿石产出 '+crusherYield(sim.tracks)+' 枚金币',3);
   else toast('金币升值：每枚金币抵扣 '+paymentValue(stage,sim.tracks)+' 金额',3);
   renderer?.pulseUpgrade();beep(710,.35,.09);
+ }
+ else if(beltUpgrades.length){
+  const item=beltUpgrades.at(-1);
+  world.syncInfrastructure(sim.tracks,sim.beltTracks);
+  toast(BELT_LABELS[item.id]+(item.level===1?' 已建成':' 升级为 Lv.'+item.level)+
+   '；现有矿石仍需真实移动通过数字门和桥梁',3);
+  renderer?.pulseUpgrade();beep(730,.32,.07);
  }
  else if(gateUpgrades.length){const item=gateUpgrades.at(-1);toast('数字门 '+(item.id+1)+' 升级：×'+item.factor,2.4);beep(760,.2,.07);}
  else if(full)toast('实体已达到上限：请将金币用于升级释放容量',2.8);
@@ -3256,6 +3448,10 @@ function updateUI(){
  if(!sim)return;
  document.getElementById('score').textContent=formatNum(sim.crushed);
  document.getElementById('cargoCount').textContent=`${formatNum(sim.cargoCount())}/${formatNum(sim.cargoCapacity())}`;
+ const builtBeltCount=sim.beltTracks.filter(b=>b.level>0).length;
+ const beltStatus=document.getElementById('beltStatus');
+ beltStatus.hidden=stage!==0;
+ if(stage===0)beltStatus.textContent=`固定传送带 ${builtBeltCount}/5 · 绿色工位投币建设`;
  const selected=sim.selectedUpgrade,track=sim.tracks[selected],costs=TRACK_COSTS[selected];
  const need=trackRemaining(track,costs);
  document.getElementById('left').textContent=track.level===costs.length?'已满级':formatNum(need);
@@ -3288,15 +3484,24 @@ function updateUI(){
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已加工冰晶 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'矿石先过数字门，再经主桥粉碎；金币装入车尾货箱后用于升级';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'在绿色工位投币建设五段传送带；仍可手动推矿和运送金币';
 }
 function positionLabels(){
- for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
+ for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...beltLabels,...Object.values(featureLabels)])if(el)el.style.display='none';
  const sites=world.sites;
  function place(el,site){if(!el||!site)return;let p=renderer.screen(site.x,site.y,site.z);
   if(p&&p.visible){el.style.display='block';el.style.left=p.x+'px';el.style.top=p.y+'px';}}
  for(const site of sites.gates||[]){const el=gateLabels[site.id];if(el){el.textContent='×'+(site.id<sim.gateTracks.length?gateFactor(sim.gateTracks[site.id]):2);place(el,site);}}
  for(const site of sites.gateCosts||[]){const el=gateCostLabels[site.id],record=sim.gateTracks[site.id];if(el&&record){el.textContent=record.level===GATE_COSTS.length?'MAX':`升门还差 ${trackRemaining(record,GATE_COSTS)}`;place(el,site);}}
+ if(stage===0)for(const site of sites.beltCosts||[]){
+  const el=beltLabels[site.id],track=sim.beltTracks[site.id];
+  if(!el||!track)continue;
+  const label=BELT_LABELS[site.id];
+  el.textContent=track.level===BELT_COSTS.length?
+   label+' · MAX':label+' · '+(track.level===0?'建造':'升级')+
+    '需 '+trackRemaining(track,BELT_COSTS);
+  place(el,site);
+ }
  place(labels.cost,sites.cost);place(labels.upgrade,sites.upgradeText);
  if(stage===0)for(const [key,site] of Object.entries(sites.features||{})){
   if(key==='gate')continue;

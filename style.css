@@ -106,3 +106,18 @@
 
 /* v0.7.2 cargo counter remains visible on narrow mobile headers. */
 @media(max-width:390px){#topbar .stats span:nth-child(3){display:none}}
+
+/* v0.7.3 fixed automation status and world purchase labels.
+ * Neither overlay captures movement touches. */
+.belt-status{position:absolute;right:12px;top:182px;z-index:4;
+ background:#17302fca;color:#c2ffe8;border:1px solid #75f3bb56;
+ padding:6px 8px;border-radius:8px;font-size:10px;font-weight:750;
+ pointer-events:none;text-shadow:0 1px 2px #0009}
+.belt-status[hidden]{display:none}
+.world-label.belt-cost{font-size:clamp(11px,2.2vw,16px);
+ background:#163732e0;border:1px solid #76e5b59a;border-radius:6px;
+ color:#dcfff0;padding:5px 6px;text-shadow:0 1px 2px #000c;
+ max-width:180px;white-space:normal;line-height:1.2}
+@media(max-width:540px){.belt-status{right:8px;top:180px;font-size:9px;
+ max-width:152px;text-align:center}.world-label.belt-cost{font-size:10px;
+ padding:3px 4px;max-width:112px}}
