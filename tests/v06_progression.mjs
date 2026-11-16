@@ -15,7 +15,12 @@ assert.deepEqual(world.gates.map(g=>g.multiplier),[2],'only one active ore multi
  assert.equal(c.dead,false);
  s.player.x=pad.x;s.player.z=pad.z;
  s.granular.step=()=>{c.z=pad.z;};s.update(.016,0,0,world);
- assert.equal(c.dead,true,'one real gold deposit');
+ assert.equal(c.dead,false,'a loose coin must enter the cargo box before payment');
+ assert.equal(c.cargoState,'loading');
+ s.granular.step=()=>{};
+ for(let tick=0;tick<30&&!c.dead;tick++)s.update(.044,0,0,world);
+ assert.equal(c.dead,true,'coin flies out of cargo and completes one real gate payment');
+ assert.equal(s.gateTracks[id].deposited,1);
  for(let tier=0;tier<GATE_COSTS.length;tier++){
   const amount=trackRemaining(s.gateTracks[id],GATE_COSTS);
   for(let i=0;i<amount;i++)assert.equal(s.payCoin(coin(pad.x,pad.z),null,'gate',id),true);

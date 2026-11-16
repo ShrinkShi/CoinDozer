@@ -2,10 +2,10 @@ import {clamp,TAU} from './math.js';
 import {createResourceLayout} from './world.js';
 import {GranularSolver,PARTICLE_SHAPES} from './granular.js';
 import {headingBasis} from './heading.js';
-import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate} from './economy.js';
+import {MAX_RESOURCES,SUPPLY,UPGRADE_COSTS,MAX_VEHICLE_LEVEL,TRACK_COSTS,GATE_COSTS,TRACK_KEYS,newProgress,trackRemaining,gateFactor,coinCredit,applyCredit,vehicleSpeed,vehicleTurnRate,cargoCapacity as getCargoCapacity} from './economy.js';
 import {EconomyTelemetry} from './telemetry.js';
-import {insideTrigger,sweptEntryTrigger,crossedGatePlane} from './triggers.js';
-import {advanceTrackOdometer} from './vehicleRig.js';
+import {insideTrigger,crossedGatePlane} from './triggers.js';
+import {advanceTrackOdometer,cargoSlotPose} from './vehicleRig.js';
 import {sceneRules,paymentValue,isStageCurrency} from './sceneRules.js';
 import {INFRA_COSTS,crusherYield} from './economy.js';
 import {LONG_MAP} from './mapLayout.js';
@@ -13,6 +13,8 @@ import {constrainToTerrain} from './terrain.js';
 
 export {MAX_RESOURCES,UPGRADE_COSTS};
 export const RADII=Object.fromEntries(Object.entries(PARTICLE_SHAPES).map(([name,s])=>[name,s.radius]));
+const MAX_CARGO_TRANSFERS=4;
+const CARGO_PICKUP_RADIUS=3.25;
 
 /** Physical particles are the source of truth; no hidden numerical weights. */
 export class Simulation{
@@ -20,6 +22,8 @@ export class Simulation{
   this.stage=stage;
   this.rules=sceneRules(stage);
   this.resources=createResourceLayout(stage);
+  this.nextResourceId=1;
+  for(const resource of this.resources)resource.id=this.nextResourceId++;
   this.elapsed=0;this.lastGate=-20;
   const loaded=newProgress(progress);
   this.tracks=loaded.tracks;this.gateTracks=stage===1?loaded.caveGates:loaded.gates;this.selectedUpgrade=loaded.selected;
@@ -28,20 +32,188 @@ export class Simulation{
   this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
   this.processed=0;this.crushed=0;this.multipliedValue=0;this.gateHits=0;
   this.restock=0;this.events=[];this.treads=[];this.lastTrail=0;
-  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=this.resources.length;this.activeCount=this.liveCount;this._liveGateCount=null;
+  this.won=this.level===MAX_VEHICLE_LEVEL;this.queuedAdd=[];this.liveCount=0;this.activeCount=0;this._liveGateCount=null;
   this.granular=new GranularSolver();this.physics={contacts:0,height:0,objects:0};
   this.player={x:stage?2:LONG_MAP.spawn.x,z:stage?12:LONG_MAP.spawn.z,yaw:stage?0:Math.PI,speed:0,
    level:this.level,bladeLevel:this.tracks.blade.level,
    speedLevel:this.tracks.speed.level,steeringLevel:this.tracks.steering.level,
-   coinLevel:this.tracks.coin.level,trackLeft:0,trackRight:0,travelDistance:0,
+   coinLevel:this.tracks.coin.level,cargoLevel:this.tracks.cargo.level,
+   trackLeft:0,trackRight:0,travelDistance:0,
    bladeBounce:0,upgradeFlashAt:-50};
   this._crowdedNotified=-50;
   this.coinsSpent={vehicle:0,gate:0,feature:0};this.stageExitIssued=false;
   this.telemetry=new EconomyTelemetry();this.supplyPaused=false;
+  this.cargoTransfers=[];this.cargoPickupRadius=CARGO_PICKUP_RADIUS;
+  this.restoreCargo(progress);
+  this.liveCount=this.countLiving();this.activeCount=this.liveCount;
  }
  setStage(stage,progress={}){Object.assign(this,new Simulation(stage,progress))}
  emit(type,data={}){this.events.push({type,...data})}
  countLiving(){return this.resources.reduce((n,r)=>n+(!r.dead?1:0),0);}
+ cargoCapacity(){return getCargoCapacity(this.tracks);}
+ cargoCount(){
+  let count=0;
+  for(const r of this.resources)if(!r.dead&&r.cargoState&&r.kind===this.rules.currency)count++;
+  return count;
+ }
+ serializeCargo(){
+  return this.resources.filter(r=>!r.dead&&r.cargoState&&r.kind===this.rules.currency)
+   .sort((a,b)=>(a.cargoSlot??0)-(b.cargoSlot??0))
+   .map(r=>({id:r.id,kind:r.kind,slot:r.cargoSlot}));
+ }
+ restoreCargo(progress={}){
+  const byStage=progress.cargoByStage||{};
+  const saved=Array.isArray(byStage[this.stage])?byStage[this.stage]:
+   (progress.stage===this.stage&&Array.isArray(progress.cargo)?progress.cargo:[]);
+  const occupied=new Set(),ids=new Set(this.resources.map(r=>r.id));
+  for(const item of saved){
+   if(!item||item.kind!==this.rules.currency)continue;
+   let slot=Number.isInteger(item.slot)&&item.slot>=0&&
+    item.slot<this.cargoCapacity()&&!occupied.has(item.slot)?item.slot:-1;
+   if(slot<0){
+    for(let i=0;i<this.cargoCapacity();i++)if(!occupied.has(i)){slot=i;break;}
+   }
+   let id=Number.isSafeInteger(item.id)&&item.id>0&&!ids.has(item.id)?item.id:this.nextResourceId++;
+   ids.add(id);this.nextResourceId=Math.max(this.nextResourceId,id+1);
+   if(slot<0){
+    // Malformed/over-capacity legacy cargo is restored as a loose real coin,
+    // never silently discarded.
+    this.resources.push({id,kind:this.rules.currency,x:this.player.x,y:0,z:this.player.z+1,
+     vx:0,vy:0,vz:0,dead:false,passedGates:0,cooldown:0,spin:0,angle:0});
+    continue;
+   }
+   occupied.add(slot);
+   const pose=cargoSlotPose(this.player,slot,this.tracks.cargo.level);
+   this.resources.push({id,kind:this.rules.currency,x:pose.x,y:pose.y,z:pose.z,
+    vx:0,vy:0,vz:0,dead:false,passedGates:0,cooldown:0,spin:0,angle:0,
+    tiltX:0,tiltZ:0,omegaX:0,omegaZ:0,cargoState:'stored',cargoSlot:slot});
+  }
+ }
+ nextCargoSlot(){
+  const occupied=new Set();
+  for(const r of this.resources)if(!r.dead&&r.cargoState&&Number.isInteger(r.cargoSlot))
+   occupied.add(r.cargoSlot);
+  for(let i=0;i<this.cargoCapacity();i++)if(!occupied.has(i))return i;
+  return -1;
+ }
+ canPayCoin(trackKey,station='vehicle',gateId=-1){
+  let progress,costs;
+  if(station==='gate'){
+   if(!Number.isInteger(gateId)||gateId<0||gateId>=this.rules.gateCount)return false;
+   progress=this.gateTracks[gateId];costs=GATE_COSTS;
+  }else if(station==='feature'){
+   if(this.stage!==0||!(trackKey==='coin'||Object.hasOwn(INFRA_COSTS,trackKey)))return false;
+   progress=this.tracks[trackKey];costs=INFRA_COSTS[trackKey]??TRACK_COSTS.coin;
+  }else{
+   if(!TRACK_KEYS.includes(trackKey)||(this.stage===0&&trackKey==='coin'))return false;
+   progress=this.tracks[trackKey];costs=TRACK_COSTS[trackKey];
+  }
+  return Boolean(progress&&costs&&progress.level<costs.length);
+ }
+ findCargoPaymentTarget(world){
+  const p=this.player,near=pad=>pad&&
+   Math.hypot(p.x-pad.x,p.z-pad.z)<=(pad.vehicleRadius??0);
+  const target=(pad,station,trackKey=null,gateId=-1)=>({
+   station,trackKey,gateId,target:{x:pad.trigger.x,y:.08,z:pad.trigger.z}
+  });
+  for(const pad of world.gateStations||[]){
+   if(near(pad)&&this.canPayCoin(null,'gate',pad.id))
+    return target(pad,'gate',null,pad.id);
+  }
+  if(this.stage===0){
+   for(const [key,pad] of Object.entries(world.featureStations||{})){
+    if(near(pad)&&this.canPayCoin(key,'feature'))return target(pad,'feature',key);
+   }
+   if(world.coinStation&&near(world.coinStation)&&this.canPayCoin('coin','feature'))
+    return target(world.coinStation,'feature','coin');
+  }
+  if(world.upgradeStation&&near(world.upgradeStation)&&
+     this.canPayCoin(this.selectedUpgrade,'vehicle'))
+   return target(world.upgradeStation,'vehicle',this.selectedUpgrade);
+  return null;
+ }
+ startCargoTransfer(resource,mode,paymentTarget=null,slot=resource.cargoSlot){
+  if(!resource||resource.dead)return false;
+  if(mode==='loading'){
+   resource.cargoState='loading';resource.cargoSlot=slot;
+  }else if(mode==='unloading')resource.cargoState='unloading';
+  else resource.cargoState='returning';
+  this.cargoTransfers.push({
+   resource,mode,startedAt:this.elapsed,
+   duration:mode==='loading'?.36:mode==='unloading'?.46:.34,
+   from:{x:resource.x,y:resource.y||0,z:resource.z},
+   target:paymentTarget?.target||null,paymentTarget,
+   arc:mode==='unloading'?1.25:.82
+  });
+  this.emit('cargoTransferStarted',{id:resource.id,mode});
+  return true;
+ }
+ updateCargo(world){
+  let paid=0;
+  // Stored coins are attached to their individual cargo slots. They remain
+  // visible resources and move with the truck, but never enter the rigid solver.
+  for(const r of this.resources)if(!r.dead&&r.cargoState==='stored'){
+   const pose=cargoSlotPose(this.player,r.cargoSlot,this.tracks.cargo.level);
+   r.x=pose.x;r.y=pose.y;r.z=pose.z;r.vx=0;r.vy=0;r.vz=0;
+  }
+  for(let i=this.cargoTransfers.length-1;i>=0;i--){
+   const transfer=this.cargoTransfers[i],r=transfer.resource;
+   if(!r||r.dead){this.cargoTransfers.splice(i,1);continue;}
+   const t=clamp((this.elapsed-transfer.startedAt)/transfer.duration,0,1);
+   const eased=t*t*(3-2*t);
+   const target=transfer.mode==='unloading'?transfer.target:
+    cargoSlotPose(this.player,r.cargoSlot,this.tracks.cargo.level);
+   const arc=Math.sin(Math.PI*t)*transfer.arc;
+   r.x=transfer.from.x+(target.x-transfer.from.x)*eased;
+   r.y=transfer.from.y+(target.y-transfer.from.y)*eased+arc;
+   r.z=transfer.from.z+(target.z-transfer.from.z)*eased;
+   r.vx=0;r.vy=0;r.vz=0;
+   if(t<1)continue;
+   r.x=target.x;r.y=target.y;r.z=target.z;
+   if(transfer.mode==='loading'||transfer.mode==='returning'){
+    r.cargoState='stored';r.spin=0;r.angle=0;r.tiltX=0;r.tiltZ=0;
+    this.emit(transfer.mode==='loading'?'cargoLoaded':'cargoReturned',{id:r.id});
+    this.cargoTransfers.splice(i,1);
+   }else if(transfer.mode==='unloading'){
+    const payment=transfer.paymentTarget;
+    if(this.payCoin(r,payment.trackKey,payment.station,payment.gateId)){
+     r.cargoState='spent';r.cargoSlot=-1;paid++;
+     this.cargoTransfers.splice(i,1);
+    }else{
+     // A station may reach MAX while several coins are in flight. The
+     // unsuccessful transactions return to their original cargo slots.
+     transfer.mode='returning';transfer.startedAt=this.elapsed;
+     transfer.duration=.34;transfer.from={x:r.x,y:r.y,z:r.z};
+     transfer.target=null;transfer.paymentTarget=null;transfer.arc=.68;
+     r.cargoState='returning';
+    }
+   }
+  }
+  const available=MAX_CARGO_TRANSFERS-this.cargoTransfers.length;
+  if(available<=0)return paid;
+  const payment=this.findCargoPaymentTarget(world);
+  if(payment){
+   const stored=this.resources.filter(r=>!r.dead&&r.kind===this.rules.currency&&
+    r.cargoState==='stored').sort((a,b)=>(a.cargoSlot??0)-(b.cargoSlot??0));
+   if(stored.length){
+    for(const r of stored.slice(0,available))this.startCargoTransfer(r,'unloading',payment);
+    return paid;
+   }
+  }
+  let count=this.cargoCount();
+  for(let i=0;i<available&&count<this.cargoCapacity();i++){
+   let candidate=null,best=this.cargoPickupRadius*this.cargoPickupRadius;
+   for(const r of this.resources){
+    if(r.dead||r.kind!==this.rules.currency||r.cargoState||(r.y||0)>1.4)continue;
+    const dx=r.x-this.player.x,dz=r.z-this.player.z,d2=dx*dx+dz*dz;
+    if(d2<best){best=d2;candidate=r;}
+   }
+   if(!candidate)break;
+   const slot=this.nextCargoSlot();if(slot<0)break;
+   if(this.startCargoTransfer(candidate,'loading',null,slot))count++;
+  }
+  return paid;
+ }
  /** Reserve all children before changing the source object. Freed slots are
   * usable later in the same frame; no coin or ore is partially converted. */
  hasCapacity(extra){
@@ -59,6 +231,7 @@ export class Simulation{
   */
  crush(r,crusher){
   if(r.dead||r.kind!==this.rules.ore||this.elapsed<(r._crushBlockUntil||0))return false;
+  if(!Number.isSafeInteger(r.id))r.id=this.nextResourceId++;
   const outputCount=this.stage===0?crusherYield(this.tracks):this.rules.yield;
   if(!this.hasCapacity(outputCount-1)){
    if(this.stage===0){
@@ -92,7 +265,7 @@ export class Simulation{
   r.omegaX=0;r.omegaZ=0;r._frameZ=r.z;
   for(let i=0;i<outputCount-1;i++){
    const side=i?1:-1;
-   this.queuedAdd.push({...r,
+   this.queuedAdd.push({...r,id:this.nextResourceId++,
     x:outputX+.2+i*.21,z:impactZ+side*.34,
     y:r.y+.06+i*.10,
     vx:r.vx+.35+i*.35,vy:2.15+.25*i,vz:side*(1.0+i*.22),
@@ -136,7 +309,7 @@ export class Simulation{
    this.emit('deposit',{station:'gate',id:gateId,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    if(result.upgrades)this.emit('gateUpgrade',{id:gateId,factor:gateFactor(progress),level:result.level});
   }else{
-   this.emit('deposit',{station:'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
+   this.emit('deposit',{station:station==='feature'?'feature':'vehicle',track:trackKey,credits:result.spent,remaining:result.remaining,x:r.x,z:r.z});
    this.level=this.tracks.chassis.level;
    this.deposit=this.tracks.chassis.deposited;
    this.remaining=trackRemaining(this.tracks.chassis,TRACK_COSTS.chassis);
@@ -145,6 +318,7 @@ export class Simulation{
    this.player.speedLevel=this.tracks.speed.level;
    this.player.steeringLevel=this.tracks.steering.level;
    this.player.coinLevel=this.tracks.coin.level;
+   this.player.cargoLevel=this.tracks.cargo.level;
    if(result.upgrades)this.player.upgradeFlashAt=this.elapsed;
    this.won=this.tracks.chassis.level>=MAX_VEHICLE_LEVEL;
    if(result.upgrades)this.emit(station==='feature'?'featureUpgrade':'upgrade',{
@@ -162,6 +336,7 @@ export class Simulation{
   const factor=gateFactor(this.gateTracks[gate.id]??{level:0});
   if(!Number.isInteger(factor)||factor<2||factor>20)throw Error('Invalid multiplier');
   const created=factor-1;
+  if(!Number.isSafeInteger(original.id))original.id=this.nextResourceId++;
   if(!this.hasCapacity(created)){
    const incoming=direction<0?1:-1;
    original.z=gate.z+incoming*.46;
@@ -182,7 +357,7 @@ export class Simulation{
    const a=i*2.39996+this.elapsed*.37;
    const radius=.29+.09*Math.sqrt(i);
    const outputZ=original.z+direction*(.20+Math.abs(Math.sin(a)*radius));
-   this.queuedAdd.push({...original,
+   this.queuedAdd.push({...original,id:this.nextResourceId++,
     x:original.x+Math.cos(a)*radius,
     z:outputZ,y:Math.max(0,original.y+Math.random()*.13),
     vx:(original.vx||0)+Math.cos(a)*1.4,
@@ -238,7 +413,12 @@ export class Simulation{
    }
   }
   // Store positions before the 3D granular solver for reliable portal crossings.
-  for(const r of this.resources)if(!r.dead){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;r.cooldown=Math.max(0,(r.cooldown||0)-dt);}
+  for(const r of this.resources)if(!r.dead){
+   if(!Number.isSafeInteger(r.id))r.id=this.nextResourceId++;
+   else this.nextResourceId=Math.max(this.nextResourceId,r.id+1);
+   if(!r.cargoState){r._frameX=r.x;r._frameY=r.y;r._frameZ=r.z;}
+   r.cooldown=Math.max(0,(r.cooldown||0)-dt);
+  }
   this.granular.step(this.resources,dt,p,previous,world);
   if(this.granular.obstacleField)this.granular.obstacleField.resolve(p,1.05);
   constrainToTerrain(p,previous,world.terrain,1.05);
@@ -252,12 +432,9 @@ export class Simulation{
   this.physics.scheduled=this.granular.lastScheduled||0;
   this.physics.deferred=this.granular.activity?.dropped||0;
   this._liveGateCount=this.countLiving();
-  let crushedThisFrame=0,depositedThisFrame=0;
-  const station=world.upgradeStation;
-  const playerAtStation=station && Math.hypot(p.x-station.x,p.z-station.z)<station.vehicleRadius;
-  const gatePads=world.gateStations||[];
+  let crushedThisFrame=0,depositedThisFrame=this.updateCargo(world);
   for(const r of this.resources){
-   if(r.dead)continue;
+   if(r.dead||r.cargoState)continue;
    // Both directions count. A particle can traverse a portal again after
    // clearing it, but tiny plane jitter and newly spawned copies cannot chain.
    for(const gate of world.gates){
@@ -278,38 +455,6 @@ export class Simulation{
      // Gold leaves the teeth instead of being destroyed a second time.
      r.vx=Math.max(r.vx||0,1.25);
     }
-    if(isStageCurrency(this.stage,r.kind)){
-     let paid=false;
-     // Gate pads have their own upgrade tracks; one physical coin enters
-     // only one pad in a frame. Vehicle must remain nearby to enable payment.
-     for(const pad of gatePads){
-      if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius &&
-         sweptEntryTrigger(r,pad.trigger)){
-       if(this.payCoin(r,null,'gate',pad.id)){
-        paid=true;depositedThisFrame++;
-       }
-       break;
-      }
-     }
-     if(!paid&&!r.dead&&this.stage===0){
-      for(const [key,pad] of Object.entries(world.featureStations||{})){
-       if(Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-          sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,key,'feature')){
-        paid=true;depositedThisFrame++;break;
-       }
-      }
-      const pad=world.coinStation;
-      if(!paid&&pad&&Math.hypot(p.x-pad.x,p.z-pad.z)<pad.vehicleRadius&&
-         sweptEntryTrigger(r,pad.trigger)&&this.payCoin(r,'coin','feature')){
-       paid=true;depositedThisFrame++;
-      }
-     }
-     if(!paid&&!r.dead&&station&&playerAtStation&&
-        sweptEntryTrigger(r,station.trigger)){
-      if(this.payCoin(r))depositedThisFrame++;
-     }
-    }
-
    }
   }
   if(crushedThisFrame)this.emit('crushBatch',{count:crushedThisFrame});
@@ -351,7 +496,7 @@ export class Simulation{
    const amount=Math.min(n,budget);
    for(let i=0;i<amount;i++){
     const a=Math.random()*TAU,d=Math.sqrt(Math.random())*site.radius;
-    this.resources.push({kind,x:site.x+Math.cos(a)*d,z:site.z+Math.sin(a)*d,
+    this.resources.push({id:this.nextResourceId++,kind,x:site.x+Math.cos(a)*d,z:site.z+Math.sin(a)*d,
      y:Math.random()*.14,vx:0,vy:0,vz:0,
      spin:Math.random()*TAU,angle:0,passedGates:0,cooldown:0,dead:false});
    }

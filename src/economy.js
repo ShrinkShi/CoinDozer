@@ -15,6 +15,21 @@ export const MAX_VEHICLE_LEVEL = UPGRADE_COSTS.length;
 export const GATE_FACTORS = Object.freeze([2,3,5,8,12,16,20]);
 export const GATE_COSTS = Object.freeze([12,25,50,85,140,220]);
 export const COIN_VALUES = Object.freeze([1,2,3,5,8]);
+// Five visible cargo-box tiers. Capacity is a count of real coin entities,
+// not a virtual balance or a compressed render batch.
+export const CARGO_LAYOUTS=Object.freeze([
+ Object.freeze({capacity:20,columns:4,rows:5,layers:1,spacing:.52}),
+ Object.freeze({capacity:40,columns:4,rows:5,layers:2,spacing:.52}),
+ Object.freeze({capacity:70,columns:5,rows:7,layers:2,spacing:.52}),
+ Object.freeze({capacity:110,columns:5,rows:8,layers:3,spacing:.52}),
+ Object.freeze({capacity:160,columns:5,rows:8,layers:4,spacing:.52})
+]);
+export const CARGO_CAPACITIES=Object.freeze(CARGO_LAYOUTS.map(x=>x.capacity));
+export const CARGO_COSTS=Object.freeze([25,55,110,240]);
+export function cargoCapacity(tracks){
+ const level=Math.min(CARGO_CAPACITIES.length-1,Math.max(0,Math.floor(tracks?.cargo?.level||0)));
+ return CARGO_CAPACITIES[level];
+}
 export const CRUSHER_COSTS=Object.freeze([35,75,135,240]);
 export const CRUSHER_YIELDS=Object.freeze([3,4,5,6,7]);
 export const BRIDGE_COSTS=Object.freeze([30,65,115,210]);
@@ -33,9 +48,10 @@ export const TRACK_COSTS = Object.freeze({
  speed:Object.freeze([18,38,72,120]),
  steering:Object.freeze([15,34,62,105]),
  blade:Object.freeze([24,48,90,150]),
- coin:Object.freeze([25,55,110,240])
+ coin:Object.freeze([25,55,110,240]),
+ cargo:CARGO_COSTS
 });
-export const TRACK_LABELS=Object.freeze({chassis:'底盘换代',speed:'行驶速度',steering:'转向速度',blade:'铲斗宽度',coin:'金币价值'});
+export const TRACK_LABELS=Object.freeze({chassis:'底盘换代',speed:'行驶速度',steering:'转向速度',blade:'铲斗宽度',coin:'金币价值',cargo:'货箱容量'});
 export const TRACK_KEYS=Object.freeze(Object.keys(TRACK_COSTS));
 const nonnegative=(v,limit=1e8)=>Number.isFinite(Number(v))?Math.min(limit,Math.max(0,Math.floor(Number(v)))):0;
 export function boundedTier(level,costs){return Math.min(costs.length,nonnegative(level,costs.length));}

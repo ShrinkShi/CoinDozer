@@ -103,3 +103,6 @@
  padding:4px;gap:3px}#navMap{width:99px;height:152px}
  #navCycle{font-size:9px;padding:5px 1px}#navReadout{font-size:9px}}
 @media(max-height:620px){.nav-hud{top:137px}}
+
+/* v0.7.2 cargo counter remains visible on narrow mobile headers. */
+@media(max-width:390px){#topbar .stats span:nth-child(3){display:none}}

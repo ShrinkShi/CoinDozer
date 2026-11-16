@@ -37,10 +37,13 @@ export class ParticleActivity{
    if(mark[i]===stamp)return;
    mark[i]=stamp;priority[i]=score;candidates.push(i);
   };
-  let living=0;
+  let living=0,attached=0;
   for(let i=0;i<n;i++){
    const p=resources[i];if(p.dead)continue;
    living++;
+   // Stored and animated cargo coins remain real living entities, but are
+   // attached to the vehicle/transfer path and never enter granular contacts.
+   if(p.cargoState){attached++;continue;}
    const cx=Math.floor(p.x/CELL),cz=Math.floor(p.z/CELL),k=key(cx,cz);
    let bucket=this.cells.get(k);
    if(!bucket){bucket=[];this.cells.set(k,bucket);}
@@ -82,7 +85,8 @@ export class ParticleActivity{
   this.active.length=0;
   const take=Math.min(this.budget,candidates.length);
   for(let i=0;i<take;i++)this.active.push(candidates[i]);
-  this.sleeping=living-this.active.length;
+  this.attached=attached;
+  this.sleeping=living-this.active.length-attached;
   this.dropped=Math.max(0,candidates.length-take);
   return this.active;
  }

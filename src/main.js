@@ -117,10 +117,13 @@ function saveProgress(){
  try{
   // Keep legacy lava gates under 'gates'; cave gates have an independent key.
   const previous=loadProgress();
+  const cargoByStage={...(previous.cargoByStage||{})};
+  cargoByStage[stage]=sim.serializeCargo();
   const progress={
    tracks:sim.tracks,
    gates:stage===0?sim.gateTracks:previous.gates,
    caveGates:stage===1?sim.gateTracks:previous.caveGates,
+   cargoByStage,
    selected:sim.selectedUpgrade,totalDeposited:sim.totalDeposited,stage
   };
   localStorage.setItem('coindozer-progress-v06',JSON.stringify(progress));
@@ -165,7 +168,7 @@ function beep(freq=530,length=.1,vol=.045){try{
  }catch(e){}
 }
 function handleEvents(){
- let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false;
+ let paid=0,converted=0,convertedYield=0,upgrades=[],featureUpgrades=[],gateUpgrades=[],gate=null,full=false,crusherBlocked=false,supplyPaused=false,exitStage=false,cargoChanged=false;
  for(const event of sim.events){
   switch(event.type){
    case 'multiply':gate=event;break;
@@ -179,6 +182,7 @@ function handleEvents(){
     if(effects.length<35)effects.push({type:'crush',x:event.x,z:event.z,start:clocks});
     break;
    case 'deposit':paid++;if(effects.length<40)effects.push({x:event.x,z:event.z,start:clocks});break;
+   case 'cargoTransferStarted':case 'cargoLoaded':case 'cargoReturned':cargoChanged=true;break;
    case 'upgrade':upgrades.push(event);break;
    case 'featureUpgrade':featureUpgrades.push(event);break;
    case 'stageExit':exitStage=true;break;
@@ -190,7 +194,8 @@ function handleEvents(){
   saveProgress();loadScene(1,true);saveProgress();
   toast('已通过北端桥，进入冰雪第二关',3);beep(710,.4,.09);return;
  }
- if(paid){saveProgress();if(!upgrades.length&&!featureUpgrades.length)beep(360+sim.deposit%100*3,.06,.026);}
+ if(paid||cargoChanged)saveProgress();
+ if(paid&&!upgrades.length&&!featureUpgrades.length)beep(360+sim.deposit%100*3,.06,.026);
  if(upgrades.length){const item=upgrades.at(-1);renderer?.pulseUpgrade();toast(TRACK_LABELS[item.track]+'升级至 Lv.'+item.level+'，金币价值 '+item.value,3);beep(690,.48,.10);}
  else if(featureUpgrades.length){
   const item=featureUpgrades.at(-1);
@@ -215,6 +220,7 @@ function handleEvents(){
 function updateUI(){
  if(!sim)return;
  document.getElementById('score').textContent=formatNum(sim.crushed);
+ document.getElementById('cargoCount').textContent=`${formatNum(sim.cargoCount())}/${formatNum(sim.cargoCapacity())}`;
  const selected=sim.selectedUpgrade,track=sim.tracks[selected],costs=TRACK_COSTS[selected];
  const need=trackRemaining(track,costs);
  document.getElementById('left').textContent=track.level===costs.length?'已满级':formatNum(need);
@@ -247,7 +253,7 @@ function updateUI(){
  updateTelemetry();
  document.getElementById('zoomReadout').textContent='视角 '+Math.round(100/(renderer?.camera.zoom||1))+'%';
  document.querySelector('#topbar .stats span:first-child').firstChild.textContent=stage?'已加工冰晶 ':'已粉碎 ';
- document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，获得金锭升级':'矿石先过数字门，再经主桥粉碎；金币用于升级';
+ document.getElementById('hint').textContent=paused?'触摸驾驶 / WASD / 双指缩放':stage?'将冰晶推入粉碎机，金锭会装入车尾货箱':'矿石先过数字门，再经主桥粉碎；金币装入车尾货箱后用于升级';
 }
 function positionLabels(){
  for(const el of [...Object.values(labels),...gateLabels,...gateCostLabels,...Object.values(featureLabels)])if(el)el.style.display='none';

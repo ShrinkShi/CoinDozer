@@ -152,6 +152,32 @@ export function renderVehicle(renderer,player,t,baseY=0){
   part('box',0,1.48,-.8,1.9,.22,1.1,[.92,.68,.15,4]);
   for(const side of [-1,1])part('box',side*2.02,1.03,-1.62,.24,1.45,.21,bladeEdge);
  }
+ // The rear cargo box is an open, visible container. Its footprint and
+ // reinforcement grow with the independently purchasable cargo-capacity tier.
+ const cargo=visual.cargoLayout;
+ const cargoWidth=2.30+(cargo.columns-4)*.46;
+ const cargoLength=2.78+(cargo.rows-5)*.52;
+ const cargoHeight=.94+(cargo.layers-1)*.11;
+ const cargoZ=3.45;
+ const wood=[.34,.25,.15,5],edge=[.55,.39,.22,5];
+ part('box',0,.66,cargoZ,cargoWidth,.16,cargoLength,[.22,.20,.16,5]);
+ for(const side of [-1,1]){
+  part('box',side*cargoWidth*.5,.66+cargoHeight*.5,cargoZ,.13,cargoHeight,cargoLength,wood);
+  part('box',side*cargoWidth*.5,.66+cargoHeight,cargoZ,.18,.12,cargoLength,edge);
+ }
+ for(const end of [-1,1]){
+  part('box',0,.66+cargoHeight,cargoZ+end*cargoLength*.5,
+   cargoWidth,.12,.16,edge);
+  part('box',0,.66+cargoHeight*.5,cargoZ+end*cargoLength*.5,
+   cargoWidth,cargoHeight,.13,wood);
+ }
+ part('box',0,.80,2.63,2.18,.19,.48,STEEL);
+ // Individual cross-members keep the bed visually structural rather than a
+ // flat coloured slab. The top stays open so every coin remains visible.
+ for(let row=0;row<cargo.rows;row+=Math.max(1,Math.floor(cargo.rows/4))){
+  part('box',0,.78,cargoZ+(row-(cargo.rows-1)/2)*cargo.spacing,
+   cargoWidth-.18,.08,.075,edge);
+ }
  // Physical scraper teeth become denser on the blade upgrade route.
  if(visual.blade>0){
   const teeth=4+visual.blade*2;
