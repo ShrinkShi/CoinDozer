@@ -25,6 +25,11 @@ jobs:
         run: |
           node --check src/main.js
           node --check src/conveyors.js
+          node --check src/npc.js
+          node --check src/physics.js
+          node --check src/granular.js
+          node --check src/activity.js
+          node --check src/vehicle.js
           node --check src/triggers.js
           node tests/v0631_triggers.mjs
           node tests/v064_vehicle.mjs
@@ -34,6 +39,7 @@ jobs:
           node tests/v071_drive.mjs
           node tests/v072_cargo.mjs
           node tests/v073_conveyors.mjs
+          node tests/v074_npc.mjs
           python tests/v0631_build.py
           node tests/v063_performance.mjs
           node tests/v062_mechanics.mjs
@@ -48,7 +54,7 @@ jobs:
       - name: Check repository offline HTML is in sync
         run: git diff --exit-code -- dist/index.html
       - name: Verify bundled gameplay version
-        run: grep -q 'VIDEO REPLICA · 0.7.3' dist/index.html
+        run: grep -q 'VIDEO REPLICA · 0.7.4' dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
